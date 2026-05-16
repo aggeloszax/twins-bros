@@ -7,6 +7,7 @@ const CLOSE_HOUR = 21 // 21:00 (last slot starts at 20:30)
 const SLOT_MINUTES = 30
 
 type Slot = { time: string; available: boolean }
+type BookingWindow = { startTime: Date; endTime: Date }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
 
         const isPast = slotStart.getTime() <= now.getTime()
         const overlapsBooking = bookings.some(
-          (booking) =>
+          (booking: BookingWindow) =>
             slotStart < booking.endTime && slotEnd > booking.startTime,
         )
 
