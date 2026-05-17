@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-const SHOP_EMAIL = 'aggelos2za@hotmail.com'
+const SHOP_EMAIL = 'aggelos2ker@gmail.com'
 
 // Lazy init: the Resend constructor throws when no API key is set, which
 // would crash `next build` during page-data collection. Construct it only
