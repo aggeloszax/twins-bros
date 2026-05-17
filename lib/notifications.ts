@@ -1,3 +1,18 @@
+import { Resend } from 'resend'
+
+const SHOP_EMAIL = 'aggelos2za@hotmail.com'
+
+// Lazy init: the Resend constructor throws when no API key is set, which
+// would crash `next build` during page-data collection. Construct it only
+// when actually sending, and skip gracefully if the key is missing.
+let resendClient: Resend | null = null
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
+  if (!resendClient) resendClient = new Resend(apiKey)
+  return resendClient
+}
+
 function formatBookingDate(date: Date) {
   return new Intl.DateTimeFormat('el-GR', {
     weekday: 'long',
@@ -44,14 +59,17 @@ ${message}
 }
 
 async function sendEmail(email: string, subject: string, html: string) {
-  console.log(`
-==================== EMAIL NOTIFICATION ====================
-[EMAIL TO: ${email}]
-[SUBJECT]: ${subject}
-
-${html}
-============================================================
-`)
+  const resend = getResend()
+  if (!resend) {
+    console.warn(`RESEND_API_KEY missing — skipping email to ${email}`)
+    return
+  }
+  await resend.emails.send({
+    from: 'Twins Bros <onboarding@resend.dev>',
+    to: email,
+    subject,
+    html,
+  })
 }
 
 export async function sendBookingNotifications(
@@ -89,6 +107,16 @@ export async function sendBookingNotifications(
 
     await sendEmail(bookingDetails.customerEmail, subject, html)
   }
+
+  await sendEmail(
+    SHOP_EMAIL,
+    `📅 Νέο Ραντεβού — ${customerName}`,
+    `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
+      <strong>${customerName}</strong> · ${bookingDetails.customerPhone}<br/>
+      ${serviceName} με τον ${barberName}<br/>
+      ${bookingDate} στις ${bookingTime}
+    </p>`
+  )
 
   console.log(`
 ==================== BARBER NOTIFICATION ====================
