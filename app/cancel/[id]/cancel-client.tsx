@@ -90,7 +90,7 @@ export function CancelClient({
         Ελέγξτε τα στοιχεία του ραντεβού σας πριν την ακύρωση.
       </p>
 
-      <dl className="mt-6 space-y-3 rounded-3xl border border-zinc-800 bg-zinc-950 p-4 text-left text-sm">
+      <dl className="mt-6 space-y-3 rounded-3xl border border-white/10 bg-black/45 p-4 text-left text-sm">
         {detailRows.map((row) => (
           <div
             key={row.key}
@@ -105,7 +105,7 @@ export function CancelClient({
       </dl>
 
       {error && (
-        <div className="mt-5 rounded-3xl border border-[#A61E22]/50 bg-[#A61E22]/10 p-4 text-sm text-red-100">
+        <div className="mt-5 rounded-3xl border border-[#ff1f2d]/50 bg-[#ff1f2d]/10 p-4 text-sm text-red-100">
           {error}
         </div>
       )}
@@ -114,7 +114,7 @@ export function CancelClient({
         type="button"
         onClick={handleCancel}
         disabled={isPending}
-        className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#A61E22] px-6 py-3.5 text-sm font-bold text-white shadow-[0_16px_40px_rgba(166,30,34,0.25)] transition-all duration-300 ease-in-out hover:bg-[#8F171B] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#A61E22]"
+        className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#ff1f2d] px-6 py-3.5 text-sm font-bold text-white shadow-[0_16px_40px_rgba(255,31,45,0.22)] transition-all duration-300 ease-in-out hover:bg-[#d80d19] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#ff1f2d]"
       >
         {isPending ? 'Γίνεται ακύρωση…' : 'Επιβεβαίωση Ακύρωσης Ραντεβού'}
       </button>

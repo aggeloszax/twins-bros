@@ -34,10 +34,10 @@ function formatTime(date: Date) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-5 py-10 font-sans text-zinc-50">
-      <div className="animate-fade-in w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-7 shadow-2xl shadow-black/40 sm:p-8">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-[radial-gradient(circle_at_top,#4b0710_0%,#120306_42%,#050505_100%)] px-5 py-10 font-sans text-zinc-50">
+      <div className="animate-fade-in w-full max-w-md rounded-3xl border border-white/10 bg-black/45 p-7 shadow-2xl shadow-[#ff1f2d]/10 backdrop-blur sm:p-8">
         <div className="flex flex-col items-center text-center">
-          <div className="relative h-14 w-14 overflow-hidden rounded-full border border-[#A61E22]/70 bg-zinc-900 shadow-[0_0_30px_rgba(166,30,34,0.18)]">
+          <div className="relative h-14 w-14 overflow-hidden rounded-full border border-[#ff1f2d]/70 bg-[#120306] shadow-[0_0_30px_rgba(255,31,45,0.18)]">
             <Image
               src="/logo.webp"
               alt="TWINS BROS logo"
@@ -46,7 +46,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               className="object-cover"
             />
           </div>
-          <p className="mt-3 text-xs font-bold uppercase tracking-[0.28em] text-amber-400">
+          <p className="mt-3 text-xs font-bold uppercase tracking-[0.28em] text-[#ff1f2d]">
             TWINS BROS
           </p>
         </div>
@@ -94,7 +94,7 @@ export default async function CancelPage({
     return (
       <Shell>
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10 text-2xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 text-2xl">
             ⏳
           </div>
           <h1 className="mt-5 text-xl font-semibold tracking-tight text-zinc-50">

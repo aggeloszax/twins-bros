@@ -48,7 +48,7 @@ const GR_MONTHS = [
 
 const STEP_LABELS = ['Υπηρεσία', 'Barber', 'Ημ/νία & Ώρα', 'Στοιχεία Πελάτη']
 const inputClass =
-  'mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-base text-zinc-50 outline-none transition-all duration-300 ease-in-out placeholder:text-zinc-600 focus:border-[#A61E22] focus:ring-2 focus:ring-[#A61E22]/35'
+  'mt-2 w-full rounded-2xl border border-white/10 bg-black/55 px-4 py-3.5 text-base text-zinc-50 outline-none transition-all duration-300 ease-in-out placeholder:text-zinc-600 focus:border-[#ff1f2d] focus:ring-2 focus:ring-[#ff1f2d]/30'
 
 const formatPrice = (price: number) =>
   `${Number.isInteger(price) ? price : price.toFixed(2)}€`
@@ -180,10 +180,10 @@ function Stepper({
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all duration-300 ease-in-out sm:h-9 sm:w-9 ${
                     isDone
-                      ? 'border-[#A61E22] bg-[#A61E22] text-white'
+                      ? 'border-[#ff1f2d] bg-[#ff1f2d] text-white'
                       : isActive
-                        ? 'border-[#A61E22] bg-[#A61E22]/15 text-zinc-50 shadow-[0_0_0_4px_rgba(166,30,34,0.12)]'
-                        : 'border-zinc-800 bg-zinc-900 text-zinc-500'
+                        ? 'border-[#ff1f2d] bg-[#ff1f2d]/15 text-zinc-50 shadow-[0_0_0_4px_rgba(166,30,34,0.12)]'
+                        : 'border-white/10 bg-[#120306] text-zinc-500'
                   }`}
                 >
                   {isDone ? <CheckIcon className="h-4 w-4" /> : n}
@@ -203,7 +203,7 @@ function Stepper({
               {n < STEP_LABELS.length && (
                 <span
                   className={`mt-4 h-0.5 w-4 shrink-0 rounded-full transition-colors duration-300 sm:mt-[18px] sm:w-10 ${
-                    done[n] ? 'bg-[#A61E22]' : 'bg-zinc-800'
+                    done[n] ? 'bg-[#ff1f2d]' : 'bg-zinc-800'
                   }`}
                 />
               )}
@@ -217,7 +217,7 @@ function Stepper({
 
 function CardSkeleton() {
   return (
-    <div className="animate-pulse rounded-3xl border border-zinc-800 bg-zinc-900 p-5">
+    <div className="animate-pulse rounded-3xl border border-white/10 bg-[#120306] p-5">
       <div className="h-4 w-2/3 rounded bg-zinc-800" />
       <div className="mt-4 h-3 w-1/3 rounded bg-zinc-800" />
     </div>
@@ -226,7 +226,7 @@ function CardSkeleton() {
 
 function AvatarSkeleton() {
   return (
-    <div className="animate-pulse rounded-3xl border border-zinc-800 bg-zinc-900 p-3">
+    <div className="animate-pulse rounded-3xl border border-white/10 bg-[#120306] p-3">
       <div className="aspect-square rounded-2xl bg-zinc-800" />
       <div className="mx-auto mt-4 h-3 w-2/3 rounded bg-zinc-800" />
     </div>
@@ -234,19 +234,19 @@ function AvatarSkeleton() {
 }
 
 function SlotSkeleton() {
-  return <div className="h-12 animate-pulse rounded-2xl bg-zinc-900" />
+  return <div className="h-12 animate-pulse rounded-2xl bg-[#120306]" />
 }
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="rounded-3xl border border-[#A61E22]/50 bg-[#A61E22]/10 p-6 text-center">
+    <div className="rounded-3xl border border-[#ff1f2d]/50 bg-[#ff1f2d]/10 p-6 text-center">
       <p className="text-sm text-red-100">
         Κάτι πήγε στραβά κατά τη φόρτωση.
       </p>
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-full border border-[#A61E22] px-5 py-2 text-sm font-semibold text-zinc-50 transition-all duration-300 ease-in-out hover:bg-[#A61E22]"
+        className="mt-4 rounded-full border border-[#ff1f2d] px-5 py-2 text-sm font-semibold text-zinc-50 transition-all duration-300 ease-in-out hover:bg-[#ff1f2d]"
       >
         Δοκίμασε ξανά
       </button>
@@ -450,9 +450,9 @@ export default function Home() {
     customerPhone.trim()
   ) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-5 py-10 font-sans text-zinc-50">
-        <div className="animate-fade-in w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-7 text-center shadow-2xl shadow-black/40 sm:p-8">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#A61E22] text-white shadow-[0_0_40px_rgba(166,30,34,0.35)]">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-[#050505] px-5 py-10 font-sans text-zinc-50">
+        <div className="animate-fade-in w-full max-w-md rounded-3xl border border-white/10 bg-[#120306] p-7 text-center shadow-2xl shadow-black/40 sm:p-8">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ff1f2d] text-white shadow-[0_0_40px_rgba(166,30,34,0.35)]">
             <CheckIcon className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-2xl font-semibold tracking-tight">
@@ -463,7 +463,7 @@ export default function Home() {
             (Αν δεν το βρίσκετε στα εισερχόμενα, ρίξτε μια ματιά και στον φάκελο
             με τα Ανεπιθύμητα / Spam).
           </p>
-          <div className="mt-6 space-y-3 rounded-3xl border border-zinc-800 bg-zinc-950 p-4 text-left text-sm">
+          <div className="mt-6 space-y-3 rounded-3xl border border-white/10 bg-[#050505] p-4 text-left text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-zinc-400">Υπηρεσία</span>
               <span className="font-medium text-zinc-50">
@@ -507,10 +507,10 @@ export default function Home() {
   const hasAvailableSlot = slots.some((s) => s.available)
 
   return (
-    <div className="min-h-screen bg-zinc-950 font-sans text-zinc-50">
+    <div className="min-h-screen bg-[#050505] font-sans text-zinc-50">
       <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 pb-36 pt-5 sm:px-6 sm:pb-40 sm:pt-8">
         <header className="text-center">
-          <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-[#A61E22]/70 bg-zinc-900 shadow-[0_0_30px_rgba(166,30,34,0.18)]">
+          <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-[#ff1f2d]/70 bg-[#120306] shadow-[0_0_30px_rgba(166,30,34,0.18)]">
             <Image
               src="/logo.webp"
               alt="TWINS BROS logo"
@@ -520,7 +520,7 @@ export default function Home() {
               className="object-cover"
             />
           </div>
-          <p className="mt-3 text-sm font-bold uppercase tracking-[0.28em] text-amber-400">
+          <p className="mt-3 text-sm font-bold uppercase tracking-[0.28em] text-[#ff1f2d]">
             TWINS BROS
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
@@ -528,7 +528,7 @@ export default function Home() {
           </h1>
         </header>
 
-        <div className="mt-7 rounded-3xl border border-zinc-800 bg-zinc-900/70 p-3 shadow-2xl shadow-black/20 sm:p-4">
+        <div className="mt-7 rounded-3xl border border-white/10 bg-[#120306]/70 p-3 shadow-2xl shadow-black/20 sm:p-4">
           <Stepper
             step={step}
             done={stepDone}
@@ -569,8 +569,8 @@ export default function Home() {
                         onClick={() => handleSelectService(service)}
                         className={`group flex w-full items-center justify-between gap-4 rounded-3xl border p-5 text-left shadow-black/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-[1.01] hover:shadow-2xl ${
                           isSelected
-                            ? 'border-[#A61E22] bg-zinc-900 shadow-[inset_0_0_0_1px_rgba(166,30,34,0.28),0_22px_60px_rgba(166,30,34,0.16)]'
-                            : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                            ? 'border-[#ff1f2d] bg-[#120306] shadow-[inset_0_0_0_1px_rgba(166,30,34,0.28),0_22px_60px_rgba(166,30,34,0.16)]'
+                            : 'border-white/10 bg-[#120306] hover:border-white/15'
                         }`}
                       >
                         <div className="min-w-0">
@@ -578,7 +578,7 @@ export default function Home() {
                             {service.name}
                           </h3>
                           <div className="mt-2 flex items-center gap-2 text-sm text-zinc-400">
-                            <ClockIcon className="h-4 w-4 text-[#C9484C]" />
+                            <ClockIcon className="h-4 w-4 text-[#ff6b75]" />
                             <span>{service.duration} λεπτά</span>
                           </div>
                         </div>
@@ -589,8 +589,8 @@ export default function Home() {
                           <span
                             className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-300 ease-in-out ${
                               isSelected
-                                ? 'border-[#A61E22] bg-[#A61E22] text-white'
-                                : 'border-zinc-700 text-transparent group-hover:border-[#A61E22]/70'
+                                ? 'border-[#ff1f2d] bg-[#ff1f2d] text-white'
+                                : 'border-white/15 text-transparent group-hover:border-[#ff1f2d]/70'
                             }`}
                           >
                             <CheckIcon className="h-4 w-4" />
@@ -634,13 +634,13 @@ export default function Home() {
                         key={barber.id}
                         type="button"
                         onClick={() => setSelectedBarber(barber)}
-                        className={`group rounded-3xl border bg-zinc-900 p-3 text-left transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/25 ${
+                        className={`group rounded-3xl border bg-[#120306] p-3 text-left transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/25 ${
                           isSelected
-                            ? 'border-[#A61E22] shadow-[inset_0_0_0_1px_rgba(166,30,34,0.3),0_20px_50px_rgba(166,30,34,0.18)]'
-                            : 'border-zinc-800 hover:border-zinc-700'
+                            ? 'border-[#ff1f2d] shadow-[inset_0_0_0_1px_rgba(166,30,34,0.3),0_20px_50px_rgba(166,30,34,0.18)]'
+                            : 'border-white/10 hover:border-white/15'
                         }`}
                       >
-                        <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-inner shadow-black/40 transition-all duration-300 ease-in-out group-hover:border-[#A61E22]/70">
+                        <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-3xl border border-white/10 bg-[#050505] shadow-inner shadow-black/40 transition-all duration-300 ease-in-out group-hover:border-[#ff1f2d]/70">
                           {showImage && barberImageSrc ? (
                             <Image
                               src={barberImageSrc}
@@ -657,13 +657,13 @@ export default function Home() {
                               className="object-contain object-center transition-transform duration-500 ease-in-out group-hover:scale-105"
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-zinc-900 text-4xl font-semibold text-zinc-500">
+                            <div className="flex h-full w-full items-center justify-center bg-[#120306] text-4xl font-semibold text-zinc-500">
                               {barber.name.charAt(0)}
                             </div>
                           )}
                           <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/10" />
                           {isSelected && (
-                            <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#A61E22] text-white shadow-lg">
+                            <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#ff1f2d] text-white shadow-lg">
                               <CheckIcon className="h-4 w-4" />
                             </span>
                           )}
@@ -693,7 +693,7 @@ export default function Home() {
               </div>
 
               <div className="grid gap-5 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)] md:items-start">
-                <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 shadow-2xl shadow-black/20 sm:p-5">
+                <section className="rounded-2xl border border-white/10 bg-[#050505]/80 p-4 shadow-2xl shadow-black/20 sm:p-5">
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-semibold capitalize text-zinc-50">
@@ -709,7 +709,7 @@ export default function Home() {
                         disabled={!canGoPreviousMonth}
                         onClick={() => setCalendarMonth((current) => addMonths(current, -1))}
                         aria-label="Προηγούμενος μήνας"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-200 transition-colors hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-[#120306] text-zinc-200 transition-colors hover:border-white/15 hover:bg-[#4b0710] disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         ‹
                       </button>
@@ -718,7 +718,7 @@ export default function Home() {
                         disabled={!canGoNextMonth}
                         onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
                         aria-label="Επόμενος μήνας"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-200 transition-colors hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-[#120306] text-zinc-200 transition-colors hover:border-white/15 hover:bg-[#4b0710] disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         ›
                       </button>
@@ -755,15 +755,15 @@ export default function Home() {
                           }}
                           className={`relative flex aspect-square min-h-11 items-center justify-center rounded-xl border text-sm font-semibold transition-all duration-200 ease-in-out sm:min-h-14 ${
                             isSelected
-                              ? 'border-[#A61E22] bg-[#A61E22] text-white shadow-[0_16px_34px_rgba(166,30,34,0.26)]'
+                              ? 'border-[#ff1f2d] bg-[#ff1f2d] text-white shadow-[0_16px_34px_rgba(166,30,34,0.26)]'
                               : isDisabled
-                                ? 'cursor-not-allowed border-transparent bg-zinc-900/35 text-zinc-700'
-                                : 'border-zinc-800 bg-zinc-900 text-zinc-100 hover:-translate-y-0.5 hover:border-[#A61E22]/70 hover:bg-zinc-800'
+                                ? 'cursor-not-allowed border-transparent bg-[#120306]/35 text-zinc-700'
+                                : 'border-white/10 bg-[#120306] text-zinc-100 hover:-translate-y-0.5 hover:border-[#ff1f2d]/70 hover:bg-[#4b0710]'
                           }`}
                         >
                           <span>{day.getDate()}</span>
                           {isToday && !isSelected && !isDisabled && (
-                            <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-[#A61E22]" />
+                            <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-[#ff1f2d]" />
                           )}
                         </button>
                       )
@@ -771,7 +771,7 @@ export default function Home() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 shadow-2xl shadow-black/20 sm:p-5">
+                <section className="rounded-2xl border border-white/10 bg-[#050505]/80 p-4 shadow-2xl shadow-black/20 sm:p-5">
                   <div className="mb-5">
                     <h3 className="text-base font-semibold text-zinc-50">
                       Διαθέσιμες ώρες
@@ -782,7 +782,7 @@ export default function Home() {
                   </div>
 
                   {!selectedDate ? (
-                    <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/70 p-8 text-center text-sm text-zinc-400">
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-[#120306]/70 p-8 text-center text-sm text-zinc-400">
                       Διάλεξε πρώτα μια ημέρα.
                     </div>
                   ) : loadingSlots ? (
@@ -794,7 +794,7 @@ export default function Home() {
                   ) : slotsError ? (
                     <ErrorState onRetry={() => setSelectedDate(selectedDate)} />
                   ) : !hasAvailableSlot ? (
-                    <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/70 p-8 text-center text-sm text-zinc-400">
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-[#120306]/70 p-8 text-center text-sm text-zinc-400">
                       Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημέρα.
                     </div>
                   ) : (
@@ -809,10 +809,10 @@ export default function Home() {
                             onClick={() => setSelectedTime(slot.time)}
                             className={`h-12 rounded-xl border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
                               !slot.available
-                                ? 'cursor-not-allowed border-zinc-900 bg-zinc-900/70 text-zinc-700 line-through'
+                                ? 'cursor-not-allowed border-zinc-900 bg-[#120306]/70 text-zinc-700 line-through'
                                 : isSelected
-                                  ? 'border-[#A61E22] bg-[#A61E22] text-white shadow-[0_14px_34px_rgba(166,30,34,0.22)]'
-                                  : 'border-zinc-800 bg-zinc-900 text-zinc-200 hover:-translate-y-0.5 hover:border-[#A61E22]/80 hover:bg-zinc-800'
+                                  ? 'border-[#ff1f2d] bg-[#ff1f2d] text-white shadow-[0_14px_34px_rgba(166,30,34,0.22)]'
+                                  : 'border-white/10 bg-[#120306] text-zinc-200 hover:-translate-y-0.5 hover:border-[#ff1f2d]/80 hover:bg-[#4b0710]'
                             }`}
                           >
                             {slot.time}
@@ -838,7 +838,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="space-y-4 rounded-3xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl shadow-black/20">
+              <div className="space-y-4 rounded-3xl border border-white/10 bg-[#120306] p-5 shadow-2xl shadow-black/20">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
                     Όνοματεπώνυμο
@@ -885,7 +885,7 @@ export default function Home() {
               </div>
 
               {bookingError && (
-                <div className="rounded-3xl border border-[#A61E22]/50 bg-[#A61E22]/10 p-4 text-sm text-red-100">
+                <div className="rounded-3xl border border-[#ff1f2d]/50 bg-[#ff1f2d]/10 p-4 text-sm text-red-100">
                   Δεν μπορέσαμε να καταχωρήσουμε το ραντεβού. Δοκίμασε ξανά.
                 </div>
               )}
@@ -894,7 +894,7 @@ export default function Home() {
         </section>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-xl">
+      <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-[#050505]/95 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-6">
           {step > 1 && (
             <button
@@ -903,7 +903,7 @@ export default function Home() {
                 setStep((current) => (current - 1) as BookingStep)
               }
               aria-label="Πίσω"
-              className="flex min-h-12 shrink-0 items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-200 transition-all duration-300 ease-in-out hover:border-zinc-700 hover:bg-zinc-800 active:scale-95 sm:px-5"
+              className="flex min-h-12 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-[#120306] px-4 py-3 text-sm font-semibold text-zinc-200 transition-all duration-300 ease-in-out hover:border-white/15 hover:bg-[#4b0710] active:scale-95 sm:px-5"
             >
               <ArrowIcon className="h-4 w-4 rotate-180" />
               <span className="hidden sm:inline">Πίσω</span>
@@ -934,8 +934,8 @@ export default function Home() {
             onClick={handleNext}
             className={`flex min-h-12 shrink-0 items-center gap-2 rounded-full px-5 py-3 text-sm font-bold transition-all duration-300 ease-in-out sm:px-6 ${
               canProceed
-                ? 'bg-[#A61E22] text-white shadow-[0_16px_40px_rgba(166,30,34,0.25)] hover:scale-105 hover:bg-[#8F171B] active:scale-95'
-                : 'cursor-not-allowed bg-zinc-900 text-zinc-600'
+                ? 'bg-[#ff1f2d] text-white shadow-[0_16px_40px_rgba(166,30,34,0.25)] hover:scale-105 hover:bg-[#d80d19] active:scale-95'
+                : 'cursor-not-allowed bg-[#120306] text-zinc-600'
             }`}
           >
             <span className="max-w-[9.5rem] truncate sm:max-w-none">
@@ -956,3 +956,4 @@ export default function Home() {
     </div>
   )
 }
+
