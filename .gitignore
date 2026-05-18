@@ -36,11 +36,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-<<<<<<< HEAD
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-=======
 # local git metadata workaround
 gitrepo/
 
@@ -48,6 +43,5 @@ gitrepo/
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated client
 /app/generated/prisma
->>>>>>> 6e7e8fdf4a6770b507a74f13a14d14da12bfb0e7
-.env*.local
