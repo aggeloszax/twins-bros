@@ -27,10 +27,22 @@ type Stats = {
   weekRevenue: number
 }
 
-const BARBER_TABS = ['all', 'Redi', 'Donaldo', 'Kleidi'] as const
+const NAV_TABS = ['Ραντεβού', 'Πελάτες', 'Κουρείς', 'Υπηρεσίες', 'Ωράριο', 'Έσοδα']
+const BARBERS = ['all', 'Redi', 'Donaldo', 'Kleidi'] as const
+const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ']
 
 function formatPrice(price: number) {
   return `${Number.isInteger(price) ? price : price.toFixed(2)}€`
+}
+
+function formatDateKeyLong(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(BOOKING_LOCALE, {
+    timeZone: BOOKING_TIME_ZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
 function formatDate(dateStr: string) {
@@ -55,6 +67,42 @@ function toDateKey(dateStr: string) {
   return getDateKeyInBookingTimeZone(new Date(dateStr))
 }
 
+function localDateKey(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1)
+}
+
+function buildCalendarDays(monthDate: Date) {
+  const firstOfMonth = startOfMonth(monthDate)
+  const mondayOffset = (firstOfMonth.getDay() + 6) % 7
+  const gridStart = new Date(firstOfMonth)
+  gridStart.setDate(firstOfMonth.getDate() - mondayOffset)
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(gridStart)
+    day.setDate(gridStart.getDate() + index)
+    return day
+  })
+}
+
+function monthTitle(date: Date) {
+  return date.toLocaleDateString(BOOKING_LOCALE, {
+    timeZone: BOOKING_TIME_ZONE,
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
 function getBookingStatus(booking: Booking) {
   if (booking.status === 'cancelled') return 'cancelled'
   return new Date(booking.endTime) <= new Date() ? 'completed' : 'pending'
@@ -62,18 +110,18 @@ function getBookingStatus(booking: Booking) {
 
 function StatusBadge({ status }: { status: ReturnType<typeof getBookingStatus> }) {
   const styles = {
-    completed: 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300',
-    pending: 'border-yellow-300/40 bg-yellow-300/15 text-yellow-200',
+    completed: 'border-emerald-400/45 bg-emerald-400/15 text-emerald-300',
+    pending: 'border-yellow-300/45 bg-yellow-300/15 text-yellow-200',
     cancelled: 'border-[#ff1f2d]/50 bg-[#ff1f2d]/15 text-[#ff6b75]',
   }
   const labels = {
-    completed: 'ΟΛΟΚΛΗΡΩΘΗΚΕ',
-    pending: 'ΕΚΚΡΕΜΕΙ',
-    cancelled: 'ΑΚΥΡΩΘΗΚΕ',
+    completed: 'Ολοκληρωμένο',
+    pending: 'Επιβεβαιωμένο',
+    cancelled: 'Ακυρωμένο',
   }
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black tracking-[0.12em] ${styles[status]}`}>
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-black ${styles[status]}`}>
       {labels[status]}
     </span>
   )
@@ -95,6 +143,14 @@ function XIcon({ className }: { className?: string }) {
   )
 }
 
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9" />
+    </svg>
+  )
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false)
   const [password, setPassword] = useState('')
@@ -106,8 +162,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  const [filterBarber, setFilterBarber] = useState<(typeof BARBER_TABS)[number]>('all')
-  const [filterDate, setFilterDate] = useState('')
+  const [selectedDate, setSelectedDate] = useState(() => getDateKeyInBookingTimeZone(new Date()))
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()))
+  const [filterBarber, setFilterBarber] = useState<(typeof BARBERS)[number]>('all')
   const [cancelId, setCancelId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
 
@@ -176,10 +233,10 @@ export default function AdminPage() {
     setCancelling(true)
     try {
       await fetch(`/api/admin/bookings/${id}`, { method: 'DELETE' })
-      setBookings((prev) => prev.filter((b) => b.id !== id))
+      setBookings((prev) => prev.filter((booking) => booking.id !== id))
       void loadData()
     } catch {
-      // Keep the dashboard stable if the network drops during an admin action.
+      // Keep the current list visible if the action fails.
     } finally {
       setCancelling(false)
       setCancelId(null)
@@ -191,30 +248,20 @@ export default function AdminPage() {
     setAuthed(false)
   }
 
-  const todayKey = getDateKeyInBookingTimeZone(new Date())
+  const calendarDays = buildCalendarDays(calendarMonth)
+  const selectedDateLabel = formatDateKeyLong(selectedDate)
 
-  const todayBookings = useMemo(
-    () => bookings.filter((booking) => toDateKey(booking.startTime) === todayKey),
-    [bookings, todayKey],
+  const filtered = useMemo(
+    () =>
+      bookings
+        .filter((booking) => toDateKey(booking.startTime) === selectedDate)
+        .filter((booking) => filterBarber === 'all' || booking.barber.name === filterBarber)
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
+    [bookings, filterBarber, selectedDate],
   )
 
-  const popularService = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const booking of todayBookings) {
-      counts.set(booking.service.name, (counts.get(booking.service.name) ?? 0) + 1)
-    }
-
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
-  }, [todayBookings])
-
-  const filtered = bookings.filter((booking) => {
-    if (filterBarber !== 'all' && booking.barber.name !== filterBarber) return false
-    if (filterDate && toDateKey(booking.startTime) !== filterDate) return false
-    return true
-  })
-
-  const todayRevenue = stats?.todayRevenue ?? todayBookings.reduce((sum, booking) => sum + booking.service.price, 0)
-  const todayCount = stats?.todayBookings ?? todayBookings.length
+  const selectedRevenue = filtered.reduce((sum, booking) => sum + booking.service.price, 0)
+  const todayRevenue = stats?.todayRevenue ?? 0
 
   if (!authed) {
     return (
@@ -224,7 +271,7 @@ export default function AdminPage() {
             <Image src="/logo.webp" alt="Twins Bros" width={86} height={86} className="rounded-full border border-white/15 bg-black object-cover" priority />
             <div className="text-center">
               <p className="text-xs font-black uppercase tracking-[0.28em] text-[#ff1f2d]">Twins Bros</p>
-              <p className="mt-1 text-lg font-semibold text-zinc-100">Admin Intelligence</p>
+              <p className="mt-1 text-lg font-semibold text-zinc-100">Admin Dashboard</p>
             </div>
           </div>
           <label className="block">
@@ -232,8 +279,8 @@ export default function AdminPage() {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void handleLogin()}
+              onChange={(event) => setPassword(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && void handleLogin()}
               className="mt-2 w-full rounded-xl border border-[#4b0710] bg-black/70 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff1f2d] focus:ring-2 focus:ring-[#ff1f2d]/25"
               placeholder="••••••••"
             />
@@ -255,156 +302,221 @@ export default function AdminPage() {
   return (
     <main className="min-h-screen bg-[linear-gradient(145deg,#3a050c_0%,#120306_35%,#050505_100%)] px-4 pb-16 pt-6 text-zinc-100 sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 flex flex-col gap-5 rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl shadow-black/30 backdrop-blur md:flex-row md:items-center md:justify-between">
+        <header className="mb-4 flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl shadow-black/30 backdrop-blur lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <Image src="/logo.webp" alt="Twins Bros" width={76} height={76} className="rounded-full border border-white/15 bg-black object-cover shadow-lg shadow-[#ff1f2d]/10" priority />
+            <Image src="/logo.webp" alt="Twins Bros" width={58} height={58} className="rounded-full border border-white/15 bg-black object-cover shadow-lg shadow-[#ff1f2d]/10" priority />
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-[#ff1f2d]">Twins Bros</p>
-              <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Business Intelligence</h1>
-              <p className="mt-1 text-sm text-zinc-400">Europe/Athens live operations dashboard</p>
+              <p className="text-xs font-black uppercase tracking-[0.26em] text-[#ff1f2d]">Twins Bros</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Πίνακας ελέγχου</h1>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-[#ff1f2d]/50 hover:bg-[#ff1f2d]/10"
-          >
-            Αποσύνδεση
-          </button>
-        </header>
-
-        <section className="mb-7 grid gap-4 md:grid-cols-3">
-          {[
-            { label: 'Σημερινά Έσοδα', value: formatPrice(todayRevenue), detail: 'Athens day boundary' },
-            { label: 'Σύνολο Ραντεβού', value: todayCount, detail: 'Σήμερα' },
-            { label: 'Δημοφιλής Υπηρεσία', value: popularService, detail: 'Most booked today' },
-          ].map((card) => (
-            <div key={card.label} className="rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#4b0710_0%,#8f0f1a_54%,#ff1f2d_130%)] p-5 shadow-xl shadow-black/25">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-300">{card.label}</p>
-              <p className="mt-4 min-h-10 text-3xl font-black tracking-tight text-white">{card.value}</p>
-              <p className="mt-2 text-xs text-zinc-300">{card.detail}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300">
+              <span className="text-zinc-500">Συνδεδεμένος:</span> admin@twins-bros.gr
             </div>
-          ))}
-        </section>
-
-        <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {BARBER_TABS.map((tab) => {
-              const active = filterBarber === tab
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setFilterBarber(tab)}
-                  className={`shrink-0 rounded-xl px-4 py-2 text-sm font-black transition ${
-                    active
-                      ? 'bg-[#ff1f2d] text-white shadow-lg shadow-[#ff1f2d]/20'
-                      : 'bg-[#4b0710] text-zinc-300 hover:bg-[#6d0a14] hover:text-white'
-                  }`}
-                >
-                  {tab === 'all' ? 'Όλοι' : tab}
-                </button>
-              )
-            })}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="min-w-0 rounded-xl border border-white/10 bg-black/50 px-4 py-2 text-sm text-zinc-100 outline-none focus:border-[#ff1f2d]"
-            />
-            {filterDate && (
-              <button
-                type="button"
-                onClick={() => setFilterDate('')}
-                className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-zinc-300 hover:bg-white/5"
-              >
-                Όλες
-              </button>
-            )}
-          </div>
-        </section>
-
-        {loading ? (
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="mb-3 h-14 animate-pulse rounded-xl bg-[#2a0509] last:mb-0" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="rounded-2xl border border-[#ff1f2d]/35 bg-[#ff1f2d]/10 p-8 text-center">
-            <p className="text-sm text-[#ffb3b8]">Κάτι πήγε στραβά.</p>
-            <button type="button" onClick={() => void loadData()} className="mt-4 rounded-xl border border-[#ff1f2d]/50 px-4 py-2 text-sm font-semibold text-white hover:bg-[#ff1f2d]/15">
-              Δοκίμασε ξανά
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-[#ff1f2d]/50 hover:bg-[#ff1f2d]/10"
+            >
+              Αποσύνδεση
             </button>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 bg-black/25 p-12 text-center text-sm text-zinc-400">
-            Δεν βρέθηκαν ραντεβού.
-          </div>
-        ) : (
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-black/35 shadow-2xl shadow-black/30">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[920px] border-collapse text-left">
-                <thead className="bg-black/65 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
-                  <tr>
-                    <th className="px-5 py-4">Πελάτης</th>
-                    <th className="px-5 py-4">Ημερομηνία</th>
-                    <th className="px-5 py-4">Time</th>
-                    <th className="px-5 py-4">Barber</th>
-                    <th className="px-5 py-4">Υπηρεσία</th>
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((booking, index) => {
-                    const status = getBookingStatus(booking)
-                    const pending = status === 'pending'
-                    return (
-                      <tr key={booking.id} className={`border-t border-white/5 ${index % 2 === 0 ? 'bg-[#180307]/80' : 'bg-[#27050b]/80'}`}>
-                        <td className="px-5 py-4">
-                          <p className="font-bold text-white">{booking.customerName}</p>
-                          <p className="mt-1 text-xs text-zinc-400">{booking.customerPhone}</p>
-                        </td>
-                        <td className="px-5 py-4 text-sm font-semibold text-zinc-200">{formatDate(booking.startTime)}</td>
-                        <td className="px-5 py-4 font-mono text-base font-black text-white">{formatTime(booking.startTime)}</td>
-                        <td className="px-5 py-4 text-sm text-zinc-300">{booking.barber.name}</td>
-                        <td className="px-5 py-4">
-                          <p className="text-sm font-semibold text-zinc-100">{booking.service.name}</p>
-                          <p className="mt-1 text-xs font-bold text-[#ff6b75]">{formatPrice(booking.service.price)}</p>
-                        </td>
-                        <td className="px-5 py-4"><StatusBadge status={status} /></td>
-                        <td className="px-5 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              disabled
-                              title={pending ? 'Ολοκληρώνεται αυτόματα μετά την ώρα λήξης' : 'Ολοκληρωμένο'}
-                              className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-300 opacity-60"
-                            >
-                              <CheckIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!pending}
-                              onClick={() => setCancelId(booking.id)}
-                              title="Ακύρωση"
-                              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 text-[#ff6b75] transition hover:bg-[#ff1f2d]/20 disabled:cursor-not-allowed disabled:opacity-35"
-                            >
-                              <XIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+        </header>
+
+        <nav className="mb-6 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/25 p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {NAV_TABS.map((tab, index) => (
+            <button
+              key={tab}
+              type="button"
+              className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-black transition ${
+                index === 0
+                  ? 'bg-[linear-gradient(135deg,#4b0710,#ff1f2d)] text-white shadow-lg shadow-[#ff1f2d]/20'
+                  : 'bg-white/[0.04] text-zinc-400 hover:bg-[#4b0710]/70 hover:text-white'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.95fr)_minmax(0,2fr)]">
+          <aside className="space-y-4">
+            <section className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-xl shadow-black/20">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((current) => addMonths(current, -1))}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-200 hover:bg-[#4b0710]"
+                  aria-label="Προηγούμενος μήνας"
+                >
+                  ‹
+                </button>
+                <h2 className="text-center text-base font-black capitalize text-white">{monthTitle(calendarMonth)}</h2>
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-200 hover:bg-[#4b0710]"
+                  aria-label="Επόμενος μήνας"
+                >
+                  ›
+                </button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1.5">
+                {WEEKDAYS.map((day) => (
+                  <div key={day} className="pb-2 text-center text-[11px] font-black uppercase text-zinc-500">
+                    {day}
+                  </div>
+                ))}
+                {calendarDays.map((day) => {
+                  const key = localDateKey(day)
+                  const selected = selectedDate === key
+                  const currentMonth = day.getMonth() === calendarMonth.getMonth()
+
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSelectedDate(key)}
+                      className={`flex aspect-square min-h-9 items-center justify-center rounded-full text-sm font-black transition ${
+                        selected
+                          ? 'bg-[#ff1f2d] text-white shadow-[0_12px_30px_rgba(255,31,45,0.28)]'
+                          : currentMonth
+                            ? 'text-zinc-200 hover:bg-[#4b0710] hover:text-white'
+                            : 'text-zinc-700 hover:bg-white/[0.03]'
+                      }`}
+                    >
+                      {day.getDate()}
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+              <div className="rounded-2xl border border-white/10 bg-[#180307]/80 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">Σήμερα</p>
+                <p className="mt-2 text-2xl font-black text-white">{formatPrice(todayRevenue)}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-[#180307]/80 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">Επιλεγμένη μέρα</p>
+                <p className="mt-2 text-2xl font-black text-white">{formatPrice(selectedRevenue)}</p>
+              </div>
+            </section>
+          </aside>
+
+          <section className="min-w-0 rounded-2xl border border-white/10 bg-black/30 p-4 shadow-2xl shadow-black/25 sm:p-5">
+            <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff1f2d]">Ραντεβού</p>
+                <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">Ραντεβού για {selectedDateLabel}</h2>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/35 px-3 py-2">
+                  <span className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">Κουρέας</span>
+                  <select
+                    value={filterBarber}
+                    onChange={(event) => setFilterBarber(event.target.value as (typeof BARBERS)[number])}
+                    className="bg-transparent text-sm font-semibold text-white outline-none"
+                  >
+                    {BARBERS.map((barber) => (
+                      <option key={barber} value={barber} className="bg-[#120306] text-white">
+                        {barber === 'all' ? 'Όλοι' : barber}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="rounded-xl bg-[#ff1f2d] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#ff1f2d]/20 transition hover:bg-[#d80d19]"
+                >
+                  + Νέο ραντεβού
+                </button>
+              </div>
             </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="h-28 animate-pulse rounded-2xl bg-[#180307]" />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="rounded-2xl border border-[#ff1f2d]/35 bg-[#ff1f2d]/10 p-8 text-center">
+                <p className="text-sm text-[#ffb3b8]">Κάτι πήγε στραβά.</p>
+                <button type="button" onClick={() => void loadData()} className="mt-4 rounded-xl border border-[#ff1f2d]/50 px-4 py-2 text-sm font-semibold text-white hover:bg-[#ff1f2d]/15">
+                  Δοκίμασε ξανά
+                </button>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 bg-black/25 p-12 text-center text-sm text-zinc-400">
+                Δεν υπάρχουν ραντεβού για αυτή την ημέρα.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filtered.map((booking) => {
+                  const status = getBookingStatus(booking)
+                  const pending = status === 'pending'
+
+                  return (
+                    <article key={booking.id} className="grid gap-4 rounded-2xl border border-white/10 bg-[#080607] p-4 shadow-xl shadow-black/20 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-center">
+                      <div className="flex h-20 items-center justify-center rounded-2xl border border-[#ff1f2d]/30 bg-[#3a050c] font-mono text-2xl font-black text-white shadow-inner shadow-black/30">
+                        {formatTime(booking.startTime)}
+                      </div>
+
+                      <div className="min-w-0 space-y-2">
+                        <div>
+                          <h3 className="truncate text-lg font-black text-white">{booking.customerName}</h3>
+                          <p className="mt-1 text-sm text-zinc-400">{formatDate(booking.startTime)} · {booking.barber.name}</p>
+                        </div>
+                        <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
+                          <p className="truncate"><span className="text-zinc-500">Email:</span> {booking.customerEmail ?? '—'}</p>
+                          <p className="truncate"><span className="text-zinc-500">Τηλέφωνο:</span> {booking.customerPhone}</p>
+                          <p className="truncate"><span className="text-zinc-500">Πληρωμή:</span> POS - {formatPrice(booking.service.price)}</p>
+                          <p className="truncate"><span className="text-zinc-500">Υπηρεσία:</span> {booking.service.name}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-3 md:items-end">
+                        <StatusBadge status={status} />
+                        <div className="flex flex-wrap gap-2 md:justify-end">
+                          <button
+                            type="button"
+                            disabled
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-400/30 bg-black/40 px-3 text-xs font-black text-emerald-300 opacity-70"
+                            title={pending ? 'Ολοκληρώνεται αυτόματα μετά την ώρα λήξης' : 'Ολοκληρωμένο'}
+                          >
+                            <CheckIcon className="h-4 w-4" />
+                            ΟΛΟΚΛΗΡΩΜΕΝΟ
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!pending}
+                            onClick={() => setCancelId(booking.id)}
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#ff1f2d]/25 bg-[#4b0710] px-3 text-xs font-black text-[#ffb3b8] transition hover:bg-[#6d0a14] disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <XIcon className="h-4 w-4" />
+                            ΑΚΥΡΩΣΗ
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!pending}
+                            onClick={() => setCancelId(booking.id)}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:border-[#ff1f2d]/40 hover:text-[#ff6b75] disabled:cursor-not-allowed disabled:opacity-35"
+                            aria-label="Διαγραφή ραντεβού"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
           </section>
-        )}
+        </div>
       </div>
 
       {cancelId && (
