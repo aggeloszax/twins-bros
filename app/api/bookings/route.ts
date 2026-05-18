@@ -3,8 +3,12 @@ import { prisma } from '@/lib/prisma'
 import {
   createBookingDateTime,
   isClosedDay,
+  isDateForceClosed,
+  isDateForceOpen,
+  isSlotBlocked,
   isSlotTimeWithinWorkingHours,
   isWithinBookingWindow,
+  normalizeScheduleExceptions,
   parseDateKey,
 } from '@/lib/schedule'
 
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
 
     const barber = await prisma.barber.findUnique({
       where: { id: barberId },
-      select: { id: true },
+      select: { id: true, name: true },
     })
 
     if (!barber) {
@@ -96,11 +100,27 @@ export async function POST(request: Request) {
     const endTime = new Date(startTime.getTime() + service.duration * 60_000)
     const now = new Date()
 
+    // Re-enforce manual schedule overrides server-side — the client cannot be
+    // trusted, and the slot feed could be stale.
+    const rawExceptions = await prisma.scheduleException.findMany({
+      where: {
+        date: {
+          gte: createBookingDateTime(date, '00:00') ?? undefined,
+          lt: new Date(startTime.getTime() + 24 * 60 * 60_000),
+        },
+      },
+    })
+    const exceptions = normalizeScheduleExceptions(rawExceptions)
+    const forceClosed = isDateForceClosed(exceptions, date)
+    const forceOpen = isDateForceOpen(exceptions, date)
+
     if (
-      isClosedDay(selectedDate) ||
+      forceClosed ||
+      (isClosedDay(selectedDate) && !forceOpen) ||
       !isWithinBookingWindow(selectedDate, now) ||
       startTime <= now ||
-      !isSlotTimeWithinWorkingHours(slotTime, service.duration)
+      !isSlotTimeWithinWorkingHours(slotTime, service.duration) ||
+      isSlotBlocked(exceptions, date, slotTime, barber.name)
     ) {
       return Response.json(
         { error: 'This time slot is not available' },

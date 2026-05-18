@@ -187,3 +187,122 @@ export function isSlotWithinWorkingHours(startTime: Date, durationMinutes: numbe
 
   return startTime >= dayStart && endTime <= dayEnd
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Schedule exceptions (manual overrides)                                     */
+/* -------------------------------------------------------------------------- */
+
+export const SCHEDULE_EXCEPTION_TYPES = [
+  'BLOCK_SLOT',
+  'FORCE_OPEN',
+  'FORCE_CLOSE',
+] as const
+
+export type ScheduleExceptionType = (typeof SCHEDULE_EXCEPTION_TYPES)[number]
+
+export function isScheduleExceptionType(
+  value: unknown,
+): value is ScheduleExceptionType {
+  return (
+    typeof value === 'string' &&
+    (SCHEDULE_EXCEPTION_TYPES as readonly string[]).includes(value)
+  )
+}
+
+export type RawScheduleException = {
+  id?: string
+  date: string | Date
+  barberName: string | null
+  type: string
+  slotTime: string | null
+}
+
+export type NormalizedScheduleException = {
+  id?: string
+  dateKey: string
+  barberName: string | null
+  type: ScheduleExceptionType
+  slotTime: string | null
+}
+
+// Stores the affected day as an Athens-midnight instant so it round-trips
+// consistently regardless of where the server runs.
+export function scheduleExceptionDate(dateKey: string) {
+  return createBookingDateTime(dateKey, '00:00')
+}
+
+export function normalizeScheduleException(
+  raw: RawScheduleException,
+): NormalizedScheduleException | null {
+  if (!isScheduleExceptionType(raw.type)) return null
+
+  return {
+    id: raw.id,
+    dateKey: getDateKeyInBookingTimeZone(new Date(raw.date)),
+    barberName: raw.barberName ?? null,
+    type: raw.type,
+    slotTime: raw.slotTime ?? null,
+  }
+}
+
+export function normalizeScheduleExceptions(
+  raws: RawScheduleException[],
+): NormalizedScheduleException[] {
+  return raws.flatMap((raw) => {
+    const normalized = normalizeScheduleException(raw)
+    return normalized ? [normalized] : []
+  })
+}
+
+export function isDateForceClosed(
+  exceptions: NormalizedScheduleException[],
+  dateKey: string,
+) {
+  return exceptions.some(
+    (exception) =>
+      exception.type === 'FORCE_CLOSE' && exception.dateKey === dateKey,
+  )
+}
+
+export function isDateForceOpen(
+  exceptions: NormalizedScheduleException[],
+  dateKey: string,
+) {
+  return exceptions.some(
+    (exception) =>
+      exception.type === 'FORCE_OPEN' && exception.dateKey === dateKey,
+  )
+}
+
+// Resolve whether a calendar day accepts bookings, accounting for manual
+// overrides. FORCE_CLOSE always wins; FORCE_OPEN re-opens an otherwise closed
+// weekday (e.g. a Monday).
+export function isDayBookable(
+  date: Date,
+  dateKey: string,
+  exceptions: NormalizedScheduleException[],
+  today = new Date(),
+) {
+  if (!isWithinBookingWindow(date, today)) return false
+  if (isDateForceClosed(exceptions, dateKey)) return false
+  if (isDateForceOpen(exceptions, dateKey)) return true
+  return !isClosedDay(date)
+}
+
+// A slot is blocked when a BLOCK_SLOT exception matches the date + time and
+// either targets the whole shop (barberName === null) or this specific barber.
+export function isSlotBlocked(
+  exceptions: NormalizedScheduleException[],
+  dateKey: string,
+  time: string,
+  barberName: string | null,
+) {
+  return exceptions.some(
+    (exception) =>
+      exception.type === 'BLOCK_SLOT' &&
+      exception.dateKey === dateKey &&
+      exception.slotTime === time &&
+      (exception.barberName === null ||
+        exception.barberName === barberName),
+  )
+}

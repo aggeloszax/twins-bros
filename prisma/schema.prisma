@@ -32,6 +32,15 @@ enum BookingStatus {
   CANCELLED
 }
 
+model ScheduleException {
+  id          String   @id @default(uuid())
+  date        DateTime // The specific day affected
+  barberName  String?  // If null, applies to the whole shop. Otherwise, specific barber.
+  type        String   // "BLOCK_SLOT" (blocks a specific hour) or "FORCE_OPEN" (opens a Monday) or "FORCE_CLOSE"
+  slotTime    String?  // e.g., "14:30" (only used if type is BLOCK_SLOT)
+  createdAt   DateTime @default(now())
+}
+
 model Booking {
   id          String   @id @default(cuid())
   createdAt   DateTime @default(now())

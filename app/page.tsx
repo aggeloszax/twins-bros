@@ -4,8 +4,9 @@ import Image from 'next/image'
 import { Fragment, useEffect, useState } from 'react'
 import {
   BOOKING_WINDOW_DAYS,
-  isClosedDay,
-  isWithinBookingWindow,
+  isDayBookable,
+  isScheduleExceptionType,
+  type NormalizedScheduleException,
   toDateKey,
 } from '@/lib/schedule'
 
@@ -282,6 +283,10 @@ export default function Home() {
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [slotsError, setSlotsError] = useState(false)
 
+  const [scheduleExceptions, setScheduleExceptions] = useState<
+    NormalizedScheduleException[]
+  >([])
+
   const today = startOfDay(new Date())
   const maxBookingDate = getMaxBookingDate(today)
   const calendarDays = buildCalendarGrid(calendarMonth)
@@ -316,10 +321,41 @@ export default function Home() {
     }
   }
 
+  async function loadScheduleExceptions() {
+    try {
+      const res = await fetch('/api/schedule-exceptions')
+      if (!res.ok) throw new Error('Request failed')
+      const data = (await res.json()) as Array<{
+        dateKey: string
+        barberName: string | null
+        type: string
+        slotTime: string | null
+      }>
+      setScheduleExceptions(
+        data.flatMap((item) =>
+          isScheduleExceptionType(item.type)
+            ? [
+                {
+                  dateKey: item.dateKey,
+                  barberName: item.barberName,
+                  type: item.type,
+                  slotTime: item.slotTime,
+                },
+              ]
+            : [],
+        ),
+      )
+    } catch {
+      // Calendar still works without overrides; default rules apply.
+      setScheduleExceptions([])
+    }
+  }
+
   useEffect(() => {
     void Promise.resolve().then(() => {
       void loadServices()
       void loadBarbers()
+      void loadScheduleExceptions()
     })
   }, [])
 
@@ -738,9 +774,10 @@ export default function Home() {
                       const key = toDateKey(day)
                       const isCurrentMonth = day.getMonth() === calendarMonth.getMonth()
                       const isPast = day < today
-                      const isClosed = isClosedDay(day)
-                      const isOutOfWindow = !isWithinBookingWindow(day, today)
-                      const isDisabled = !isCurrentMonth || isPast || isClosed || isOutOfWindow
+                      const isDisabled =
+                        !isCurrentMonth ||
+                        isPast ||
+                        !isDayBookable(day, key, scheduleExceptions, today)
                       const isSelected = selectedDate === key
                       const isToday = key === toDateKey(today)
 

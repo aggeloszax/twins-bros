@@ -3,7 +3,11 @@ import {
   buildSlotTimes,
   createBookingDateTime,
   isClosedDay,
+  isDateForceClosed,
+  isDateForceOpen,
+  isSlotBlocked,
   isWithinBookingWindow,
+  normalizeScheduleExceptions,
   parseDateKey,
   SLOT_MINUTES,
 } from '@/lib/schedule'
@@ -35,7 +39,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    if (isClosedDay(selectedDate) || !isWithinBookingWindow(selectedDate)) {
+    if (!isWithinBookingWindow(selectedDate)) {
       return Response.json([])
     }
 
@@ -51,18 +55,40 @@ export async function GET(request: Request) {
 
     dayEnd.setMinutes(dayEnd.getMinutes() + 1)
 
-    const bookings = await prisma.booking.findMany({
-      where: {
-        barberId,
-        startTime: { gte: dayStart, lt: dayEnd },
-      },
-      select: { startTime: true, endTime: true },
-    })
+    const [barber, bookings, rawExceptions] = await Promise.all([
+      prisma.barber.findUnique({
+        where: { id: barberId },
+        select: { name: true },
+      }),
+      prisma.booking.findMany({
+        where: {
+          barberId,
+          startTime: { gte: dayStart, lt: dayEnd },
+        },
+        select: { startTime: true, endTime: true },
+      }),
+      prisma.scheduleException.findMany({
+        where: { date: { gte: dayStart, lt: dayEnd } },
+      }),
+    ])
+
+    const exceptions = normalizeScheduleExceptions(rawExceptions)
+    const barberName = barber?.name ?? null
+
+    // FORCE_CLOSE always wins; an otherwise-closed weekday needs FORCE_OPEN.
+    const forceClosed = isDateForceClosed(exceptions, date)
+    const forceOpen = isDateForceOpen(exceptions, date)
+    if (forceClosed || (isClosedDay(selectedDate) && !forceOpen)) {
+      return Response.json([])
+    }
 
     const now = new Date()
     const slots: Slot[] = []
 
     for (const time of buildSlotTimes(date, now)) {
+      // Manually blocked slots are removed entirely so they can't be picked.
+      if (isSlotBlocked(exceptions, date, time, barberName)) continue
+
       const slotStart = createBookingDateTime(date, time)
       if (!slotStart) continue
 

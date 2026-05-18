@@ -10,6 +10,7 @@ export async function GET() {
         id: true,
         startTime: true,
         endTime: true,
+        status: true,
         customerName: true,
         customerPhone: true,
         customerEmail: true,
@@ -17,9 +18,7 @@ export async function GET() {
         service: { select: { id: true, name: true, price: true, duration: true } },
       },
     })
-    return Response.json(
-      bookings.map((booking) => ({ ...booking, status: 'PENDING' })),
-    )
+    return Response.json(bookings)
   } catch (error) {
     console.error('Failed to fetch bookings:', error)
     return Response.json({ error: 'Failed to fetch bookings' }, { status: 500 })
