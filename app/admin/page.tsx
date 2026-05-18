@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   BOOKING_LOCALE,
   BOOKING_TIME_ZONE,
@@ -728,6 +728,236 @@ function ScheduleManagerView({ barbers }: { barbers: BarberItem[] }) {
   )
 }
 
+/* --------------------------- New booking modal --------------------------- */
+
+function NewBookingModal({
+  services,
+  barbers,
+  defaultBarberName,
+  defaultDate,
+  onClose,
+  onCreated,
+}: {
+  services: ServiceItem[]
+  barbers: BarberItem[]
+  defaultBarberName: string
+  defaultDate: string
+  onClose: () => void
+  onCreated: (booking: Booking) => void
+}) {
+  const initialBarberId =
+    barbers.find((barber) => barber.name === defaultBarberName)?.id ??
+    barbers[0]?.id ??
+    ''
+
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerEmail, setCustomerEmail] = useState('')
+  const [barberId, setBarberId] = useState(initialBarberId)
+  const [date, setDate] = useState(defaultDate)
+  const [slotTime, setSlotTime] = useState(SLOT_OPTIONS[0])
+  const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const ready = services.length > 0 && barbers.length > 0
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setError('Συμπλήρωσε όνομα και τηλέφωνο πελάτη.')
+      return
+    }
+    if (!serviceId || !barberId) {
+      setError('Επίλεξε υπηρεσία και κουρέα.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId,
+          barberId,
+          date,
+          slotTime,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          customerEmail: customerEmail.trim() || 'manual@twins-bros.gr',
+        }),
+      })
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null
+        setError(data?.error ?? 'Η δημιουργία του ραντεβού απέτυχε.')
+        return
+      }
+
+      const created = (await res.json()) as Booking
+      onCreated(created)
+      onClose()
+    } catch {
+      setError('Σφάλμα σύνδεσης. Δοκίμασε ξανά.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <form
+        onSubmit={(event) => void handleSubmit(event)}
+        onClick={(event) => event.stopPropagation()}
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#4b0710] bg-[#120306] p-6 shadow-2xl shadow-[#ff1f2d]/15"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Κλείσιμο"
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-[#ff1f2d]/30 bg-[#ff1f2d]/10 text-[#ff6b75] transition hover:bg-[#ff1f2d]/20 hover:text-white"
+        >
+          <XIcon className="h-4 w-4" />
+        </button>
+
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff1f2d]">
+          Twins Bros
+        </p>
+        <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">
+          Νέο ραντεβού
+        </h2>
+        <p className="mt-1 text-sm text-zinc-400">
+          Καταχώρηση για walk-in ή τηλεφωνικό πελάτη.
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className={labelClass}>Όνομα Πελάτη</span>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              placeholder="π.χ. Γιώργος Παπαδόπουλος"
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Τηλέφωνο</span>
+            <input
+              type="tel"
+              value={customerPhone}
+              onChange={(event) => setCustomerPhone(event.target.value)}
+              placeholder="69XXXXXXXX"
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Email (προαιρετικό)</span>
+            <input
+              type="email"
+              value={customerEmail}
+              onChange={(event) => setCustomerEmail(event.target.value)}
+              placeholder="manual@twins-bros.gr"
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Κουρέας</span>
+            <select
+              value={barberId}
+              onChange={(event) => setBarberId(event.target.value)}
+              className={fieldClass}
+            >
+              {barbers.map((barber) => (
+                <option
+                  key={barber.id}
+                  value={barber.id}
+                  className="bg-[#120306]"
+                >
+                  {barber.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Ημερομηνία</span>
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Ώρα</span>
+            <select
+              value={slotTime}
+              onChange={(event) => setSlotTime(event.target.value)}
+              className={fieldClass}
+            >
+              {SLOT_OPTIONS.map((slot) => (
+                <option key={slot} value={slot} className="bg-[#120306]">
+                  {slot}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block sm:col-span-2">
+            <span className={labelClass}>Υπηρεσία</span>
+            <select
+              value={serviceId}
+              onChange={(event) => setServiceId(event.target.value)}
+              className={fieldClass}
+            >
+              {services.map((service) => (
+                <option
+                  key={service.id}
+                  value={service.id}
+                  className="bg-[#120306]"
+                >
+                  {service.name} — {formatPrice(service.price)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {error && (
+          <p className="mt-4 rounded-xl border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 p-3 text-sm text-[#ffb3b8]">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting || !ready}
+          className={`mt-6 w-full ${primaryButtonClass}`}
+        >
+          {submitting
+            ? 'Καταχώρηση...'
+            : ready
+              ? 'Καταχώρηση ραντεβού'
+              : 'Φόρτωση δεδομένων...'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 /* --------------------------------- Page ---------------------------------- */
 
 export default function AdminPage() {
@@ -750,6 +980,7 @@ export default function AdminPage() {
   const [selectedBarber, setSelectedBarber] = useState<BarberFilter>('Όλοι')
   const [cancelId, setCancelId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [isNewBookingOpen, setIsNewBookingOpen] = useState(false)
 
   useEffect(() => {
     if (sessionStorage.getItem('admin_auth') === 'true') {
@@ -1044,6 +1275,7 @@ export default function AdminPage() {
                   </label>
                   <button
                     type="button"
+                    onClick={() => setIsNewBookingOpen(true)}
                     className="rounded-xl bg-[#ff1f2d] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#ff1f2d]/20 transition hover:bg-[#d80d19]"
                   >
                     + Νέο ραντεβού
@@ -1132,6 +1364,19 @@ export default function AdminPage() {
         {activeTab === 'schedule' && <ScheduleManagerView barbers={barbers} />}
         {activeTab === 'revenue' && <RevenueView bookings={bookings} />}
       </div>
+
+      {isNewBookingOpen && (
+        <NewBookingModal
+          services={services}
+          barbers={barbers}
+          defaultBarberName={selectedBarber}
+          defaultDate={selectedDate}
+          onClose={() => setIsNewBookingOpen(false)}
+          onCreated={(booking) =>
+            setBookings((prev) => [...prev, booking])
+          }
+        />
+      )}
 
       {cancelId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">

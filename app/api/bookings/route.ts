@@ -160,6 +160,7 @@ export async function POST(request: Request) {
         id: true,
         startTime: true,
         endTime: true,
+        status: true,
         customerName: true,
         customerPhone: true,
         customerEmail: true,
