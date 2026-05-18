@@ -14,19 +14,22 @@ function getResend() {
 }
 
 function formatBookingDate(date: Date) {
-  return new Intl.DateTimeFormat('el-GR', {
+  return date.toLocaleDateString('el-GR', {
+    timeZone: 'Europe/Athens',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  }).format(date)
+  })
 }
 
 function formatBookingTime(date: Date) {
-  return new Intl.DateTimeFormat('el-GR', {
+  return date.toLocaleTimeString('el-GR', {
+    timeZone: 'Europe/Athens',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date)
+    hour12: false,
+  })
 }
 
 // Default to the production URL; override locally via NEXT_PUBLIC_APP_URL.
@@ -81,9 +84,22 @@ async function sendEmail(email: string, subject: string, html: string) {
 export async function sendBookingNotifications(
   bookingDetails: BookingNotificationDetails,
 ) {
-  const date = new Date(bookingDetails.startTime)
-  const bookingDate = formatBookingDate(date)
-  const bookingTime = formatBookingTime(date)
+  const bookingStart = new Date(bookingDetails.startTime)
+  const emailDate = bookingStart.toLocaleDateString('el-GR', {
+    timeZone: 'Europe/Athens',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const emailTime = new Date(bookingDetails.startTime).toLocaleTimeString('el-GR', {
+    timeZone: 'Europe/Athens',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const bookingDate = emailDate
+  const bookingTime = emailTime
   const customerName = bookingDetails.customerName
   const serviceName = bookingDetails.service.name
   const barberName = bookingDetails.barber.name
@@ -106,8 +122,8 @@ export async function sendBookingNotifications(
     <dl style="margin: 0; display: grid; gap: 12px;">
       <div><dt style="color: #a1a1aa; font-size: 13px;">Υπηρεσία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${serviceName}</dd></div>
       <div><dt style="color: #a1a1aa; font-size: 13px;">Barber</dt><dd style="margin: 4px 0 0; font-weight: 700;">${barberName}</dd></div>
-      <div><dt style="color: #a1a1aa; font-size: 13px;">Ημερομηνία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${bookingDate}</dd></div>
-      <div><dt style="color: #a1a1aa; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${bookingTime}</dd></div>
+      <div><dt style="color: #a1a1aa; font-size: 13px;">Ημερομηνία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailDate}</dd></div>
+      <div><dt style="color: #a1a1aa; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailTime}</dd></div>
     </dl>
   </div>
   <div style="padding: 24px 28px; border-top: 1px solid #27272a; text-align: center;">
@@ -125,7 +141,7 @@ export async function sendBookingNotifications(
     `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
       <strong>${customerName}</strong> · ${bookingDetails.customerPhone}<br/>
       ${serviceName} με τον ${barberName}<br/>
-      ${bookingDate} στις ${bookingTime}
+      ${emailDate} στις ${emailTime}
     </p>`
   )
 
