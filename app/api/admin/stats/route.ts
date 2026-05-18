@@ -1,32 +1,38 @@
 import { prisma } from '@/lib/prisma'
+import {
+  createBookingDateTime,
+  getDateKeyInBookingTimeZone,
+  toDateKey,
+} from '@/lib/schedule'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const now = new Date()
+    const todayKey = getDateKeyInBookingTimeZone(new Date())
+    const today = new Date(`${todayKey}T00:00:00`)
 
-    const todayStart = new Date(now)
-    todayStart.setHours(0, 0, 0, 0)
-    const todayEnd = new Date(now)
-    todayEnd.setHours(23, 59, 59, 999)
+    const todayStart = createBookingDateTime(todayKey, '00:00')
+    if (!todayStart) throw new Error('Failed to resolve today boundary')
 
-    const weekStart = new Date(now)
-    const day = weekStart.getDay()
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60_000)
+
+    const weekStartDate = new Date(today)
+    const day = weekStartDate.getDay()
     const diff = day === 0 ? -6 : 1 - day
-    weekStart.setDate(weekStart.getDate() + diff)
-    weekStart.setHours(0, 0, 0, 0)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-    weekEnd.setHours(23, 59, 59, 999)
+    weekStartDate.setDate(weekStartDate.getDate() + diff)
+    const weekStart = createBookingDateTime(toDateKey(weekStartDate), '00:00')
+    if (!weekStart) throw new Error('Failed to resolve week boundary')
+
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60_000)
 
     const [todayBookings, weekBookings] = await Promise.all([
       prisma.booking.findMany({
-        where: { startTime: { gte: todayStart, lte: todayEnd } },
+        where: { startTime: { gte: todayStart, lt: todayEnd } },
         include: { service: { select: { price: true } } },
       }),
       prisma.booking.findMany({
-        where: { startTime: { gte: weekStart, lte: weekEnd } },
+        where: { startTime: { gte: weekStart, lt: weekEnd } },
         include: { service: { select: { price: true } } },
       }),
     ])

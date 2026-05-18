@@ -2,6 +2,11 @@
 
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
+import {
+  BOOKING_LOCALE,
+  BOOKING_TIME_ZONE,
+  getDateKeyInBookingTimeZone,
+} from '@/lib/schedule'
 
 type Booking = {
   id: string
@@ -21,20 +26,30 @@ type Stats = {
   weekRevenue: number
 }
 
-const GR_DAYS = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ']
-const GR_MONTHS = ['Ιαν','Φεβ','Μαρ','Απρ','Μαϊ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ']
-
 function formatPrice(price: number) {
   return `${Number.isInteger(price) ? price : price.toFixed(2)}€`
 }
 
 function formatDateTime(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${GR_DAYS[d.getDay()]} ${d.getDate()} ${GR_MONTHS[d.getMonth()]} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  const date = new Date(dateStr)
+  const day = date.toLocaleDateString(BOOKING_LOCALE, {
+    timeZone: BOOKING_TIME_ZONE,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+  const time = date.toLocaleTimeString(BOOKING_LOCALE, {
+    timeZone: BOOKING_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  return `${day} · ${time}`
 }
 
 function toDateKey(dateStr: string) {
-  return new Date(dateStr).toISOString().slice(0, 10)
+  return getDateKeyInBookingTimeZone(new Date(dateStr))
 }
 
 export default function AdminPage() {

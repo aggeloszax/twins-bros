@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import {
   buildSlotTimes,
+  createBookingDateTime,
   isClosedDay,
   isWithinBookingWindow,
   parseDateKey,
@@ -38,9 +39,17 @@ export async function GET(request: Request) {
       return Response.json([])
     }
 
-    const dayStart = new Date(`${date}T00:00:00`)
-    const dayEnd = new Date(`${date}T00:00:00`)
-    dayEnd.setDate(dayEnd.getDate() + 1)
+    const dayStart = createBookingDateTime(date, '00:00')
+    const dayEnd = createBookingDateTime(date, '23:59')
+
+    if (!dayStart || !dayEnd) {
+      return Response.json(
+        { error: 'date must be in YYYY-MM-DD format' },
+        { status: 400 },
+      )
+    }
+
+    dayEnd.setMinutes(dayEnd.getMinutes() + 1)
 
     const bookings = await prisma.booking.findMany({
       where: {
@@ -54,7 +63,9 @@ export async function GET(request: Request) {
     const slots: Slot[] = []
 
     for (const time of buildSlotTimes(date, now)) {
-      const slotStart = new Date(`${date}T${time}:00`)
+      const slotStart = createBookingDateTime(date, time)
+      if (!slotStart) continue
+
       const slotEnd = new Date(slotStart.getTime() + SLOT_MINUTES * 60_000)
 
       const overlapsBooking = bookings.some(

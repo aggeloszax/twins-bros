@@ -1,8 +1,9 @@
 import { sendBookingNotifications } from '@/lib/notifications'
 import { prisma } from '@/lib/prisma'
 import {
+  createBookingDateTime,
   isClosedDay,
-  isSlotWithinWorkingHours,
+  isSlotTimeWithinWorkingHours,
   isWithinBookingWindow,
   parseDateKey,
 } from '@/lib/schedule'
@@ -84,7 +85,14 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Barber not found' }, { status: 404 })
     }
 
-    const startTime = new Date(`${date}T${slotTime}:00`)
+    const startTime = createBookingDateTime(date, slotTime)
+    if (!startTime) {
+      return Response.json(
+        { error: 'Invalid date or slotTime format' },
+        { status: 400 },
+      )
+    }
+
     const endTime = new Date(startTime.getTime() + service.duration * 60_000)
     const now = new Date()
 
@@ -92,7 +100,7 @@ export async function POST(request: Request) {
       isClosedDay(selectedDate) ||
       !isWithinBookingWindow(selectedDate, now) ||
       startTime <= now ||
-      !isSlotWithinWorkingHours(startTime, service.duration)
+      !isSlotTimeWithinWorkingHours(slotTime, service.duration)
     ) {
       return Response.json(
         { error: 'This time slot is not available' },
