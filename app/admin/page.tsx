@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -17,7 +17,7 @@ type Booking = {
   customerEmail: string | null
   barber: { id: string; name: string }
   service: { id: string; name: string; price: number; duration: number }
-  status?: 'pending' | 'completed' | 'cancelled'
+  status?: 'PENDING' | 'COMPLETED' | 'CANCELLED'
 }
 
 type Stats = {
@@ -28,7 +28,9 @@ type Stats = {
 }
 
 const NAV_TABS = ['Ραντεβού', 'Πελάτες', 'Κουρείς', 'Υπηρεσίες', 'Ωράριο', 'Έσοδα']
-const BARBERS = ['all', 'Redi', 'Donaldo', 'Kleidi'] as const
+const BARBERS = ['Όλοι', 'Redi', 'Donaldo', 'Kleidi'] as const
+type BarberFilter = (typeof BARBERS)[number]
+type BookingStatusValue = NonNullable<Booking['status']>
 const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ']
 
 function formatPrice(price: number) {
@@ -104,9 +106,9 @@ function monthTitle(date: Date) {
 }
 
 function getBookingStatus(booking: Booking) {
-  if (booking.status === 'cancelled') return 'cancelled'
-  if (booking.status === 'completed') return 'completed'
-  if (booking.status === 'pending') return 'pending'
+  if (booking.status === 'CANCELLED') return 'cancelled'
+  if (booking.status === 'COMPLETED') return 'completed'
+  if (booking.status === 'PENDING') return 'pending'
   return new Date(booking.endTime) <= new Date() ? 'completed' : 'pending'
 }
 
@@ -166,7 +168,7 @@ export default function AdminPage() {
 
   const [selectedDate, setSelectedDate] = useState(() => getDateKeyInBookingTimeZone(new Date()))
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()))
-  const [filterBarber, setFilterBarber] = useState<(typeof BARBERS)[number]>('all')
+  const [selectedBarber, setSelectedBarber] = useState<BarberFilter>('Όλοι')
   const [cancelId, setCancelId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
 
@@ -245,12 +247,26 @@ export default function AdminPage() {
     }
   }
 
-  function handleComplete(id: string) {
-    setBookings((prev) =>
-      prev.map((booking) =>
-        booking.id === id ? { ...booking, status: 'completed' } : booking,
-      ),
-    )
+  function updateBookingStatus(id: string, status: BookingStatusValue) {
+    fetch(`/api/admin/bookings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Status update failed')
+        return res.json() as Promise<Booking>
+      })
+      .then((updatedBooking) => {
+        setBookings((prev) =>
+          prev.map((booking) =>
+            booking.id === id ? { ...booking, ...updatedBooking } : booking,
+          ),
+        )
+      })
+      .catch((err) => {
+        console.error('Failed to update booking status:', err)
+      })
   }
 
   function handleLogout() {
@@ -261,16 +277,16 @@ export default function AdminPage() {
   const calendarDays = buildCalendarDays(calendarMonth)
   const selectedDateLabel = formatDateKeyLong(selectedDate)
 
-  const filtered = useMemo(
-    () =>
-      bookings
-        .filter((booking) => toDateKey(booking.startTime) === selectedDate)
-        .filter((booking) => filterBarber === 'all' || booking.barber.name === filterBarber)
-        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
-    [bookings, filterBarber, selectedDate],
-  )
+  const filteredBookings = bookings
+    .filter((booking) => {
+      const matchesDate = toDateKey(booking.startTime) === selectedDate
+      const matchesBarber =
+        selectedBarber === 'Όλοι' || booking.barber.name === selectedBarber
+      return matchesDate && matchesBarber
+    })
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
-  const selectedRevenue = filtered.reduce((sum, booking) => {
+  const selectedRevenue = filteredBookings.reduce((sum, booking) => {
     const status = getBookingStatus(booking)
     return status === 'cancelled' ? sum : sum + booking.service.price
   }, 0)
@@ -432,13 +448,13 @@ export default function AdminPage() {
                 <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/35 px-3 py-2">
                   <span className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">Κουρέας</span>
                   <select
-                    value={filterBarber}
-                    onChange={(event) => setFilterBarber(event.target.value as (typeof BARBERS)[number])}
+                    value={selectedBarber}
+                    onChange={(event) => setSelectedBarber(event.target.value as BarberFilter)}
                     className="bg-transparent text-sm font-semibold text-white outline-none"
                   >
                     {BARBERS.map((barber) => (
                       <option key={barber} value={barber} className="bg-[#120306] text-white">
-                        {barber === 'all' ? 'Όλοι' : barber}
+                        {barber}
                       </option>
                     ))}
                   </select>
@@ -465,13 +481,13 @@ export default function AdminPage() {
                   Δοκίμασε ξανά
                 </button>
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filteredBookings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/15 bg-black/25 p-12 text-center text-sm text-zinc-400">
                 Δεν υπάρχουν ραντεβού για αυτή την ημέρα.
               </div>
             ) : (
               <div className="space-y-3">
-                {filtered.map((booking) => {
+                {filteredBookings.map((booking) => {
                   const status = getBookingStatus(booking)
                   const pending = status === 'pending'
 
@@ -500,7 +516,7 @@ export default function AdminPage() {
                           <button
                             type="button"
                             disabled={!pending}
-                            onClick={() => handleComplete(booking.id)}
+                            onClick={() => updateBookingStatus(booking.id, 'COMPLETED')}
                             className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-400/30 bg-black/40 px-3 text-xs font-black text-emerald-300 opacity-70"
                             title={pending ? 'Ολοκληρώνεται αυτόματα μετά την ώρα λήξης' : 'Ολοκληρωμένο'}
                           >
@@ -510,7 +526,7 @@ export default function AdminPage() {
                           <button
                             type="button"
                             disabled={!pending}
-                            onClick={() => void handleCancel(booking.id)}
+                            onClick={() => updateBookingStatus(booking.id, 'CANCELLED')}
                             className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#ff1f2d]/25 bg-[#4b0710] px-3 text-xs font-black text-[#ffb3b8] transition hover:bg-[#6d0a14] disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <XIcon className="h-4 w-4" />

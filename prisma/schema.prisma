@@ -26,12 +26,19 @@ model Service {
   bookings    Booking[]
 }
 
+enum BookingStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
 model Booking {
   id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
   startTime   DateTime // Η ώρα έναρξης του ραντεβού
   endTime     DateTime // Η ώρα λήξης (startTime + duration)
-  
+  status      BookingStatus @default(PENDING)
+
   // Στοιχεία Πελάτη
   customerName  String
   customerPhone String
