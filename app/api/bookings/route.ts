@@ -1,5 +1,11 @@
 import { sendBookingNotifications } from '@/lib/notifications'
 import { prisma } from '@/lib/prisma'
+import {
+  isClosedDay,
+  isSlotWithinWorkingHours,
+  isWithinBookingWindow,
+  parseDateKey,
+} from '@/lib/schedule'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +56,9 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(slotTime)) {
+  const selectedDate = parseDateKey(date)
+
+  if (!selectedDate || !/^\d{2}:\d{2}$/.test(slotTime)) {
     return Response.json(
       { error: 'Invalid date or slotTime format' },
       { status: 400 },
@@ -78,6 +86,19 @@ export async function POST(request: Request) {
 
     const startTime = new Date(`${date}T${slotTime}:00`)
     const endTime = new Date(startTime.getTime() + service.duration * 60_000)
+    const now = new Date()
+
+    if (
+      isClosedDay(selectedDate) ||
+      !isWithinBookingWindow(selectedDate, now) ||
+      startTime <= now ||
+      !isSlotWithinWorkingHours(startTime, service.duration)
+    ) {
+      return Response.json(
+        { error: 'This time slot is not available' },
+        { status: 400 },
+      )
+    }
 
     const overlappingBooking = await prisma.booking.findFirst({
       where: {

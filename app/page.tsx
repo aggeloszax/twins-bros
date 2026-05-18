@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Fragment, useEffect, useState } from 'react'
+import { buildBookingDates, toDateKey } from '@/lib/schedule'
 
 type Service = {
   id: string
@@ -45,23 +46,6 @@ const inputClass =
 
 const formatPrice = (price: number) =>
   `${Number.isInteger(price) ? price : price.toFixed(2)}€`
-
-function toDateKey(d: Date) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function buildNext7Days() {
-  const base = new Date()
-  base.setHours(0, 0, 0, 0)
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(base)
-    d.setDate(base.getDate() + i)
-    return d
-  })
-}
 
 function formatDateLong(key: string) {
   const d = new Date(`${key}T00:00:00`)
@@ -251,7 +235,8 @@ export default function Home() {
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [slotsError, setSlotsError] = useState(false)
 
-  const days = buildNext7Days()
+  const days = buildBookingDates()
+  const todayKey = toDateKey(new Date())
 
   async function loadServices() {
     setLoadingServices(true)
@@ -667,7 +652,7 @@ export default function Home() {
                   Διάλεξε ημέρα
                 </h3>
                 <div className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-1 sm:px-1">
-                  {days.map((d, i) => {
+                  {days.map((d) => {
                     const key = toDateKey(d)
                     const isSelected = selectedDate === key
                     return (
@@ -686,7 +671,7 @@ export default function Home() {
                             isSelected ? 'text-white' : 'text-zinc-500'
                           }`}
                         >
-                          {i === 0 ? 'Σήμερα' : GR_DAYS[d.getDay()]}
+                          {key === todayKey ? 'Σήμερα' : GR_DAYS[d.getDay()]}
                         </span>
                         <span className="text-2xl font-semibold">
                           {d.getDate()}

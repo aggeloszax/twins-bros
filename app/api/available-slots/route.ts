@@ -1,10 +1,13 @@
 import { prisma } from '@/lib/prisma'
+import {
+  buildSlotTimes,
+  isClosedDay,
+  isWithinBookingWindow,
+  parseDateKey,
+  SLOT_MINUTES,
+} from '@/lib/schedule'
 
 export const dynamic = 'force-dynamic'
-
-const OPEN_HOUR = 9 // 09:00
-const CLOSE_HOUR = 21 // 21:00 (last slot starts at 20:30)
-const SLOT_MINUTES = 30
 
 type Slot = { time: string; available: boolean }
 type BookingWindow = { startTime: Date; endTime: Date }
@@ -21,7 +24,9 @@ export async function GET(request: Request) {
     )
   }
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  const selectedDate = parseDateKey(date)
+
+  if (!selectedDate) {
     return Response.json(
       { error: 'date must be in YYYY-MM-DD format' },
       { status: 400 },
@@ -29,6 +34,10 @@ export async function GET(request: Request) {
   }
 
   try {
+    if (isClosedDay(selectedDate) || !isWithinBookingWindow(selectedDate)) {
+      return Response.json([])
+    }
+
     const dayStart = new Date(`${date}T00:00:00`)
     const dayEnd = new Date(`${date}T00:00:00`)
     dayEnd.setDate(dayEnd.getDate() + 1)
@@ -44,20 +53,16 @@ export async function GET(request: Request) {
     const now = new Date()
     const slots: Slot[] = []
 
-    for (let hour = OPEN_HOUR; hour < CLOSE_HOUR; hour++) {
-      for (let minute = 0; minute < 60; minute += SLOT_MINUTES) {
-        const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-        const slotStart = new Date(`${date}T${time}:00`)
-        const slotEnd = new Date(slotStart.getTime() + SLOT_MINUTES * 60_000)
+    for (const time of buildSlotTimes(date, now)) {
+      const slotStart = new Date(`${date}T${time}:00`)
+      const slotEnd = new Date(slotStart.getTime() + SLOT_MINUTES * 60_000)
 
-        const isPast = slotStart.getTime() <= now.getTime()
-        const overlapsBooking = bookings.some(
-          (booking: BookingWindow) =>
-            slotStart < booking.endTime && slotEnd > booking.startTime,
-        )
+      const overlapsBooking = bookings.some(
+        (booking: BookingWindow) =>
+          slotStart < booking.endTime && slotEnd > booking.startTime,
+      )
 
-        slots.push({ time, available: !isPast && !overlapsBooking })
-      }
+      slots.push({ time, available: !overlapsBooking })
     }
 
     return Response.json(slots)
