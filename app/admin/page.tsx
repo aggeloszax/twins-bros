@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 type Booking = {
   id: string
@@ -55,36 +55,42 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (sessionStorage.getItem('admin_auth') === 'true') {
-      setAuthed(true)
+      queueMicrotask(() => setAuthed(true))
     }
   }, [])
 
-  useEffect(() => {
-    if (!authed) return
-    void loadData()
-  }, [authed])
-
-  async function loadData() {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
     setError(false)
     try {
       const [statsRes, bookingsRes] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/bookings'),
+        fetch('/api/admin/stats', { signal }),
+        fetch('/api/admin/bookings', { signal }),
       ])
       if (!statsRes.ok || !bookingsRes.ok) throw new Error()
       const [statsData, bookingsData] = await Promise.all([
         statsRes.json() as Promise<Stats>,
         bookingsRes.json() as Promise<Booking[]>,
       ])
+      if (signal?.aborted) return
       setStats(statsData)
       setBookings(bookingsData)
-    } catch {
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return
       setError(true)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!authed) return
+    const controller = new AbortController()
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) void loadData(controller.signal)
+    })
+    return () => controller.abort()
+  }, [authed, loadData])
 
   async function handleLogin() {
     setAuthLoading(true)
