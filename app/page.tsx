@@ -2,7 +2,12 @@
 
 import Image from 'next/image'
 import { Fragment, useEffect, useState } from 'react'
-import { buildBookingDates, toDateKey } from '@/lib/schedule'
+import {
+  BOOKING_WINDOW_DAYS,
+  isClosedDay,
+  isWithinBookingWindow,
+  toDateKey,
+} from '@/lib/schedule'
 
 type Service = {
   id: string
@@ -25,6 +30,7 @@ type Slot = {
 type BookingStep = 1 | 2 | 3 | 4
 
 const GR_DAYS = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ']
+const GR_WEEKDAYS_MON_FIRST = ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ']
 const GR_MONTHS = [
   'Ιαν',
   'Φεβ',
@@ -50,6 +56,46 @@ const formatPrice = (price: number) =>
 function formatDateLong(key: string) {
   const d = new Date(`${key}T00:00:00`)
   return `${GR_DAYS[d.getDay()]} ${d.getDate()} ${GR_MONTHS[d.getMonth()]}`
+}
+
+function startOfDay(date: Date) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1)
+}
+
+function buildCalendarGrid(monthDate: Date) {
+  const firstOfMonth = startOfMonth(monthDate)
+  const mondayOffset = (firstOfMonth.getDay() + 6) % 7
+  const gridStart = new Date(firstOfMonth)
+  gridStart.setDate(firstOfMonth.getDate() - mondayOffset)
+
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(gridStart)
+    d.setDate(gridStart.getDate() + i)
+    return d
+  })
+}
+
+function formatMonthTitle(date: Date) {
+  return new Intl.DateTimeFormat('el-GR', {
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
+
+function getMaxBookingDate(today: Date) {
+  const maxDate = startOfDay(today)
+  maxDate.setDate(maxDate.getDate() + BOOKING_WINDOW_DAYS)
+  return maxDate
 }
 
 function withImageVersion(src: string, version: string) {
@@ -220,6 +266,7 @@ export default function Home() {
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()))
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
@@ -235,8 +282,11 @@ export default function Home() {
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [slotsError, setSlotsError] = useState(false)
 
-  const days = buildBookingDates()
-  const todayKey = toDateKey(new Date())
+  const today = startOfDay(new Date())
+  const maxBookingDate = getMaxBookingDate(today)
+  const calendarDays = buildCalendarGrid(calendarMonth)
+  const canGoPreviousMonth = calendarMonth > startOfMonth(today)
+  const canGoNextMonth = addMonths(calendarMonth, 1) <= startOfMonth(maxBookingDate)
 
   async function loadServices() {
     setLoadingServices(true)
@@ -647,92 +697,136 @@ export default function Home() {
                 </p>
               </div>
 
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-zinc-300">
-                  Διάλεξε ημέρα
-                </h3>
-                <div className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-1 sm:px-1">
-                  {days.map((d) => {
-                    const key = toDateKey(d)
-                    const isSelected = selectedDate === key
-                    return (
+              <div className="grid gap-5 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)] md:items-start">
+                <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 shadow-2xl shadow-black/20 sm:p-5">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold capitalize text-zinc-50">
+                        {formatMonthTitle(calendarMonth)}
+                      </h3>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Διαθέσιμες ημερομηνίες έως {formatDateLong(toDateKey(maxBookingDate))}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <button
-                        key={key}
                         type="button"
-                        onClick={() => setSelectedDate(key)}
-                        className={`flex min-w-20 shrink-0 flex-col items-center gap-1 rounded-3xl border px-4 py-3.5 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-105 ${
-                          isSelected
-                            ? 'border-[#A61E22] bg-[#A61E22] text-white shadow-[0_18px_42px_rgba(166,30,34,0.22)]'
-                            : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700'
-                        }`}
+                        disabled={!canGoPreviousMonth}
+                        onClick={() => setCalendarMonth((current) => addMonths(current, -1))}
+                        aria-label="Προηγούμενος μήνας"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-200 transition-colors hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-35"
                       >
-                        <span
-                          className={`text-[11px] font-semibold uppercase ${
-                            isSelected ? 'text-white' : 'text-zinc-500'
-                          }`}
-                        >
-                          {key === todayKey ? 'Σήμερα' : GR_DAYS[d.getDay()]}
-                        </span>
-                        <span className="text-2xl font-semibold">
-                          {d.getDate()}
-                        </span>
-                        <span
-                          className={`text-xs ${
-                            isSelected ? 'text-red-100' : 'text-zinc-500'
-                          }`}
-                        >
-                          {GR_MONTHS[d.getMonth()]}
-                        </span>
+                        ‹
                       </button>
-                    )
-                  })}
-                </div>
-              </div>
+                      <button
+                        type="button"
+                        disabled={!canGoNextMonth}
+                        onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
+                        aria-label="Επόμενος μήνας"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-200 transition-colors hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
 
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-zinc-300">
-                  Διαθέσιμες ώρες
-                </h3>
-                {!selectedDate ? (
-                  <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-900 p-8 text-center text-sm text-zinc-400">
-                    Διάλεξε πρώτα μια ημέρα.
-                  </div>
-                ) : loadingSlots ? (
-                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <SlotSkeleton key={i} />
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {GR_WEEKDAYS_MON_FIRST.map((day) => (
+                      <div
+                        key={day}
+                        className="pb-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500"
+                      >
+                        {day}
+                      </div>
                     ))}
-                  </div>
-                ) : slotsError ? (
-                  <ErrorState onRetry={() => setSelectedDate(selectedDate)} />
-                ) : !hasAvailableSlot ? (
-                  <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-900 p-8 text-center text-sm text-zinc-400">
-                    Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημέρα.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
-                    {slots.map((slot) => {
-                      const isSelected = selectedTime === slot.time
+                    {calendarDays.map((day) => {
+                      const key = toDateKey(day)
+                      const isCurrentMonth = day.getMonth() === calendarMonth.getMonth()
+                      const isPast = day < today
+                      const isClosed = isClosedDay(day)
+                      const isOutOfWindow = !isWithinBookingWindow(day, today)
+                      const isDisabled = !isCurrentMonth || isPast || isClosed || isOutOfWindow
+                      const isSelected = selectedDate === key
+                      const isToday = key === toDateKey(today)
+
                       return (
                         <button
-                          key={slot.time}
+                          key={key}
                           type="button"
-                          disabled={!slot.available}
-                          onClick={() => setSelectedTime(slot.time)}
-                          className={`h-12 rounded-2xl border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
-                            !slot.available
-                              ? 'cursor-not-allowed border-zinc-900 bg-zinc-900/70 text-zinc-700 line-through'
-                              : isSelected
-                                ? 'border-[#A61E22] bg-[#A61E22] text-white shadow-[0_14px_34px_rgba(166,30,34,0.22)]'
-                                : 'border-zinc-800 bg-zinc-900 text-zinc-200 hover:-translate-y-0.5 hover:scale-105 hover:border-[#A61E22]/80'
+                          disabled={isDisabled}
+                          onClick={() => {
+                            setSelectedDate(key)
+                            setSelectedTime(null)
+                          }}
+                          className={`relative flex aspect-square min-h-11 items-center justify-center rounded-xl border text-sm font-semibold transition-all duration-200 ease-in-out sm:min-h-14 ${
+                            isSelected
+                              ? 'border-[#A61E22] bg-[#A61E22] text-white shadow-[0_16px_34px_rgba(166,30,34,0.26)]'
+                              : isDisabled
+                                ? 'cursor-not-allowed border-transparent bg-zinc-900/35 text-zinc-700'
+                                : 'border-zinc-800 bg-zinc-900 text-zinc-100 hover:-translate-y-0.5 hover:border-[#A61E22]/70 hover:bg-zinc-800'
                           }`}
                         >
-                          {slot.time}
+                          <span>{day.getDate()}</span>
+                          {isToday && !isSelected && !isDisabled && (
+                            <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-[#A61E22]" />
+                          )}
                         </button>
                       )
                     })}
                   </div>
-                )}
+                </section>
+
+                <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 shadow-2xl shadow-black/20 sm:p-5">
+                  <div className="mb-5">
+                    <h3 className="text-base font-semibold text-zinc-50">
+                      Διαθέσιμες ώρες
+                    </h3>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {selectedDate ? formatDateLong(selectedDate) : 'Επίλεξε ημερομηνία'}
+                    </p>
+                  </div>
+
+                  {!selectedDate ? (
+                    <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/70 p-8 text-center text-sm text-zinc-400">
+                      Διάλεξε πρώτα μια ημέρα.
+                    </div>
+                  ) : loadingSlots ? (
+                    <div className="grid grid-cols-3 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <SlotSkeleton key={i} />
+                      ))}
+                    </div>
+                  ) : slotsError ? (
+                    <ErrorState onRetry={() => setSelectedDate(selectedDate)} />
+                  ) : !hasAvailableSlot ? (
+                    <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/70 p-8 text-center text-sm text-zinc-400">
+                      Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημέρα.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+                      {slots.map((slot) => {
+                        const isSelected = selectedTime === slot.time
+                        return (
+                          <button
+                            key={slot.time}
+                            type="button"
+                            disabled={!slot.available}
+                            onClick={() => setSelectedTime(slot.time)}
+                            className={`h-12 rounded-xl border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
+                              !slot.available
+                                ? 'cursor-not-allowed border-zinc-900 bg-zinc-900/70 text-zinc-700 line-through'
+                                : isSelected
+                                  ? 'border-[#A61E22] bg-[#A61E22] text-white shadow-[0_14px_34px_rgba(166,30,34,0.22)]'
+                                  : 'border-zinc-800 bg-zinc-900 text-zinc-200 hover:-translate-y-0.5 hover:border-[#A61E22]/80 hover:bg-zinc-800'
+                            }`}
+                          >
+                            {slot.time}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </section>
               </div>
             </div>
           )}

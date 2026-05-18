@@ -1,7 +1,7 @@
 export const OPEN_HOUR = 9
 export const CLOSE_HOUR = 21
 export const SLOT_MINUTES = 30
-export const BOOKING_WINDOW_DAYS = 14
+export const BOOKING_WINDOW_DAYS = 28
 
 export type Slot = { time: string; available: boolean }
 
@@ -30,7 +30,7 @@ export function buildBookingDates(today = new Date()) {
   const base = new Date(today)
   base.setHours(0, 0, 0, 0)
 
-  return Array.from({ length: BOOKING_WINDOW_DAYS }, (_, i) => {
+  return Array.from({ length: BOOKING_WINDOW_DAYS + 1 }, (_, i) => {
     const date = new Date(base)
     date.setDate(base.getDate() + i)
     return date
@@ -42,7 +42,7 @@ export function isWithinBookingWindow(date: Date, today = new Date()) {
   windowStart.setHours(0, 0, 0, 0)
 
   const windowEnd = new Date(windowStart)
-  windowEnd.setDate(windowStart.getDate() + BOOKING_WINDOW_DAYS)
+  windowEnd.setDate(windowStart.getDate() + BOOKING_WINDOW_DAYS + 1)
 
   return date >= windowStart && date < windowEnd
 }
