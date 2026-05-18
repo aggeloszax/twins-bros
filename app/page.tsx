@@ -456,10 +456,12 @@ export default function Home() {
             <CheckIcon className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-2xl font-semibold tracking-tight">
-            Το ραντεβού καταχωρήθηκε!
+            Το ραντεβού σας κατοχυρώθηκε με επιτυχία! 🎉
           </h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Θα επικοινωνήσουμε μαζί σου αν χρειαστεί κάποια αλλαγή.
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Παρακαλούμε ελέγξτε το email σας για την επιβεβαίωση της κράτησης.
+            (Αν δεν το βρίσκετε στα εισερχόμενα, ρίξτε μια ματιά και στον φάκελο
+            με τα Ανεπιθύμητα / Spam).
           </p>
           <div className="mt-6 space-y-3 rounded-3xl border border-zinc-800 bg-zinc-950 p-4 text-left text-sm">
             <div className="flex items-center justify-between gap-3">
@@ -497,13 +499,6 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setConfirmed(false)}
-            className="mt-6 w-full rounded-full border border-zinc-700 py-3 text-sm font-semibold text-zinc-200 transition-all duration-300 ease-in-out hover:border-[#A61E22] hover:bg-[#A61E22]/15 hover:text-zinc-50"
-          >
-            Άλλαξε τις επιλογές σου
-          </button>
         </div>
       </main>
     )
@@ -900,8 +895,21 @@ export default function Home() {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
-          <div className="min-w-0">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-6">
+          {step > 1 && (
+            <button
+              type="button"
+              onClick={() =>
+                setStep((current) => (current - 1) as BookingStep)
+              }
+              aria-label="Πίσω"
+              className="flex min-h-12 shrink-0 items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-200 transition-all duration-300 ease-in-out hover:border-zinc-700 hover:bg-zinc-800 active:scale-95 sm:px-5"
+            >
+              <ArrowIcon className="h-4 w-4 rotate-180" />
+              <span className="hidden sm:inline">Πίσω</span>
+            </button>
+          )}
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-zinc-50">
               {selectedService
                 ? `${selectedService.name} • ${formatPrice(
