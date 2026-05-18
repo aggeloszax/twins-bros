@@ -5,6 +5,19 @@ export const BOOKING_WINDOW_DAYS = 28
 export const BOOKING_TIME_ZONE = 'Europe/Athens'
 export const BOOKING_LOCALE = 'el-GR'
 
+// A booking can be self-cancelled up to 2.5 hours (150 minutes) before it starts.
+export const CANCELLATION_WINDOW_MINUTES = 150
+
+export function getCancellationLeadMinutes(startTime: Date, now = new Date()) {
+  return (startTime.getTime() - now.getTime()) / 60_000
+}
+
+export function canCancelBooking(startTime: Date, now = new Date()) {
+  return (
+    getCancellationLeadMinutes(startTime, now) >= CANCELLATION_WINDOW_MINUTES
+  )
+}
+
 export type Slot = { time: string; available: boolean }
 
 export function toDateKey(date: Date) {

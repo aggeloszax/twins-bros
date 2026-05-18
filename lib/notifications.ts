@@ -29,7 +29,13 @@ function formatBookingTime(date: Date) {
   }).format(date)
 }
 
+// Default to the production URL; override locally via NEXT_PUBLIC_APP_URL.
+const APP_BASE_URL = (
+  process.env.NEXT_PUBLIC_APP_URL ?? 'https://twins-bros.vercel.app'
+).replace(/\/$/, '')
+
 type BookingNotificationDetails = {
+  id: string
   startTime: Date | string
   customerName: string
   customerPhone: string
@@ -88,6 +94,7 @@ export async function sendBookingNotifications(
 
   if (bookingDetails.customerEmail) {
     const subject = `Επιβεβαίωση ραντεβού για ${serviceName}`
+    const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}`
     const html = `
 <section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #09090b; color: #f4f4f5; border: 1px solid #27272a; border-radius: 18px; overflow: hidden;">
   <div style="padding: 28px; border-bottom: 1px solid #27272a;">
@@ -102,6 +109,10 @@ export async function sendBookingNotifications(
       <div><dt style="color: #a1a1aa; font-size: 13px;">Ημερομηνία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${bookingDate}</dd></div>
       <div><dt style="color: #a1a1aa; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${bookingTime}</dd></div>
     </dl>
+  </div>
+  <div style="padding: 24px 28px; border-top: 1px solid #27272a; text-align: center;">
+    <p style="margin: 0 0 14px; color: #a1a1aa; font-size: 13px; line-height: 1.6;">Δεν μπορείτε να έρθετε; Μπορείτε να ακυρώσετε έως και 2,5 ώρες πριν το ραντεβού.</p>
+    <a href="${cancelUrl}" style="display: inline-block; padding: 12px 26px; border-radius: 999px; background: #A61E22; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none;">Ακύρωση Ραντεβού</a>
   </div>
 </section>`
 
