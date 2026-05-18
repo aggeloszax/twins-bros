@@ -105,6 +105,8 @@ function monthTitle(date: Date) {
 
 function getBookingStatus(booking: Booking) {
   if (booking.status === 'cancelled') return 'cancelled'
+  if (booking.status === 'completed') return 'completed'
+  if (booking.status === 'pending') return 'pending'
   return new Date(booking.endTime) <= new Date() ? 'completed' : 'pending'
 }
 
@@ -243,6 +245,14 @@ export default function AdminPage() {
     }
   }
 
+  function handleComplete(id: string) {
+    setBookings((prev) =>
+      prev.map((booking) =>
+        booking.id === id ? { ...booking, status: 'completed' } : booking,
+      ),
+    )
+  }
+
   function handleLogout() {
     sessionStorage.removeItem('admin_auth')
     setAuthed(false)
@@ -260,7 +270,10 @@ export default function AdminPage() {
     [bookings, filterBarber, selectedDate],
   )
 
-  const selectedRevenue = filtered.reduce((sum, booking) => sum + booking.service.price, 0)
+  const selectedRevenue = filtered.reduce((sum, booking) => {
+    const status = getBookingStatus(booking)
+    return status === 'cancelled' ? sum : sum + booking.service.price
+  }, 0)
   const todayRevenue = stats?.todayRevenue ?? 0
 
   if (!authed) {
@@ -378,7 +391,10 @@ export default function AdminPage() {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setSelectedDate(key)}
+                      onClick={() => {
+                        setSelectedDate(key)
+                        setCalendarMonth(startOfMonth(day))
+                      }}
                       className={`flex aspect-square min-h-9 items-center justify-center rounded-full text-sm font-black transition ${
                         selected
                           ? 'bg-[#ff1f2d] text-white shadow-[0_12px_30px_rgba(255,31,45,0.28)]'
@@ -483,7 +499,8 @@ export default function AdminPage() {
                         <div className="flex flex-wrap gap-2 md:justify-end">
                           <button
                             type="button"
-                            disabled
+                            disabled={!pending}
+                            onClick={() => handleComplete(booking.id)}
                             className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-400/30 bg-black/40 px-3 text-xs font-black text-emerald-300 opacity-70"
                             title={pending ? 'Ολοκληρώνεται αυτόματα μετά την ώρα λήξης' : 'Ολοκληρωμένο'}
                           >
@@ -493,7 +510,7 @@ export default function AdminPage() {
                           <button
                             type="button"
                             disabled={!pending}
-                            onClick={() => setCancelId(booking.id)}
+                            onClick={() => void handleCancel(booking.id)}
                             className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#ff1f2d]/25 bg-[#4b0710] px-3 text-xs font-black text-[#ffb3b8] transition hover:bg-[#6d0a14] disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <XIcon className="h-4 w-4" />
@@ -502,7 +519,7 @@ export default function AdminPage() {
                           <button
                             type="button"
                             disabled={!pending}
-                            onClick={() => setCancelId(booking.id)}
+                            onClick={() => void handleCancel(booking.id)}
                             className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:border-[#ff1f2d]/40 hover:text-[#ff6b75] disabled:cursor-not-allowed disabled:opacity-35"
                             aria-label="Διαγραφή ραντεβού"
                           >
