@@ -181,21 +181,29 @@ export default function AdminPage() {
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
     setError(false)
+
+    fetch('/api/admin/stats', { signal })
+      .then((res) => (res.ok ? (res.json() as Promise<Stats>) : null))
+      .then((statsData) => {
+        if (!signal?.aborted) setStats(statsData)
+      })
+      .catch((err: unknown) => {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Error fetching stats:', err)
+          setStats(null)
+        }
+      })
+
     try {
-      const [statsRes, bookingsRes] = await Promise.all([
-        fetch('/api/admin/stats', { signal }),
-        fetch('/api/admin/bookings', { signal }),
-      ])
-      if (!statsRes.ok || !bookingsRes.ok) throw new Error()
-      const [statsData, bookingsData] = await Promise.all([
-        statsRes.json() as Promise<Stats>,
-        bookingsRes.json() as Promise<Booking[]>,
-      ])
+      const bookingsRes = await fetch('/api/admin/bookings', { signal })
+      if (!bookingsRes.ok) throw new Error('Bookings request failed')
+      const bookingsData = (await bookingsRes.json()) as Booking[] | null
       if (signal?.aborted) return
-      setStats(statsData)
-      setBookings(bookingsData)
+      setBookings(Array.isArray(bookingsData) ? bookingsData : [])
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
+      console.error('Error fetching bookings:', err)
+      setBookings([])
       setError(true)
     } finally {
       if (!signal?.aborted) setLoading(false)
@@ -277,13 +285,12 @@ export default function AdminPage() {
   const calendarDays = buildCalendarDays(calendarMonth)
   const selectedDateLabel = formatDateKeyLong(selectedDate)
 
-  const filteredBookings = bookings
-    .filter((booking) => {
-      const matchesDate = toDateKey(booking.startTime) === selectedDate
-      const matchesBarber =
-        selectedBarber === 'Όλοι' || booking.barber.name === selectedBarber
-      return matchesDate && matchesBarber
-    })
+  const filteredBookings = (bookings?.filter((booking) => {
+    const matchesDate = toDateKey(booking.startTime) === selectedDate
+    const matchesBarber =
+      selectedBarber === 'Όλοι' || booking.barber.name === selectedBarber
+    return matchesDate && matchesBarber
+  }) ?? [])
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
   const selectedRevenue = filteredBookings.reduce((sum, booking) => {
@@ -470,6 +477,9 @@ export default function AdminPage() {
 
             {loading ? (
               <div className="space-y-3">
+                <p className="rounded-2xl border border-white/10 bg-black/25 p-5 text-sm font-semibold text-zinc-300">
+                  Φόρτωση ραντεβού...
+                </p>
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div key={index} className="h-28 animate-pulse rounded-2xl bg-[#180307]" />
                 ))}
