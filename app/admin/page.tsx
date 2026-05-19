@@ -1,7 +1,14 @@
 "use client";
 
 import Image from 'next/image'
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import {
   BOOKING_LOCALE,
   BOOKING_TIME_ZONE,
@@ -50,8 +57,7 @@ const TABS = [
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
-const BARBERS = ['Όλοι', 'Redi', 'Donaldo', 'Kleidi'] as const
-type BarberFilter = (typeof BARBERS)[number]
+const ALL_BARBERS = 'Όλοι'
 const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ']
 
 const SLOT_OPTIONS = (() => {
@@ -271,12 +277,223 @@ function CustomersView({ bookings }: { bookings: Booking[] }) {
   )
 }
 
+/* ---------------------- Shared management primitives --------------------- */
+
+function ManagerHeader({
+  eyebrow,
+  title,
+  actionLabel,
+  onAction,
+}: {
+  eyebrow: string
+  title: string
+  actionLabel: string
+  onAction: () => void
+}) {
+  return (
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff1f2d]">{eyebrow}</p>
+        <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">{title}</h2>
+      </div>
+      <button type="button" onClick={onAction} className={primaryButtonClass}>
+        {actionLabel}
+      </button>
+    </div>
+  )
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <p className="mb-4 rounded-xl border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 p-3 text-sm text-[#ffb3b8]">
+      {message}
+    </p>
+  )
+}
+
+// Two-step inline delete: trash → confirm (Ναι / Όχι). Keeps destructive
+// actions deliberate without an extra full-screen modal.
+function InlineDeleteButton({
+  busy,
+  onConfirm,
+}: {
+  busy: boolean
+  onConfirm: () => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+
+  if (confirming) {
+    return (
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={busy}
+          className="rounded-xl bg-[#ff1f2d] px-3 py-2 text-xs font-black text-white transition hover:bg-[#d80d19] disabled:opacity-50"
+        >
+          {busy ? '...' : 'Διαγραφή'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirming(false)}
+          disabled={busy}
+          className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/5"
+        >
+          Όχι
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setConfirming(true)}
+      aria-label="Διαγραφή"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:border-[#ff1f2d]/40 hover:text-[#ff6b75]"
+    >
+      <TrashIcon className="h-4 w-4" />
+    </button>
+  )
+}
+
+function ModalShell({
+  title,
+  subtitle,
+  onClose,
+  onSubmit,
+  children,
+  submitting,
+  submitLabel,
+}: {
+  title: string
+  subtitle: string
+  onClose: () => void
+  onSubmit: (event: FormEvent) => void
+  children: ReactNode
+  submitting: boolean
+  submitLabel: string
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <form
+        onSubmit={onSubmit}
+        onClick={(event) => event.stopPropagation()}
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#4b0710] bg-[#120306] p-6 shadow-2xl shadow-[#ff1f2d]/15"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Κλείσιμο"
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-[#ff1f2d]/30 bg-[#ff1f2d]/10 text-[#ff6b75] transition hover:bg-[#ff1f2d]/20 hover:text-white"
+        >
+          <XIcon className="h-4 w-4" />
+        </button>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff1f2d]">
+          Twins Bros
+        </p>
+        <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">{title}</h2>
+        <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>
+        <div className="mt-6 space-y-4">{children}</div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className={`mt-6 w-full ${primaryButtonClass}`}
+        >
+          {submitting ? 'Καταχώρηση...' : submitLabel}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 /* ------------------------------ Barbers tab ------------------------------ */
 
-function BarbersView({ barbers }: { barbers: BarberItem[] }) {
+function BarbersView({
+  barbers,
+  onCreated,
+  onDeleted,
+}: {
+  barbers: BarberItem[]
+  onCreated: (barber: BarberItem) => void
+  onDeleted: (id: string) => void
+}) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function handleCreate(event: FormEvent) {
+    event.preventDefault()
+    if (!name.trim()) {
+      setModalError('Συμπλήρωσε όνομα κουρέα.')
+      return
+    }
+    setSubmitting(true)
+    setModalError(null)
+    try {
+      const res = await fetch('/api/barbers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null
+        setModalError(data?.error ?? 'Η δημιουργία απέτυχε.')
+        return
+      }
+      onCreated((await res.json()) as BarberItem)
+      setName('')
+      setModalOpen(false)
+    } catch {
+      setModalError('Σφάλμα σύνδεσης. Δοκίμασε ξανά.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id)
+    setListError(null)
+    try {
+      const res = await fetch(`/api/barbers?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null
+        setListError(data?.error ?? 'Η διαγραφή απέτυχε.')
+        return
+      }
+      onDeleted(id)
+    } catch {
+      setListError('Σφάλμα σύνδεσης. Δοκίμασε ξανά.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <section className={cardClass}>
-      <SectionHeader eyebrow="Κουρείς" title="Η ομάδα μας" />
+      <ManagerHeader
+        eyebrow="Κουρείς"
+        title="Η ομάδα μας"
+        actionLabel="+ Νέος Κουρέας"
+        onAction={() => {
+          setModalError(null)
+          setName('')
+          setModalOpen(true)
+        }}
+      />
+      {listError && <ErrorBanner message={listError} />}
       {barbers.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 bg-black/25 p-12 text-center text-sm text-zinc-400">
           Δεν υπάρχουν καταχωρημένοι κουρείς.
@@ -297,13 +514,45 @@ function BarbersView({ barbers }: { barbers: BarberItem[] }) {
                   </div>
                 )}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-black text-white">{barber.name}</p>
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#ff6b75]">Barber</p>
               </div>
+              <InlineDeleteButton
+                busy={deletingId === barber.id}
+                onConfirm={() => void handleDelete(barber.id)}
+              />
             </div>
           ))}
         </div>
+      )}
+
+      {modalOpen && (
+        <ModalShell
+          title="Νέος Κουρέας"
+          subtitle="Πρόσθεσε ένα μέλος στην ομάδα."
+          onClose={() => setModalOpen(false)}
+          onSubmit={(event) => void handleCreate(event)}
+          submitting={submitting}
+          submitLabel="Προσθήκη κουρέα"
+        >
+          <label className="block">
+            <span className={labelClass}>Όνομα Κουρέα</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="π.χ. Goni"
+              className={fieldClass}
+              autoFocus
+            />
+          </label>
+          {modalError && (
+            <p className="rounded-xl border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 p-3 text-sm text-[#ffb3b8]">
+              {modalError}
+            </p>
+          )}
+        </ModalShell>
       )}
     </section>
   )
@@ -311,10 +560,111 @@ function BarbersView({ barbers }: { barbers: BarberItem[] }) {
 
 /* ------------------------------ Services tab ----------------------------- */
 
-function ServicesView({ services }: { services: ServiceItem[] }) {
+function ServicesView({
+  services,
+  onCreated,
+  onDeleted,
+}: {
+  services: ServiceItem[]
+  onCreated: (service: ServiceItem) => void
+  onDeleted: (id: string) => void
+}) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [duration, setDuration] = useState('30')
+  const [price, setPrice] = useState('15')
+  const [submitting, setSubmitting] = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  function resetForm() {
+    setName('')
+    setDuration('30')
+    setPrice('15')
+    setModalError(null)
+  }
+
+  async function handleCreate(event: FormEvent) {
+    event.preventDefault()
+    if (!name.trim()) {
+      setModalError('Συμπλήρωσε όνομα υπηρεσίας.')
+      return
+    }
+    const durationNum = Number(duration)
+    const priceNum = Number(price)
+    if (!Number.isInteger(durationNum) || durationNum <= 0) {
+      setModalError('Η διάρκεια πρέπει να είναι θετικός ακέραιος (λεπτά).')
+      return
+    }
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      setModalError('Το κόστος πρέπει να είναι μη αρνητικός αριθμός.')
+      return
+    }
+
+    setSubmitting(true)
+    setModalError(null)
+    try {
+      const res = await fetch('/api/services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          duration: durationNum,
+          price: priceNum,
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null
+        setModalError(data?.error ?? 'Η δημιουργία απέτυχε.')
+        return
+      }
+      onCreated((await res.json()) as ServiceItem)
+      resetForm()
+      setModalOpen(false)
+    } catch {
+      setModalError('Σφάλμα σύνδεσης. Δοκίμασε ξανά.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id)
+    setListError(null)
+    try {
+      const res = await fetch(`/api/services?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null
+        setListError(data?.error ?? 'Η διαγραφή απέτυχε.')
+        return
+      }
+      onDeleted(id)
+    } catch {
+      setListError('Σφάλμα σύνδεσης. Δοκίμασε ξανά.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <section className={cardClass}>
-      <SectionHeader eyebrow="Υπηρεσίες" title="Τιμοκατάλογος" />
+      <ManagerHeader
+        eyebrow="Υπηρεσίες"
+        title="Τιμοκατάλογος"
+        actionLabel="+ Προσθήκη Υπηρεσίας"
+        onAction={() => {
+          resetForm()
+          setModalOpen(true)
+        }}
+      />
+      {listError && <ErrorBanner message={listError} />}
       {services.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 bg-black/25 p-12 text-center text-sm text-zinc-400">
           Δεν υπάρχουν καταχωρημένες υπηρεσίες.
@@ -326,16 +676,72 @@ function ServicesView({ services }: { services: ServiceItem[] }) {
               key={service.id}
               className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#080607] p-4"
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-black text-white">{service.name}</p>
                 <p className="mt-1 text-sm text-zinc-400">{service.duration} λεπτά</p>
               </div>
               <p className="shrink-0 text-lg font-black tabular-nums text-[#ff6b75]">
                 {formatPrice(service.price)}
               </p>
+              <InlineDeleteButton
+                busy={deletingId === service.id}
+                onConfirm={() => void handleDelete(service.id)}
+              />
             </div>
           ))}
         </div>
+      )}
+
+      {modalOpen && (
+        <ModalShell
+          title="Προσθήκη Υπηρεσίας"
+          subtitle="Όρισε όνομα, διάρκεια και κόστος."
+          onClose={() => setModalOpen(false)}
+          onSubmit={(event) => void handleCreate(event)}
+          submitting={submitting}
+          submitLabel="Προσθήκη υπηρεσίας"
+        >
+          <label className="block">
+            <span className={labelClass}>Όνομα Υπηρεσίας</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="π.χ. Premium Κούρεμα"
+              className={fieldClass}
+              autoFocus
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block">
+              <span className={labelClass}>Διάρκεια (λεπτά)</span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={duration}
+                onChange={(event) => setDuration(event.target.value)}
+                className={fieldClass}
+              />
+            </label>
+            <label className="block">
+              <span className={labelClass}>Κόστος (€)</span>
+              <input
+                type="number"
+                min={0}
+                step="0.5"
+                value={price}
+                onChange={(event) => setPrice(event.target.value)}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+          {modalError && (
+            <p className="rounded-xl border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 p-3 text-sm text-[#ffb3b8]">
+              {modalError}
+            </p>
+          )}
+        </ModalShell>
       )}
     </section>
   )
@@ -977,10 +1383,27 @@ export default function AdminPage() {
 
   const [selectedDate, setSelectedDate] = useState(() => getDateKeyInBookingTimeZone(new Date()))
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()))
-  const [selectedBarber, setSelectedBarber] = useState<BarberFilter>('Όλοι')
+  const [selectedBarber, setSelectedBarber] = useState<string>(ALL_BARBERS)
   const [cancelId, setCancelId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false)
+
+  const handleServiceCreated = useCallback((service: ServiceItem) => {
+    setServices((prev) =>
+      [...prev, service].sort((a, b) => a.price - b.price),
+    )
+  }, [])
+  const handleServiceDeleted = useCallback((id: string) => {
+    setServices((prev) => prev.filter((service) => service.id !== id))
+  }, [])
+  const handleBarberCreated = useCallback((barber: BarberItem) => {
+    setBarbers((prev) =>
+      [...prev, barber].sort((a, b) => a.name.localeCompare(b.name, 'el')),
+    )
+  }, [])
+  const handleBarberDeleted = useCallback((id: string) => {
+    setBarbers((prev) => prev.filter((barber) => barber.id !== id))
+  }, [])
 
   useEffect(() => {
     if (sessionStorage.getItem('admin_auth') === 'true') {
@@ -1090,7 +1513,7 @@ export default function AdminPage() {
   const filteredBookings = (bookings?.filter((booking) => {
     const matchesDate = toDateKey(booking.startTime) === selectedDate
     const matchesBarber =
-      selectedBarber === 'Όλοι' || booking.barber.name === selectedBarber
+      selectedBarber === ALL_BARBERS || booking.barber.name === selectedBarber
     return matchesDate && matchesBarber
   }) ?? [])
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
@@ -1263,12 +1686,15 @@ export default function AdminPage() {
                     <span className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">Κουρέας</span>
                     <select
                       value={selectedBarber}
-                      onChange={(event) => setSelectedBarber(event.target.value as BarberFilter)}
+                      onChange={(event) => setSelectedBarber(event.target.value)}
                       className="bg-transparent text-sm font-semibold text-white outline-none"
                     >
-                      {BARBERS.map((barber) => (
-                        <option key={barber} value={barber} className="bg-[#120306] text-white">
-                          {barber}
+                      <option value={ALL_BARBERS} className="bg-[#120306] text-white">
+                        {ALL_BARBERS}
+                      </option>
+                      {barbers.map((barber) => (
+                        <option key={barber.id} value={barber.name} className="bg-[#120306] text-white">
+                          {barber.name}
                         </option>
                       ))}
                     </select>
@@ -1359,8 +1785,20 @@ export default function AdminPage() {
         )}
 
         {activeTab === 'customers' && <CustomersView bookings={bookings} />}
-        {activeTab === 'barbers' && <BarbersView barbers={barbers} />}
-        {activeTab === 'services' && <ServicesView services={services} />}
+        {activeTab === 'barbers' && (
+          <BarbersView
+            barbers={barbers}
+            onCreated={handleBarberCreated}
+            onDeleted={handleBarberDeleted}
+          />
+        )}
+        {activeTab === 'services' && (
+          <ServicesView
+            services={services}
+            onCreated={handleServiceCreated}
+            onDeleted={handleServiceDeleted}
+          />
+        )}
         {activeTab === 'schedule' && <ScheduleManagerView barbers={barbers} />}
         {activeTab === 'revenue' && <RevenueView bookings={bookings} />}
       </div>
