@@ -14,6 +14,7 @@ import {
   BOOKING_TIME_ZONE,
   getDateKeyInBookingTimeZone,
 } from '@/lib/schedule'
+import { logout } from './login/actions'
 
 type Booking = {
   id: string
@@ -1448,11 +1449,8 @@ function NewBookingModal({
 /* --------------------------------- Page ---------------------------------- */
 
 export default function AdminPage() {
-  const [authed, setAuthed] = useState(false)
-  const [password, setPassword] = useState('')
-  const [authError, setAuthError] = useState(false)
-  const [authLoading, setAuthLoading] = useState(false)
-
+  // Access is enforced by proxy.ts (redirect) + the API route guards. By the
+  // time this renders, the visitor already holds a valid admin session.
   const [activeTab, setActiveTab] = useState<TabKey>('appointments')
 
   const [stats, setStats] = useState<Stats | null>(null)
@@ -1484,12 +1482,6 @@ export default function AdminPage() {
   }, [])
   const handleBarberDeleted = useCallback((id: string) => {
     setBarbers((prev) => prev.filter((barber) => barber.id !== id))
-  }, [])
-
-  useEffect(() => {
-    if (sessionStorage.getItem('admin_auth') === 'true') {
-      queueMicrotask(() => setAuthed(true))
-    }
   }, [])
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
@@ -1539,35 +1531,12 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (!authed) return
     const controller = new AbortController()
     queueMicrotask(() => {
       if (!controller.signal.aborted) void loadData(controller.signal)
     })
     return () => controller.abort()
-  }, [authed, loadData])
-
-  async function handleLogin() {
-    setAuthLoading(true)
-    setAuthError(false)
-    try {
-      const res = await fetch('/api/admin/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      })
-      if (res.ok) {
-        sessionStorage.setItem('admin_auth', 'true')
-        setAuthed(true)
-      } else {
-        setAuthError(true)
-      }
-    } catch {
-      setAuthError(true)
-    } finally {
-      setAuthLoading(false)
-    }
-  }
+  }, [loadData])
 
   async function handleCancel(id: string) {
     setCancelling(true)
@@ -1605,8 +1574,7 @@ export default function AdminPage() {
   }
 
   function handleLogout() {
-    sessionStorage.removeItem('admin_auth')
-    setAuthed(false)
+    void logout()
   }
 
   const calendarDays = buildCalendarDays(calendarMonth)
@@ -1625,42 +1593,6 @@ export default function AdminPage() {
     return status === 'cancelled' ? sum : sum + booking.service.price
   }, 0)
   const todayRevenue = stats?.todayRevenue ?? 0
-
-  if (!authed) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#4b0710_0%,#120306_42%,#050505_100%)] px-6 text-white">
-        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-black/45 p-8 shadow-2xl shadow-[#ff1f2d]/10 backdrop-blur">
-          <div className="mb-7 flex flex-col items-center gap-4">
-            <Image src="/logo.webp" alt="Twins Bros" width={86} height={86} className="rounded-full border border-white/15 bg-black object-cover" priority />
-            <div className="text-center">
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-[#ff1f2d]">Twins Bros</p>
-              <p className="mt-1 text-lg font-semibold text-zinc-100">Admin Dashboard</p>
-            </div>
-          </div>
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Κωδικός</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              onKeyDown={(event) => event.key === 'Enter' && void handleLogin()}
-              className="mt-2 w-full rounded-xl border border-[#4b0710] bg-black/70 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff1f2d] focus:ring-2 focus:ring-[#ff1f2d]/25"
-              placeholder="••••••••"
-            />
-          </label>
-          {authError && <p className="mt-2 text-sm text-[#ff6b75]">Λάθος κωδικός</p>}
-          <button
-            type="button"
-            onClick={() => void handleLogin()}
-            disabled={authLoading}
-            className="mt-5 w-full rounded-xl bg-[#ff1f2d] py-3 text-sm font-black text-white shadow-lg shadow-[#ff1f2d]/20 transition hover:bg-[#d80d19] disabled:opacity-50"
-          >
-            {authLoading ? 'Σύνδεση...' : 'Είσοδος'}
-          </button>
-        </div>
-      </main>
-    )
-  }
 
   return (
     <main className="min-h-screen bg-[linear-gradient(145deg,#3a050c_0%,#120306_35%,#050505_100%)] px-4 pb-16 pt-6 text-zinc-100 sm:px-6">

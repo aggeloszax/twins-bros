@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/admin-auth'
 import {
   getDateKeyInBookingTimeZone,
   isScheduleExceptionType,
@@ -19,7 +20,10 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireAdmin(request)
+  if (denied) return denied
+
   try {
     const exceptions = await prisma.scheduleException.findMany({
       orderBy: [{ date: 'asc' }, { slotTime: 'asc' }],
@@ -46,6 +50,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = await requireAdmin(request)
+  if (denied) return denied
+
   let payload: CreatePayload
   try {
     payload = (await request.json()) as CreatePayload
