@@ -749,70 +749,151 @@ function ServicesView({
 
 /* ------------------------------ Revenue tab ------------------------------ */
 
-function RevenueView({ bookings }: { bookings: Booking[] }) {
-  const summary = useMemo(() => {
-    const acc = {
-      completed: { count: 0, revenue: 0 },
-      pending: { count: 0, revenue: 0 },
-      cancelled: { count: 0, revenue: 0 },
-    }
-    for (const booking of bookings) {
-      const status = getBookingStatus(booking)
-      acc[status].count += 1
-      acc[status].revenue += booking.service.price
-    }
-    return acc
-  }, [bookings])
+// Prices should always be numbers, but parse defensively so a malformed
+// value can never render NaN or crash the dashboard.
+function safePrice(value: unknown): number {
+  const parsed =
+    typeof value === 'number' ? value : parseFloat(String(value ?? ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
 
-  const collected = summary.completed.revenue
-  const projected = summary.completed.revenue + summary.pending.revenue
+function RevenueView({
+  bookings,
+  barbers,
+}: {
+  bookings: Booking[]
+  barbers: BarberItem[]
+}) {
+  const stats = useMemo(() => {
+    const todayKey = getDateKeyInBookingTimeZone(new Date())
+    const monthKey = todayKey.slice(0, 7)
 
-  const cards = [
-    {
-      key: 'completed',
-      label: 'Ολοκληρωμένα',
-      tone: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300',
-      data: summary.completed,
-    },
-    {
-      key: 'pending',
-      label: 'Σε εκκρεμότητα',
-      tone: 'border-yellow-300/40 bg-yellow-300/10 text-yellow-200',
-      data: summary.pending,
-    },
-    {
-      key: 'cancelled',
-      label: 'Ακυρωμένα',
-      tone: 'border-[#ff1f2d]/40 bg-[#ff1f2d]/10 text-[#ff6b75]',
-      data: summary.cancelled,
-    },
-  ] as const
+    // Financial data must be 100% accurate: only COMPLETED counts.
+    const completed = bookings.filter(
+      (booking) => booking.status === 'COMPLETED',
+    )
+
+    let todayRevenue = 0
+    let monthRevenue = 0
+    let totalRevenue = 0
+    const byBarber = new Map<string, { count: number; revenue: number }>()
+
+    for (const booking of completed) {
+      const price = safePrice(booking.service?.price)
+      const dayKey = toDateKey(booking.startTime)
+
+      totalRevenue += price
+      if (dayKey === todayKey) todayRevenue += price
+      if (dayKey.slice(0, 7) === monthKey) monthRevenue += price
+
+      const barberId = booking.barber?.id
+      if (barberId) {
+        const entry = byBarber.get(barberId) ?? { count: 0, revenue: 0 }
+        entry.count += 1
+        entry.revenue += price
+        byBarber.set(barberId, entry)
+      }
+    }
+
+    const perBarber = barbers.map((barber) => {
+      const entry = byBarber.get(barber.id) ?? { count: 0, revenue: 0 }
+      return {
+        id: barber.id,
+        name: barber.name,
+        count: entry.count,
+        revenue: entry.revenue,
+      }
+    })
+
+    return {
+      todayRevenue,
+      monthRevenue,
+      totalRevenue,
+      totalCompleted: completed.length,
+      perBarber,
+    }
+  }, [bookings, barbers])
 
   return (
     <section className={cardClass}>
-      <SectionHeader eyebrow="Έσοδα" title="Σύνοψη εσόδων" />
-      <div className="grid gap-4 sm:grid-cols-3">
-        {cards.map((card) => (
-          <div key={card.key} className={`rounded-2xl border p-5 ${card.tone}`}>
-            <p className="text-xs font-black uppercase tracking-[0.16em] opacity-80">{card.label}</p>
-            <p className="mt-3 text-3xl font-black text-white">{formatPrice(card.data.revenue)}</p>
-            <p className="mt-1 text-sm opacity-80">{card.data.count} ραντεβού</p>
+      <SectionHeader eyebrow="Έσοδα" title="Οικονομική σύνοψη" />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-[#ff1f2d]/30 bg-[#3a050c]/60 p-6">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff6b75]">
+            Έσοδα Σήμερα
+          </p>
+          <p className="mt-3 text-3xl font-black text-white">
+            {formatPrice(stats.todayRevenue)}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">
+            Ολοκληρωμένα ραντεβού σήμερα
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[#ff1f2d]/30 bg-[#3a050c]/60 p-6">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff6b75]">
+            Έσοδα Μήνα
+          </p>
+          <p className="mt-3 text-3xl font-black text-white">
+            {formatPrice(stats.monthRevenue)}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">
+            Τρέχων ημερολογιακός μήνας
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-[#ff1f2d]">
+          Απόδοση Κουρέων
+        </p>
+        {barbers.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/15 bg-black/25 p-12 text-center text-sm text-zinc-400">
+            Δεν υπάρχουν καταχωρημένοι κουρείς.
           </div>
-        ))}
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full min-w-[480px] text-left text-sm">
+              <thead>
+                <tr className="bg-[#3a050c]/60 text-xs font-black uppercase tracking-[0.14em] text-zinc-400">
+                  <th className="px-4 py-3">Όνομα Κουρέα</th>
+                  <th className="px-4 py-3 text-right">Ολοκληρωμένα Ραντεβού</th>
+                  <th className="px-4 py-3 text-right">Συνολικός Τζίρος (€)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.perBarber.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-t border-white/5 text-zinc-200 odd:bg-white/[0.02]"
+                  >
+                    <td className="px-4 py-3 font-semibold text-white">{row.name}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{row.count}</td>
+                    <td className="px-4 py-3 text-right font-black tabular-nums text-[#ff6b75]">
+                      {formatPrice(row.revenue)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-white/10 bg-[#180307]/80 text-white">
+                  <td className="px-4 py-3 font-black">Σύνολο</td>
+                  <td className="px-4 py-3 text-right font-black tabular-nums">
+                    {stats.totalCompleted}
+                  </td>
+                  <td className="px-4 py-3 text-right font-black tabular-nums text-[#ff6b75]">
+                    {formatPrice(stats.totalRevenue)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </div>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-[#180307]/80 p-5">
-          <p className={labelClass}>Εισπραγμένα (ολοκληρωμένα)</p>
-          <p className="mt-2 text-2xl font-black text-white">{formatPrice(collected)}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#180307]/80 p-5">
-          <p className={labelClass}>Προβλεπόμενο σύνολο</p>
-          <p className="mt-2 text-2xl font-black text-white">{formatPrice(projected)}</p>
-        </div>
-      </div>
+
       <p className="mt-4 text-xs leading-5 text-zinc-500">
-        Η κατάσταση προκύπτει από το πεδίο «status» του ραντεβού. Οι ακυρωμένες
-        κρατήσεις που διαγράφονται οριστικά δεν προσμετρώνται εδώ.
+        Υπολογισμός αποκλειστικά από ραντεβού με κατάσταση «COMPLETED». Τα
+        PENDING και CANCELLED δεν προσμετρώνται.
       </p>
     </section>
   )
@@ -1800,7 +1881,9 @@ export default function AdminPage() {
           />
         )}
         {activeTab === 'schedule' && <ScheduleManagerView barbers={barbers} />}
-        {activeTab === 'revenue' && <RevenueView bookings={bookings} />}
+        {activeTab === 'revenue' && (
+          <RevenueView bookings={bookings} barbers={barbers} />
+        )}
       </div>
 
       {isNewBookingOpen && (
