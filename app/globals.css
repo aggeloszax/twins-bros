@@ -19,6 +19,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
+
+
 body {
   background:
     radial-gradient(circle at top, rgba(75, 7, 16, 0.72), transparent 34rem),

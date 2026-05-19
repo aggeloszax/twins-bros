@@ -1583,6 +1583,27 @@ export default function AdminPage() {
     }
   }
 
+  async function handleHardDelete(id: string) {
+    if (
+      !window.confirm('Θέλετε να διαγράψετε οριστικά αυτό το ραντεβού;')
+    ) {
+      return
+    }
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Delete failed')
+      // Drop it from the live array — this instantly recalibrates the daily
+      // list, the selected-day revenue, and the Έσοδα analytics, since they
+      // all derive from `bookings`.
+      setBookings((prev) => prev.filter((booking) => booking.id !== id))
+      void loadData()
+    } catch {
+      window.alert('Η οριστική διαγραφή απέτυχε. Δοκιμάστε ξανά.')
+    }
+  }
+
   function handleLogout() {
     sessionStorage.removeItem('admin_auth')
     setAuthed(false)
@@ -1848,11 +1869,12 @@ export default function AdminPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => void handleCancel(booking.id)}
-                              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:border-[#ff1f2d]/40 hover:text-[#ff6b75]"
-                              aria-label="Διαγραφή ραντεβού"
+                              onClick={() => void handleHardDelete(booking.id)}
+                              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-black text-zinc-400 transition hover:border-[#ff1f2d]/40 hover:bg-[#4b0710]/40 hover:text-[#ff6b75]"
+                              aria-label="Οριστική διαγραφή ραντεβού"
                             >
                               <TrashIcon className="h-4 w-4" />
+                              ΔΙΑΓΡΑΦΗ
                             </button>
                           </div>
                         </div>
