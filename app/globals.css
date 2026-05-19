@@ -44,3 +44,27 @@ body {
 .animate-fade-in {
   animation: fade-in 280ms ease-out both;
 }
+
+/* Native HTML5 date inputs ship a tiny dark calendar indicator that
+   disappears against our matte-black surfaces. Brighten it (and let the
+   whole field invoke the picker) so admins clearly see they can click to
+   open the browser's native visual calendar. */
+input[type="date"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+  /* Invert + tint the icon so it reads on dark and picks up our red accent on hover. */
+  filter: invert(1) brightness(1.1);
+  transition: filter 150ms ease, opacity 150ms ease;
+}
+
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  filter: invert(35%) sepia(95%) saturate(7400%) hue-rotate(345deg)
+    brightness(100%) contrast(105%);
+}

@@ -1783,7 +1783,6 @@ export default function AdminPage() {
                           <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
                             <p className="truncate"><span className="text-zinc-500">Email:</span> {booking.customerEmail ?? '—'}</p>
                             <p className="truncate"><span className="text-zinc-500">Τηλέφωνο:</span> {booking.customerPhone}</p>
-                            <p className="truncate"><span className="text-zinc-500">Πληρωμή:</span> POS - {formatPrice(booking.service.price)}</p>
                             <p className="truncate"><span className="text-zinc-500">Υπηρεσία:</span> {booking.service.name}</p>
                           </div>
                         </div>
