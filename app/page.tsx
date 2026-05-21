@@ -11,6 +11,25 @@ const BARBERS = [
   { name: 'KLEIDI', image: '/barbers/kleidi.png' },
 ]
 
+// Mock data for now — wired to the database in a later phase.
+const SERVICES = [
+  {
+    name: 'ΚΛΑΣΙΚΟ ΚΟΥΡΕΜΑ',
+    price: '15€',
+    description: 'Λούσιμο, κούρεμα και styling με premium προϊόντα.',
+  },
+  {
+    name: 'ΠΕΡΙΠΟΙΗΣΗ ΓΕΝΕΙΑΔΑΣ',
+    price: '10€',
+    description: 'Σχηματισμός και styling γενειάδας με ζεστή πετσέτα.',
+  },
+  {
+    name: 'COMBINATION / VIP',
+    price: '22€',
+    description: 'Ολοκληρωμένο πακέτο: κούρεμα και πλήρης περιποίηση γενειάδας.',
+  },
+]
+
 // Clean 3-line hamburger — custom SVG so every pixel of the silhouette is
 // ours, no third-party icon weight.
 function HamburgerIcon({ className }: { className?: string }) {
@@ -209,6 +228,36 @@ export default function HomePage() {
               </h3>
             </article>
           ))}
+        </div>
+      </section>
+
+      {/* SERVICES — price list */}
+      <section className="bg-[#000000] py-12 px-6">
+        <div className="max-w-xl mx-auto flex flex-col gap-8">
+          <h2 className="text-2xl font-black uppercase tracking-tight text-left mb-2 text-white">
+            ΥΠΗΡΕΣΙΕΣ
+          </h2>
+
+          <div className="flex flex-col">
+            {SERVICES.map((service) => (
+              <div
+                key={service.name}
+                className="flex flex-col py-4 border-b border-white/5"
+              >
+                <div className="flex justify-between items-baseline gap-4">
+                  <span className="text-base font-bold uppercase tracking-wide text-white">
+                    {service.name}
+                  </span>
+                  <span className="text-base font-black text-white">
+                    {service.price}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-500 mt-1">
+                  {service.description}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </main>
