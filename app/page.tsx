@@ -125,6 +125,22 @@ export default function HomePage() {
 
       {/* HERO — asymmetric, bottom-left Reels/TikTok layout (video loop lands here later) */}
       <section className="relative w-full h-[calc(100vh-60px)] bg-black overflow-hidden flex items-end justify-start px-6 pb-12">
+        {/* Local looping background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+        >
+          <source src="/hero-video.mp4" type="video/mp4" />
+        </video>
+        {/* Dotted pattern masks video compression for a cinematic finish */}
+        <div
+          aria-hidden
+          className="absolute inset-0 z-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none"
+        />
         {/* Heavy bottom-weighted gradient keeps the lower text readable */}
         <div
           aria-hidden
