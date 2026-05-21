@@ -6,8 +6,8 @@ import { useState } from 'react'
 
 // Mock data for now — wired to the database in a later phase.
 const BARBERS = [
-  { name: 'REDI', image: '/barbers/redi.png' },
-  { name: 'DONALDO', image: '/barbers/donaldo.png' },
+  { name: 'REDI', image: '/barbers/redi.webp' },
+  { name: 'DONALDO', image: '/barbers/donaldo.webp' },
   { name: 'KLEIDI', image: '/barbers/kleidi.png' },
 ]
 
