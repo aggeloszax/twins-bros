@@ -163,6 +163,23 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ABOUT — brand manifesto */}
+      <section className="bg-[#000000] py-16 px-6">
+        <div className="flex flex-col items-start text-left max-w-xl mx-auto">
+          <p className="text-xs text-neutral-500 tracking-[0.2em] font-bold mb-4 uppercase">
+            ΣΧΕΤΙΚΑ
+          </p>
+          <p className="text-lg md:text-xl font-medium leading-relaxed tracking-tight text-white">
+            Το TWINS BROS αντιπροσωπεύει το κουρείο στην εκδοχή του μοντέρνου
+            κουρείου με έναν συνδυασμό τεχνικών και καλλιτεχνικών δεξιοτήτων
+            βασισμένο στην τέχνη της σύγχρονης κομμωτικής. Είμαστε κουρείς,
+            είμαστε επαγγελματίες, αγαπάμε το Barbering και είμαστε πάντα έτοιμοι
+            για τις υπηρεσίες σας. Επισκεφτείτε το χώρο μας και απολαύστε ένα
+            ποιοτικό κούρεμα.
+          </p>
+        </div>
+      </section>
+
       {/* BARBERS — horizontal snap-scroll */}
       <section className="bg-[#000000] py-12 px-6">
         <h2 className="text-2xl font-black uppercase tracking-tight mb-6 text-left text-white">
