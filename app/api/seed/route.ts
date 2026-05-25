@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 const barbers = [
   {
     name: 'Redi',
-    image: '/barbers/redi.webp',
+    image: '/barbers/redi.jpg',
   },
   {
     name: 'Donaldo',
