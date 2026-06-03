@@ -26,6 +26,8 @@ type Booking = {
   barber: { id: string; name: string }
   service: { id: string; name: string; price: number; duration: number }
   status?: 'PENDING' | 'COMPLETED' | 'CANCELLED'
+  noShow?: boolean
+  noShowCount?: number
 }
 
 type Stats = {
@@ -147,6 +149,10 @@ function getBookingStatus(booking: Booking) {
   if (booking.status === 'COMPLETED') return 'completed'
   if (booking.status === 'PENDING') return 'pending'
   return new Date(booking.endTime) <= new Date() ? 'completed' : 'pending'
+}
+
+function normalizePhone(phone: string) {
+  return phone.replace(/\D/g, '') || phone.trim()
 }
 
 function StatusBadge({ status }: { status: ReturnType<typeof getBookingStatus> }) {
@@ -1466,6 +1472,7 @@ export default function AdminPage() {
   const [cancelId, setCancelId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false)
+  const [noShowUpdatingId, setNoShowUpdatingId] = useState<string | null>(null)
 
   const handleServiceCreated = useCallback((service: ServiceItem) => {
     setServices((prev) =>
@@ -1570,6 +1577,43 @@ export default function AdminPage() {
       void loadData()
     } catch {
       window.alert('Η οριστική διαγραφή απέτυχε. Δοκιμάστε ξανά.')
+    }
+  }
+
+  async function handleNoShowToggle(booking: Booking) {
+    setNoShowUpdatingId(booking.id)
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noShow: !booking.noShow }),
+      })
+      if (!res.ok) throw new Error('No-show update failed')
+
+      const updated = (await res.json()) as Booking
+      const updatedPhoneKey = normalizePhone(updated.customerPhone)
+      setBookings((prev) => {
+        const nextNoShowCount =
+          updated.noShowCount ??
+          prev.filter((item) => {
+            if (normalizePhone(item.customerPhone) !== updatedPhoneKey) return false
+            return item.id === updated.id ? updated.noShow : item.noShow
+          }).length
+
+        return prev.map((item) => {
+          if (item.id === updated.id) {
+            return { ...updated, noShowCount: nextNoShowCount }
+          }
+          if (normalizePhone(item.customerPhone) === updatedPhoneKey) {
+            return { ...item, noShowCount: nextNoShowCount }
+          }
+          return item
+        })
+      })
+    } catch {
+      window.alert('Η σήμανση No-Show απέτυχε. Δοκιμάστε ξανά.')
+    } finally {
+      setNoShowUpdatingId(null)
     }
   }
 
@@ -1767,7 +1811,8 @@ export default function AdminPage() {
                 <div className="space-y-3">
                   {filteredBookings.map((booking) => {
                     const status = getBookingStatus(booking)
-                    const pending = status === 'pending'
+                    const noShowCount = booking.noShowCount ?? 0
+                    const showNoShowAlert = status === 'pending' && noShowCount > 0
 
                     return (
                       <article key={booking.id} className="grid gap-4 rounded-2xl border border-white/10 bg-[#080607] p-4 shadow-xl shadow-black/20 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-center">
@@ -1777,7 +1822,14 @@ export default function AdminPage() {
 
                         <div className="min-w-0 space-y-2">
                           <div>
-                            <h3 className="truncate text-lg font-black text-white">{booking.customerName}</h3>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="min-w-0 truncate text-lg font-black text-white">{booking.customerName}</h3>
+                              {showNoShowAlert && (
+                                <span className="inline-flex shrink-0 items-center rounded-lg border border-red-700 bg-white px-2.5 py-1 text-[11px] font-black text-red-700 shadow-sm">
+                                  ⚠️ NO-SHOW ALERT (X{noShowCount})
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-1 text-sm text-zinc-400">{formatDate(booking.startTime)} · {booking.barber.name}</p>
                           </div>
                           <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
@@ -1790,6 +1842,24 @@ export default function AdminPage() {
                         <div className="flex flex-col gap-3 md:items-end">
                           <StatusBadge status={status} />
                           <div className="flex flex-wrap gap-2 md:justify-end">
+                            {status === 'completed' && (
+                              <button
+                                type="button"
+                                onClick={() => void handleNoShowToggle(booking)}
+                                disabled={noShowUpdatingId === booking.id}
+                                className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  booking.noShow
+                                    ? 'border-red-950 bg-[#5b0b16] text-white shadow-lg shadow-red-950/25 hover:bg-[#4b0710]'
+                                    : 'border-red-800/50 bg-white text-red-800 hover:bg-red-50'
+                                }`}
+                              >
+                                {noShowUpdatingId === booking.id
+                                  ? '...'
+                                  : booking.noShow
+                                    ? 'NO-SHOW'
+                                    : 'Σήμανση No-Show'}
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => setCancelId(booking.id)}

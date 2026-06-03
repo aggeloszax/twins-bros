@@ -6,9 +6,14 @@ export const dynamic = 'force-dynamic'
 
 type UpdateBookingPayload = {
   status?: unknown
+  noShow?: unknown
 }
 
 const STATUSES = new Set<BookingStatus>(['PENDING', 'COMPLETED', 'CANCELLED'])
+
+function normalizePhone(phone: string) {
+  return phone.replace(/\D/g, '') || phone.trim()
+}
 
 export async function PATCH(
   request: Request,
@@ -25,22 +30,48 @@ export async function PATCH(
     return Response.json({ error: 'Invalid JSON payload' }, { status: 400 })
   }
 
-  if (typeof payload.status !== 'string' || !STATUSES.has(payload.status as BookingStatus)) {
+  const hasStatus = payload.status !== undefined
+  const hasNoShow = payload.noShow !== undefined
+
+  if (!hasStatus && !hasNoShow) {
+    return Response.json({ error: 'No booking updates provided' }, { status: 400 })
+  }
+
+  if (
+    hasStatus &&
+    (typeof payload.status !== 'string' || !STATUSES.has(payload.status as BookingStatus))
+  ) {
     return Response.json({ error: 'Invalid booking status' }, { status: 400 })
+  }
+
+  if (hasNoShow && typeof payload.noShow !== 'boolean') {
+    return Response.json({ error: 'Invalid no-show value' }, { status: 400 })
   }
 
   try {
     const { id } = await params
     const booking = await prisma.booking.update({
       where: { id },
-      data: { status: payload.status as BookingStatus },
+      data: {
+        ...(hasStatus ? { status: payload.status as BookingStatus } : {}),
+        ...(hasNoShow ? { noShow: payload.noShow as boolean } : {}),
+      },
       include: {
         barber: { select: { id: true, name: true } },
         service: { select: { id: true, name: true, price: true, duration: true } },
       },
     })
 
-    return Response.json(booking)
+    const noShowBookings = await prisma.booking.findMany({
+      where: { noShow: true },
+      select: { customerPhone: true },
+    })
+    const phoneKey = normalizePhone(booking.customerPhone)
+    const noShowCount = noShowBookings.filter(
+      (item) => normalizePhone(item.customerPhone) === phoneKey,
+    ).length
+
+    return Response.json({ ...booking, noShowCount })
   } catch (error) {
     console.error('Failed to update booking:', error)
     return Response.json({ error: 'Booking not found' }, { status: 404 })

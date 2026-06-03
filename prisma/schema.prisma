@@ -52,6 +52,7 @@ model Booking {
   customerName  String
   customerPhone String
   customerEmail String?
+  noShow       Boolean @default(false)
 
   // Σχέσεις
   barberId    String
