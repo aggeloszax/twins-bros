@@ -147,7 +147,6 @@ function monthTitle(date: Date) {
 function getBookingStatus(booking: Booking) {
   if (booking.status === 'CANCELLED') return 'cancelled'
   if (booking.status === 'COMPLETED') return 'completed'
-  if (booking.status === 'PENDING') return 'pending'
   return new Date(booking.endTime) <= new Date() ? 'completed' : 'pending'
 }
 
