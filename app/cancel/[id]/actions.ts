@@ -7,18 +7,26 @@ export type CancelResult =
   | { ok: true }
   | { ok: false; reason: 'not-found' | 'too-late' | 'error' }
 
-export async function cancelBooking(id: string): Promise<CancelResult> {
-  if (typeof id !== 'string' || id.trim().length === 0) {
+export async function cancelBooking(
+  id: string,
+  token: string,
+): Promise<CancelResult> {
+  if (
+    typeof id !== 'string' ||
+    id.trim().length === 0 ||
+    typeof token !== 'string' ||
+    token.trim().length === 0
+  ) {
     return { ok: false, reason: 'not-found' }
   }
 
   try {
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, startTime: true },
+      select: { id: true, cancelToken: true, startTime: true },
     })
 
-    if (!booking) {
+    if (!booking || booking.cancelToken !== token) {
       return { ok: false, reason: 'not-found' }
     }
 

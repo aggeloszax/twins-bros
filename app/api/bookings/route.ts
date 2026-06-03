@@ -1,5 +1,6 @@
 import { sendBookingNotifications } from '@/lib/notifications'
 import { prisma } from '@/lib/prisma'
+import { getClientIp, rateLimit } from '@/lib/rate-limit'
 import {
   createBookingDateTime,
   isClosedDay,
@@ -11,6 +12,8 @@ import {
   normalizeScheduleExceptions,
   parseDateKey,
 } from '@/lib/schedule'
+import { createSecureToken } from '@/lib/tokens'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +32,22 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 export async function POST(request: Request) {
+  const clientIp = getClientIp(request.headers)
+  const limited = rateLimit(`booking:${clientIp}`, {
+    limit: 8,
+    windowMs: 15 * 60_000,
+  })
+
+  if (!limited.allowed) {
+    return Response.json(
+      { error: 'Too many booking attempts. Please try again later.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(limited.retryAfter) },
+      },
+    )
+  }
+
   let payload: BookingPayload
 
   try {
@@ -128,64 +147,80 @@ export async function POST(request: Request) {
       )
     }
 
-    const overlappingBooking = await prisma.booking.findFirst({
-      where: {
-        barberId,
-        startTime: { lt: endTime },
-        endTime: { gt: startTime },
-      },
-      select: { id: true },
-    })
+    const bookingWithToken = await prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${barberId}))`
 
-    if (overlappingBooking) {
+        const overlappingBooking = await tx.booking.findFirst({
+          where: {
+            barberId,
+            startTime: { lt: endTime },
+            endTime: { gt: startTime },
+          },
+          select: { id: true },
+        })
+
+        if (overlappingBooking) {
+          return null
+        }
+
+        return tx.booking.create({
+          data: {
+            serviceId,
+            barberId,
+            startTime,
+            endTime,
+            cancelToken: createSecureToken(),
+            customerName: customerName.trim(),
+            customerPhone: customerPhone.trim(),
+            customerEmail: isNonEmptyString(customerEmail)
+              ? customerEmail.trim()
+              : null,
+          },
+          select: {
+            id: true,
+            cancelToken: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+            customerName: true,
+            customerPhone: true,
+            customerEmail: true,
+            barber: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            service: {
+              select: {
+                id: true,
+                name: true,
+                duration: true,
+                price: true,
+              },
+            },
+          },
+        })
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+
+    if (!bookingWithToken) {
       return Response.json(
         { error: 'This time slot is no longer available' },
         { status: 409 },
       )
     }
 
-    const booking = await prisma.booking.create({
-      data: {
-        serviceId,
-        barberId,
-        startTime,
-        endTime,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        customerEmail: isNonEmptyString(customerEmail)
-          ? customerEmail.trim()
-          : null,
-      },
-      select: {
-        id: true,
-        startTime: true,
-        endTime: true,
-        status: true,
-        customerName: true,
-        customerPhone: true,
-        customerEmail: true,
-        barber: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        service: {
-          select: {
-            id: true,
-            name: true,
-            duration: true,
-            price: true,
-          },
-        },
-      },
-    })
-
     try {
-      await sendBookingNotifications(booking)
+      await sendBookingNotifications(bookingWithToken)
     } catch (notificationError) {
       console.error('Failed to send booking notifications:', notificationError)
     }
+
+    const booking = { ...bookingWithToken }
+    delete (booking as { cancelToken?: string }).cancelToken
 
     return Response.json(booking, { status: 201 })
   } catch (error) {

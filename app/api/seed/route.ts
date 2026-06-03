@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
 
 // Seeding mutates the database, so it must never be statically prerendered.
@@ -26,14 +27,27 @@ const services = [
 ]
 
 export async function GET() {
-  try {
-    // Booking holds FKs to Barber and Service, so it must be cleared first.
-    await prisma.booking.deleteMany()
-    await prisma.barber.deleteMany()
-    await prisma.service.deleteMany()
+  return Response.json({ error: 'Method Not Allowed' }, { status: 405 })
+}
 
-    await prisma.barber.createMany({ data: barbers })
-    await prisma.service.createMany({ data: services })
+export async function POST(request: Request) {
+  if (process.env.ENABLE_SEED_ENDPOINT !== 'true') {
+    return Response.json({ error: 'Not Found' }, { status: 404 })
+  }
+
+  const denied = await requireAdmin(request)
+  if (denied) return denied
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Booking holds FKs to Barber and Service, so it must be cleared first.
+      await tx.booking.deleteMany()
+      await tx.barber.deleteMany()
+      await tx.service.deleteMany()
+
+      await tx.barber.createMany({ data: barbers })
+      await tx.service.createMany({ data: services })
+    })
 
     return Response.json({
       success: true,

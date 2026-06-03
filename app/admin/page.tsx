@@ -173,14 +173,6 @@ function StatusBadge({ status }: { status: ReturnType<typeof getBookingStatus> }
   )
 }
 
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" />
-    </svg>
-  )
-}
-
 function XIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
@@ -907,12 +899,6 @@ function RevenueView({
 
 /* -------------------------- Schedule Manager tab ------------------------- */
 
-function exceptionTypeLabel(type: ExceptionType) {
-  if (type === 'BLOCK_SLOT') return 'Κλείδωμα ώρας'
-  if (type === 'FORCE_OPEN') return 'Άνοιγμα ημέρας'
-  return 'Κλείσιμο ημέρας'
-}
-
 function ScheduleManagerView({ barbers }: { barbers: BarberItem[] }) {
   const [exceptions, setExceptions] = useState<ScheduleException[]>([])
   const [loading, setLoading] = useState(true)
@@ -950,7 +936,11 @@ function ScheduleManagerView({ barbers }: { barbers: BarberItem[] }) {
   }, [])
 
   useEffect(() => {
-    void loadExceptions()
+    const timer = window.setTimeout(() => {
+      void loadExceptions()
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [loadExceptions])
 
   async function createException(

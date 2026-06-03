@@ -35,9 +35,11 @@ const detailRows: { label: string; key: keyof BookingDetails }[] = [
 
 export function CancelClient({
   id,
+  token,
   details,
 }: {
   id: string
+  token: string
   details: BookingDetails
 }) {
   const [isPending, startTransition] = useTransition()
@@ -47,7 +49,7 @@ export function CancelClient({
   function handleCancel() {
     setError(null)
     startTransition(async () => {
-      const result = await cancelBooking(id)
+      const result = await cancelBooking(id, token)
       if (result.ok) {
         setDone(true)
         return

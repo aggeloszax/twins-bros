@@ -43,6 +43,7 @@ model ScheduleException {
 
 model Booking {
   id          String   @id @default(cuid())
+  cancelToken String   @unique @default(cuid())
   createdAt   DateTime @default(now())
   startTime   DateTime // Η ώρα έναρξης του ραντεβού
   endTime     DateTime // Η ώρα λήξης (startTime + duration)

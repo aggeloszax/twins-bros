@@ -1,12 +1,13 @@
 'use server'
 
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   computeSessionToken,
 } from '@/lib/admin-auth'
+import { getClientIp, rateLimit } from '@/lib/rate-limit'
 
 export type LoginState = { error: string }
 
@@ -16,6 +17,19 @@ export async function login(
 ): Promise<LoginState> {
   const password = String(formData.get('password') ?? '')
   const expected = process.env.ADMIN_PASSWORD
+  const headerStore = await headers()
+  const clientIp = getClientIp(headerStore)
+  const limited = rateLimit(`admin-login:${clientIp}`, {
+    limit: 5,
+    windowMs: 15 * 60_000,
+  })
+
+  if (!limited.allowed) {
+    return {
+      error:
+        'Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.',
+    }
+  }
 
   if (!expected) {
     return {

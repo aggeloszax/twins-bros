@@ -13,25 +13,6 @@ function getResend() {
   return resendClient
 }
 
-function formatBookingDate(date: Date) {
-  return date.toLocaleDateString('el-GR', {
-    timeZone: 'Europe/Athens',
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-function formatBookingTime(date: Date) {
-  return date.toLocaleTimeString('el-GR', {
-    timeZone: 'Europe/Athens',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-}
-
 // Default to the production URL; override locally via NEXT_PUBLIC_APP_URL.
 const APP_BASE_URL = (
   process.env.NEXT_PUBLIC_APP_URL ?? 'https://twins-bros.vercel.app'
@@ -39,6 +20,7 @@ const APP_BASE_URL = (
 
 type BookingNotificationDetails = {
   id: string
+  cancelToken: string
   startTime: Date | string
   customerName: string
   customerPhone: string
@@ -49,6 +31,15 @@ type BookingNotificationDetails = {
   service: {
     name: string
   }
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 }
 
 async function sendSMS(phone: string, message: string) {
@@ -98,19 +89,24 @@ export async function sendBookingNotifications(
     minute: '2-digit',
     hour12: false
   });
+  let customerName = bookingDetails.customerName
+  let serviceName = bookingDetails.service.name
+  let barberName = bookingDetails.barber.name
+  const customerPhone = escapeHtml(bookingDetails.customerPhone)
   const bookingDate = emailDate
   const bookingTime = emailTime
-  const customerName = bookingDetails.customerName
-  const serviceName = bookingDetails.service.name
-  const barberName = bookingDetails.barber.name
 
   const smsMessage = `Γεια σου ${customerName}! Το ραντεβού σου για ${serviceName} με τον ${barberName} επιβεβαιώθηκε για ${bookingDate} στις ${bookingTime}. Σε περιμένουμε!`
 
   await sendSMS(bookingDetails.customerPhone, smsMessage)
 
+  customerName = escapeHtml(customerName)
+  serviceName = escapeHtml(serviceName)
+  barberName = escapeHtml(barberName)
+
   if (bookingDetails.customerEmail) {
     const subject = `Επιβεβαίωση ραντεβού για ${serviceName}`
-    const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}`
+    const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
     const html = `
 <section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #09090b; color: #f4f4f5; border: 1px solid #27272a; border-radius: 18px; overflow: hidden;">
   <div style="padding: 28px; border-bottom: 1px solid #27272a;">
@@ -134,6 +130,8 @@ export async function sendBookingNotifications(
 
     await sendEmail(bookingDetails.customerEmail, subject, html)
   }
+
+  bookingDetails.customerPhone = customerPhone
 
   await sendEmail(
     SHOP_EMAIL,

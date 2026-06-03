@@ -58,15 +58,20 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 export default async function CancelPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ token?: string | string[] }>
 }) {
   const { id } = await params
+  const query = await searchParams
+  const token = Array.isArray(query.token) ? query.token[0] : query.token
 
   const booking = await prisma.booking.findUnique({
     where: { id },
     select: {
       id: true,
+      cancelToken: true,
       startTime: true,
       customerName: true,
       barber: { select: { name: true } },
@@ -74,7 +79,7 @@ export default async function CancelPage({
     },
   })
 
-  if (!booking) {
+  if (!booking || !token || booking.cancelToken !== token) {
     return (
       <Shell>
         <div className="text-center">
@@ -114,6 +119,7 @@ export default async function CancelPage({
     <Shell>
       <CancelClient
         id={booking.id}
+        token={token}
         details={{
           customerName: booking.customerName,
           service: booking.service.name,
