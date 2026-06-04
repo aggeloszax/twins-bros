@@ -158,7 +158,12 @@ export async function POST(request: Request) {
 
     const bookingWithToken = await prisma.$transaction(
       async (tx) => {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${barberId}))`
+        await tx.$queryRaw`
+          WITH lock AS MATERIALIZED (
+            SELECT pg_advisory_xact_lock(hashtext(${barberId}))
+          )
+          SELECT 1 AS locked FROM lock
+        `
 
         const overlappingBooking = await tx.booking.findFirst({
           where: {
