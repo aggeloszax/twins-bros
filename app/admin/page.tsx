@@ -1271,6 +1271,7 @@ function NewBookingModal({
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           customerEmail: customerEmail.trim() || 'manual@twins-bros.gr',
+          adminManual: true,
         }),
       })
 

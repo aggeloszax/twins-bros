@@ -1,4 +1,5 @@
 import { sendBookingNotifications } from '@/lib/notifications'
+import { isValidSessionToken, readSessionCookie } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
 import {
@@ -25,6 +26,7 @@ type BookingPayload = {
   customerName?: unknown
   customerPhone?: unknown
   customerEmail?: unknown
+  adminManual?: unknown
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -32,20 +34,24 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 export async function POST(request: Request) {
-  const clientIp = getClientIp(request.headers)
-  const limited = rateLimit(`booking:${clientIp}`, {
-    limit: 8,
-    windowMs: 15 * 60_000,
-  })
+  const isAdminSession = await isValidSessionToken(readSessionCookie(request))
 
-  if (!limited.allowed) {
-    return Response.json(
-      { error: 'Too many booking attempts. Please try again later.' },
-      {
-        status: 429,
-        headers: { 'Retry-After': String(limited.retryAfter) },
-      },
-    )
+  if (!isAdminSession) {
+    const clientIp = getClientIp(request.headers)
+    const limited = rateLimit(`booking:${clientIp}`, {
+      limit: 8,
+      windowMs: 15 * 60_000,
+    })
+
+    if (!limited.allowed) {
+      return Response.json(
+        { error: 'Too many booking attempts. Please try again later.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(limited.retryAfter) },
+        },
+      )
+    }
   }
 
   let payload: BookingPayload
@@ -64,7 +70,9 @@ export async function POST(request: Request) {
     customerName,
     customerPhone,
     customerEmail,
+    adminManual,
   } = payload
+  const isAdminManualBooking = isAdminSession && adminManual === true
 
   if (
     !isNonEmptyString(serviceId) ||
@@ -134,12 +142,13 @@ export async function POST(request: Request) {
     const forceOpen = isDateForceOpen(exceptions, date)
 
     if (
-      forceClosed ||
-      (isClosedDay(selectedDate) && !forceOpen) ||
-      !isWithinBookingWindow(selectedDate, now) ||
-      startTime <= now ||
-      !isSlotTimeWithinWorkingHours(slotTime, service.duration) ||
-      isSlotBlocked(exceptions, date, slotTime, barber.name)
+      !isAdminManualBooking &&
+      (forceClosed ||
+        (isClosedDay(selectedDate) && !forceOpen) ||
+        !isWithinBookingWindow(selectedDate, now) ||
+        startTime <= now ||
+        !isSlotTimeWithinWorkingHours(slotTime, service.duration) ||
+        isSlotBlocked(exceptions, date, slotTime, barber.name))
     ) {
       return Response.json(
         { error: 'This time slot is not available' },
