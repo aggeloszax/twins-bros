@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { ADMIN_SESSION_COOKIE, isValidSessionToken } from './lib/admin-auth'
+
+const ADMIN_SESSION_COOKIE = 'twins_admin_session'
 
 // Next.js 16: Middleware is now "Proxy" (proxy.ts at project root, Node.js
 // runtime). This is an optimistic gate that keeps unauthenticated users out
@@ -13,8 +14,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value
-  if (await isValidSessionToken(token)) {
+  if (request.cookies.has(ADMIN_SESSION_COOKIE)) {
     return NextResponse.next()
   }
 

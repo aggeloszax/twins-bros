@@ -27,11 +27,16 @@ export function getAdminCredentialId() {
 }
 
 async function getStoredPasswordHash(): Promise<string | null> {
-  const credential = await prisma.adminCredential.findUnique({
-    where: { id: ADMIN_CREDENTIAL_ID },
-    select: { passwordHash: true },
-  })
-  return credential?.passwordHash ?? null
+  try {
+    const credential = await prisma.adminCredential.findUnique({
+      where: { id: ADMIN_CREDENTIAL_ID },
+      select: { passwordHash: true },
+    })
+    return credential?.passwordHash ?? null
+  } catch (error) {
+    console.error('Unable to read admin credential; falling back to ADMIN_PASSWORD.', error)
+    return null
+  }
 }
 
 async function getExpectedToken(): Promise<string | null> {
