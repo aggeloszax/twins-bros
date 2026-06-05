@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import {
+  type ChangeEvent,
   type FormEvent,
   type ReactNode,
   useCallback,
@@ -198,6 +199,46 @@ const labelClass =
   'text-xs font-bold uppercase tracking-[0.16em] text-zinc-500'
 const primaryButtonClass =
   'rounded-xl bg-[#ff1f2d] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#ff1f2d]/20 transition hover:bg-[#d80d19] disabled:cursor-not-allowed disabled:opacity-50'
+
+const MAX_BARBER_IMAGE_BYTES = 5 * 1024 * 1024
+const BARBER_IMAGE_MAX_DIMENSION = 900
+
+function resizeBarberImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const img = new window.Image()
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+
+      const scale = Math.min(
+        1,
+        BARBER_IMAGE_MAX_DIMENSION / Math.max(img.width, img.height),
+      )
+      const width = Math.max(1, Math.round(img.width * scale))
+      const height = Math.max(1, Math.round(img.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Canvas is not available'))
+        return
+      }
+
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', 0.84))
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Image could not be loaded'))
+    }
+
+    img.src = objectUrl
+  })
+}
 
 function SectionHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
@@ -422,15 +463,55 @@ function BarbersView({
 }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
+  const [imageData, setImageData] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [imageProcessing, setImageProcessing] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [listError, setListError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    setModalError(null)
+    setImageData(null)
+    setImagePreview(null)
+
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setModalError('Επίλεξε αρχείο εικόνας.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > MAX_BARBER_IMAGE_BYTES) {
+      setModalError('Η φωτογραφία πρέπει να είναι έως 5MB.')
+      event.target.value = ''
+      return
+    }
+
+    setImageProcessing(true)
+    try {
+      const resized = await resizeBarberImage(file)
+      setImageData(resized)
+      setImagePreview(resized)
+    } catch {
+      setModalError('Η φωτογραφία δεν μπόρεσε να φορτωθεί. Δοκίμασε άλλη εικόνα.')
+      event.target.value = ''
+    } finally {
+      setImageProcessing(false)
+    }
+  }
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) {
       setModalError('Συμπλήρωσε όνομα κουρέα.')
+      return
+    }
+    if (imageProcessing) {
+      setModalError('Περίμενε να ολοκληρωθεί η επεξεργασία της φωτογραφίας.')
       return
     }
     setSubmitting(true)
@@ -439,7 +520,7 @@ function BarbersView({
       const res = await fetch('/api/barbers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), image: imageData }),
       })
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as
@@ -450,6 +531,8 @@ function BarbersView({
       }
       onCreated((await res.json()) as BarberItem)
       setName('')
+      setImageData(null)
+      setImagePreview(null)
       setModalOpen(false)
     } catch {
       setModalError('Σφάλμα σύνδεσης. Δοκίμασε ξανά.')
@@ -489,6 +572,8 @@ function BarbersView({
         onAction={() => {
           setModalError(null)
           setName('')
+          setImageData(null)
+          setImagePreview(null)
           setModalOpen(true)
         }}
       />
@@ -532,7 +617,7 @@ function BarbersView({
           subtitle="Πρόσθεσε ένα μέλος στην ομάδα."
           onClose={() => setModalOpen(false)}
           onSubmit={(event) => void handleCreate(event)}
-          submitting={submitting}
+          submitting={submitting || imageProcessing}
           submitLabel="Προσθήκη κουρέα"
         >
           <label className="block">
@@ -546,6 +631,38 @@ function BarbersView({
               autoFocus
             />
           </label>
+          <label className="block">
+            <span className={labelClass}>Φωτογραφία Κουρέα</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => void handleImageChange(event)}
+              className="mt-2 w-full rounded-xl border border-[#4b0710] bg-black/70 px-4 py-3 text-sm text-zinc-300 outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-[#ff1f2d] file:px-3 file:py-2 file:text-xs file:font-black file:text-white hover:file:bg-[#d80d19] focus:border-[#ff1f2d] focus:ring-2 focus:ring-[#ff1f2d]/25"
+            />
+          </label>
+          {(imagePreview || imageProcessing) && (
+            <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-black/35 p-3">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border border-[#ff1f2d]/30 bg-black">
+                {imagePreview ? (
+                  <Image
+                    src={imagePreview}
+                    alt="Προεπισκόπηση φωτογραφίας κουρέα"
+                    fill
+                    unoptimized
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs font-bold text-zinc-500">
+                    ...
+                  </div>
+                )}
+              </div>
+              <p className="text-sm font-semibold text-zinc-300">
+                {imageProcessing ? 'Επεξεργασία φωτογραφίας...' : 'Η φωτογραφία είναι έτοιμη.'}
+              </p>
+            </div>
+          )}
           {modalError && (
             <p className="rounded-xl border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 p-3 text-sm text-[#ffb3b8]">
               {modalError}

@@ -8,6 +8,22 @@ type CreateBarberPayload = {
   image?: unknown
 }
 
+const MAX_IMAGE_DATA_URL_LENGTH = 1_500_000
+
+function normalizeImage(image: unknown) {
+  if (typeof image !== 'string') return null
+
+  const value = image.trim()
+  if (!value) return null
+
+  const isStoredPath = value.startsWith('/barbers/')
+  const isUploadedDataUrl = /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value)
+  if (!isStoredPath && !isUploadedDataUrl) return undefined
+  if (value.length > MAX_IMAGE_DATA_URL_LENGTH) return undefined
+
+  return value
+}
+
 export async function GET() {
   try {
     const barbers = await prisma.barber.findMany({
@@ -41,13 +57,18 @@ export async function POST(request: Request) {
   }
 
   try {
+    const normalizedImage = normalizeImage(image)
+    if (normalizedImage === undefined) {
+      return Response.json(
+        { error: 'Η φωτογραφία δεν είναι έγκυρη ή είναι πολύ μεγάλη.' },
+        { status: 400 },
+      )
+    }
+
     const barber = await prisma.barber.create({
       data: {
         name: name.trim(),
-        image:
-          typeof image === 'string' && image.trim().length > 0
-            ? image.trim()
-            : null,
+        image: normalizedImage,
       },
     })
     return Response.json(barber, { status: 201 })

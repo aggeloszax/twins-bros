@@ -104,6 +104,7 @@ function getMaxBookingDate(today: Date) {
 }
 
 function withImageVersion(src: string, version: string) {
+  if (src.startsWith('data:')) return src
   const separator = src.includes('?') ? '&' : '?'
   return `${src}${separator}v=${version}`
 }
