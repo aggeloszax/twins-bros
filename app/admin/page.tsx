@@ -240,6 +240,10 @@ function resizeBarberImage(file: File): Promise<string> {
   })
 }
 
+function redirectToAdminLogin() {
+  window.location.assign('/admin/login')
+}
+
 function SectionHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div className="mb-5">
@@ -1686,7 +1690,10 @@ export default function AdminPage() {
     setError(false)
 
     fetch('/api/admin/stats', { signal })
-      .then((res) => (res.ok ? (res.json() as Promise<Stats>) : null))
+      .then((res) => {
+        if (res.status === 401) redirectToAdminLogin()
+        return res.ok ? (res.json() as Promise<Stats>) : null
+      })
       .then((statsData) => {
         if (!signal?.aborted) setStats(statsData)
       })
@@ -1713,6 +1720,10 @@ export default function AdminPage() {
 
     try {
       const bookingsRes = await fetch('/api/admin/bookings', { signal })
+      if (bookingsRes.status === 401) {
+        redirectToAdminLogin()
+        return
+      }
       if (!bookingsRes.ok) throw new Error('Bookings request failed')
       const bookingsData = (await bookingsRes.json()) as Booking[] | null
       if (signal?.aborted) return
