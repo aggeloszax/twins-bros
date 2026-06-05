@@ -6,6 +6,7 @@ import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   computeSessionToken,
+  verifyAdminPassword,
 } from '@/lib/admin-auth'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
 
@@ -16,7 +17,6 @@ export async function login(
   formData: FormData,
 ): Promise<LoginState> {
   const password = String(formData.get('password') ?? '')
-  const expected = process.env.ADMIN_PASSWORD
   const headerStore = await headers()
   const clientIp = getClientIp(headerStore)
   const limited = rateLimit(`admin-login:${clientIp}`, {
@@ -31,17 +31,12 @@ export async function login(
     }
   }
 
-  if (!expected) {
-    return {
-      error:
-        'Ο διακομιστής δεν έχει ρυθμισμένο κωδικό. Όρισε το ADMIN_PASSWORD.',
-    }
-  }
-  if (!password || password !== expected) {
+  const result = await verifyAdminPassword(password)
+  if (!result.valid || !result.tokenSecret) {
     return { error: 'Λάθος κωδικός' }
   }
 
-  const token = await computeSessionToken(expected)
+  const token = await computeSessionToken(result.tokenSecret)
   const store = await cookies()
   store.set({
     name: ADMIN_SESSION_COOKIE,

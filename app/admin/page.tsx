@@ -57,6 +57,7 @@ const TABS = [
   { key: 'services', label: 'Υπηρεσίες' },
   { key: 'schedule', label: 'Ωράριο' },
   { key: 'revenue', label: 'Έσοδα' },
+  { key: 'settings', label: 'Ασφάλεια' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
@@ -1442,6 +1443,88 @@ function NewBookingModal({
   )
 }
 
+/* ----------------------------- Settings tab ------------------------------ */
+
+function SecuritySettingsView() {
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setSubmitting(true)
+    setMessage(null)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/admin/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const data = (await res.json().catch(() => null)) as
+        | { error?: string }
+        | null
+
+      if (!res.ok) {
+        setError(data?.error ?? 'Η αποθήκευση απέτυχε. Δοκιμάστε ξανά.')
+        return
+      }
+
+      setPassword('')
+      setMessage('Ο νέος κωδικός αποθηκεύτηκε.')
+    } catch {
+      setError('Σφάλμα σύνδεσης. Δοκιμάστε ξανά.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-950 shadow-2xl shadow-black/15">
+      <h2 className="text-xl font-black tracking-wide text-[#800020]">
+        ΑΣΦΑΛΕΙΑ ΛΟΓΑΡΙΑΣΜΟΥ
+      </h2>
+      <form onSubmit={(event) => void handleSubmit(event)} className="mt-6 max-w-xl space-y-4">
+        <label className="block">
+          <span className="text-xs font-black uppercase tracking-[0.14em] text-zinc-700">
+            Νέος Κωδικός Πρόσβασης
+          </span>
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            required
+            className="mt-2 w-full rounded-xl border border-zinc-400 bg-white px-4 py-3 text-base font-semibold text-zinc-950 outline-none transition focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/25"
+          />
+        </label>
+
+        {error && (
+          <p className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800">
+            {error}
+          </p>
+        )}
+        {message && (
+          <p className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+            {message}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-xl bg-[#800020] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#800020]/20 transition hover:bg-[#650019] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitting ? 'ΑΠΟΘΗΚΕΥΣΗ...' : 'ΑΠΟΘΗΚΕΥΣΗ ΝΕΟΥ ΚΩΔΙΚΟΥ'}
+        </button>
+      </form>
+    </section>
+  )
+}
+
 /* --------------------------------- Page ---------------------------------- */
 
 export default function AdminPage() {
@@ -1897,6 +1980,7 @@ export default function AdminPage() {
         {activeTab === 'revenue' && (
           <RevenueView bookings={bookings} barbers={barbers} />
         )}
+        {activeTab === 'settings' && <SecuritySettingsView />}
       </div>
 
       {isNewBookingOpen && (
