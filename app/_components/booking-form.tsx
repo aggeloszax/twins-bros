@@ -9,6 +9,7 @@ import {
   type NormalizedScheduleException,
   toDateKey,
 } from '@/lib/schedule'
+import { normalizeGreekMobilePhone, toNumericPhoneInput } from '@/lib/phone'
 
 type Service = {
   id: string
@@ -51,6 +52,8 @@ const STEP_LABELS = ['Υπηρεσία', 'Barber', 'Ημ/νία & Ώρα', 'Στ
 // Light-mode input: white field, charcoal text, burgundy focus ring.
 const inputClass =
   'mt-2 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/30'
+const phoneInputClass =
+  'mt-2 w-full rounded-2xl border border-neutral-200 bg-white py-3.5 pl-14 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/30'
 // Reusable eyebrow for step/section headers: small, uppercase, sharp gray.
 const stepHeaderClass =
   'text-xs font-bold uppercase tracking-wider text-neutral-500'
@@ -410,7 +413,7 @@ export default function BookingForm() {
     1: Boolean(selectedService),
     2: Boolean(selectedBarber),
     3: Boolean(selectedDate && selectedTime),
-    4: Boolean(customerName.trim() && customerPhone.trim()),
+    4: Boolean(customerName.trim() && normalizeGreekMobilePhone(customerPhone)),
   }
 
   const canReach = (n: number) =>
@@ -420,6 +423,8 @@ export default function BookingForm() {
     (n === 4 &&
       Boolean(selectedService && selectedBarber && selectedDate && selectedTime))
 
+  const normalizedCustomerPhone = normalizeGreekMobilePhone(customerPhone)
+
   const canProceed =
     step === 1
       ? Boolean(selectedService)
@@ -427,7 +432,7 @@ export default function BookingForm() {
         ? Boolean(selectedService && selectedBarber)
         : step === 3
           ? Boolean(selectedDate && selectedTime)
-          : Boolean(customerName.trim() && customerPhone.trim()) &&
+          : Boolean(customerName.trim() && normalizedCustomerPhone) &&
             !submittingBooking
 
   async function handleNext() {
@@ -441,7 +446,7 @@ export default function BookingForm() {
       selectedDate &&
       selectedTime &&
       customerName.trim() &&
-      customerPhone.trim()
+      normalizedCustomerPhone
     ) {
       setSubmittingBooking(true)
       setBookingError(false)
@@ -457,7 +462,7 @@ export default function BookingForm() {
             date: selectedDate,
             slotTime: selectedTime,
             customerName: customerName.trim(),
-            customerPhone: customerPhone.trim(),
+            customerPhone: normalizedCustomerPhone,
             customerEmail: customerEmail.trim(),
           }),
         })
@@ -488,7 +493,7 @@ export default function BookingForm() {
     selectedDate &&
     selectedTime &&
     customerName.trim() &&
-    customerPhone.trim()
+    normalizedCustomerPhone
   ) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 font-sans text-neutral-900">
@@ -536,7 +541,7 @@ export default function BookingForm() {
             <div className="flex items-center justify-between gap-3">
               <span className="text-neutral-500">Κινητό</span>
               <span className="font-bold text-neutral-900">
-                {customerPhone.trim()}
+                {normalizedCustomerPhone}
               </span>
             </div>
           </div>
@@ -892,15 +897,24 @@ export default function BookingForm() {
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
                     Κινητό Τηλέφωνο
                   </span>
-                  <input
-                    type="tel"
-                    required
-                    value={customerPhone}
-                    onChange={(event) => setCustomerPhone(event.target.value)}
-                    autoComplete="tel"
-                    placeholder="π.χ. 69XXXXXXXX"
-                    className={inputClass}
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 mt-2 flex items-center pl-3 font-medium text-neutral-500">
+                      +30
+                    </span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      required
+                      value={customerPhone}
+                      onChange={(event) =>
+                        setCustomerPhone(toNumericPhoneInput(event.target.value))
+                      }
+                      autoComplete="tel-national"
+                      placeholder="69XXXXXXXX"
+                      className={phoneInputClass}
+                    />
+                  </div>
                 </label>
 
                 <label className="block">

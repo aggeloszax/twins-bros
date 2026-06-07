@@ -1,11 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
+import { normalizeGreekMobilePhone } from '@/lib/phone'
 
 export const dynamic = 'force-dynamic'
-
-function normalizePhone(phone: string) {
-  return phone.replace(/\D/g, '') || phone.trim()
-}
 
 export async function GET(request: Request) {
   const denied = await requireAdmin(request)
@@ -28,25 +25,26 @@ export async function GET(request: Request) {
       },
     })
 
-    const noShowBookings = await prisma.booking.findMany({
+    const noShowBookings = await prisma.booking.groupBy({
+      by: ['customerPhone'],
       where: { noShow: true },
-      select: { customerPhone: true },
+      _count: { _all: true },
     })
     const noShowCountsByPhone = new Map<string, number>()
 
     for (const booking of noShowBookings) {
-      const phoneKey = normalizePhone(booking.customerPhone)
-      noShowCountsByPhone.set(
-        phoneKey,
-        (noShowCountsByPhone.get(phoneKey) ?? 0) + 1,
-      )
+      const phoneKey = normalizeGreekMobilePhone(booking.customerPhone)
+      if (!phoneKey) continue
+      noShowCountsByPhone.set(phoneKey, booking._count._all)
     }
 
     return Response.json(
       bookings.map((booking) => ({
         ...booking,
         noShowCount:
-          noShowCountsByPhone.get(normalizePhone(booking.customerPhone)) ?? 0,
+          noShowCountsByPhone.get(
+            normalizeGreekMobilePhone(booking.customerPhone) ?? '',
+          ) ?? 0,
       })),
     )
   } catch (error) {

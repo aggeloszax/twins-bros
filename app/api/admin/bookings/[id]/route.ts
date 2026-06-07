@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
+import { normalizeGreekMobilePhone } from '@/lib/phone'
 import type { BookingStatus } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -10,10 +11,6 @@ type UpdateBookingPayload = {
 }
 
 const STATUSES = new Set<BookingStatus>(['PENDING', 'COMPLETED', 'CANCELLED'])
-
-function normalizePhone(phone: string) {
-  return phone.replace(/\D/g, '') || phone.trim()
-}
 
 export async function PATCH(
   request: Request,
@@ -62,14 +59,12 @@ export async function PATCH(
       },
     })
 
-    const noShowBookings = await prisma.booking.findMany({
-      where: { noShow: true },
-      select: { customerPhone: true },
-    })
-    const phoneKey = normalizePhone(booking.customerPhone)
-    const noShowCount = noShowBookings.filter(
-      (item) => normalizePhone(item.customerPhone) === phoneKey,
-    ).length
+    const phoneKey = normalizeGreekMobilePhone(booking.customerPhone)
+    const noShowCount = phoneKey
+      ? await prisma.booking.count({
+          where: { noShow: true, customerPhone: phoneKey },
+        })
+      : 0
 
     return Response.json({ ...booking, noShowCount })
   } catch (error) {

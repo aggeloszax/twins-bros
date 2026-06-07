@@ -15,6 +15,7 @@ import {
   BOOKING_TIME_ZONE,
   getDateKeyInBookingTimeZone,
 } from '@/lib/schedule'
+import { normalizeGreekMobilePhone, toNumericPhoneInput } from '@/lib/phone'
 import { logout } from './login/actions'
 
 type Booking = {
@@ -152,10 +153,6 @@ function getBookingStatus(booking: Booking) {
   return new Date(booking.endTime) <= new Date() ? 'completed' : 'pending'
 }
 
-function normalizePhone(phone: string) {
-  return phone.replace(/\D/g, '') || phone.trim()
-}
-
 function StatusBadge({ status }: { status: ReturnType<typeof getBookingStatus> }) {
   const styles = {
     completed: 'border-emerald-400/45 bg-emerald-400/15 text-emerald-300',
@@ -195,6 +192,8 @@ const cardClass =
   'rounded-2xl border border-white/10 bg-black/30 p-5 shadow-2xl shadow-black/25'
 const fieldClass =
   'mt-2 w-full rounded-xl border border-[#4b0710] bg-black/70 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff1f2d] focus:ring-2 focus:ring-[#ff1f2d]/25'
+const phoneFieldClass =
+  'mt-2 w-full rounded-xl border border-[#4b0710] bg-black/70 py-3 pl-14 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#ff1f2d] focus:ring-2 focus:ring-[#ff1f2d]/25'
 const labelClass =
   'text-xs font-bold uppercase tracking-[0.16em] text-zinc-500'
 const primaryButtonClass =
@@ -1369,8 +1368,9 @@ function NewBookingModal({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    const normalizedCustomerPhone = normalizeGreekMobilePhone(customerPhone)
 
-    if (!customerName.trim() || !customerPhone.trim()) {
+    if (!customerName.trim() || !normalizedCustomerPhone) {
       setError('Συμπλήρωσε όνομα και τηλέφωνο πελάτη.')
       return
     }
@@ -1391,7 +1391,7 @@ function NewBookingModal({
           date,
           slotTime,
           customerName: customerName.trim(),
-          customerPhone: customerPhone.trim(),
+          customerPhone: normalizedCustomerPhone,
           customerEmail: customerEmail.trim() || 'manual@twins-bros.gr',
           adminManual: true,
         }),
@@ -1458,13 +1458,22 @@ function NewBookingModal({
 
           <label className="block">
             <span className={labelClass}>Τηλέφωνο</span>
-            <input
-              type="tel"
-              value={customerPhone}
-              onChange={(event) => setCustomerPhone(event.target.value)}
-              placeholder="69XXXXXXXX"
-              className={fieldClass}
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-0 mt-2 flex items-center pl-3 font-medium text-zinc-500">
+                +30
+              </span>
+              <input
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={customerPhone}
+                onChange={(event) =>
+                  setCustomerPhone(toNumericPhoneInput(event.target.value))
+                }
+                placeholder="69XXXXXXXX"
+                className={phoneFieldClass}
+              />
+            </div>
           </label>
 
           <label className="block">
@@ -1792,20 +1801,30 @@ export default function AdminPage() {
       if (!res.ok) throw new Error('No-show update failed')
 
       const updated = (await res.json()) as Booking
-      const updatedPhoneKey = normalizePhone(updated.customerPhone)
+      const updatedPhoneKey = normalizeGreekMobilePhone(updated.customerPhone)
       setBookings((prev) => {
         const nextNoShowCount =
           updated.noShowCount ??
-          prev.filter((item) => {
-            if (normalizePhone(item.customerPhone) !== updatedPhoneKey) return false
-            return item.id === updated.id ? updated.noShow : item.noShow
-          }).length
+          (updatedPhoneKey
+            ? prev.filter((item) => {
+                if (
+                  normalizeGreekMobilePhone(item.customerPhone) !==
+                  updatedPhoneKey
+                ) {
+                  return false
+                }
+                return item.id === updated.id ? updated.noShow : item.noShow
+              }).length
+            : 0)
 
         return prev.map((item) => {
           if (item.id === updated.id) {
             return { ...updated, noShowCount: nextNoShowCount }
           }
-          if (normalizePhone(item.customerPhone) === updatedPhoneKey) {
+          if (
+            updatedPhoneKey &&
+            normalizeGreekMobilePhone(item.customerPhone) === updatedPhoneKey
+          ) {
             return { ...item, noShowCount: nextNoShowCount }
           }
           return item

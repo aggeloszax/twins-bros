@@ -1,6 +1,7 @@
 import { sendBookingNotifications } from '@/lib/notifications'
 import { isValidSessionToken, readSessionCookie } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
+import { normalizeGreekMobilePhone } from '@/lib/phone'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
 import {
   createBookingDateTime,
@@ -89,10 +90,18 @@ export async function POST(request: Request) {
   }
 
   const selectedDate = parseDateKey(date)
+  const normalizedCustomerPhone = normalizeGreekMobilePhone(customerPhone)
 
   if (!selectedDate || !/^\d{2}:\d{2}$/.test(slotTime)) {
     return Response.json(
       { error: 'Invalid date or slotTime format' },
+      { status: 400 },
+    )
+  }
+
+  if (!normalizedCustomerPhone) {
+    return Response.json(
+      { error: 'Invalid customer phone format' },
       { status: 400 },
     )
   }
@@ -186,7 +195,7 @@ export async function POST(request: Request) {
             endTime,
             cancelToken: createSecureToken(),
             customerName: customerName.trim(),
-            customerPhone: customerPhone.trim(),
+            customerPhone: normalizedCustomerPhone,
             customerEmail: isNonEmptyString(customerEmail)
               ? customerEmail.trim()
               : null,
