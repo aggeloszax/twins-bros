@@ -10,7 +10,12 @@ import {
   verifyAdminPassword,
 } from '@/lib/admin-auth'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
-import { DEFAULT_SHOP_SLUG, getShopSlugFromFormData, withShopParam } from '@/lib/shops'
+import {
+  DEFAULT_SHOP_SLUG,
+  getShopSlugFromFormData,
+  getShopSlugFromSessionCookie,
+  withShopParam,
+} from '@/lib/shops'
 
 export type LoginState = { error: string }
 
@@ -57,6 +62,15 @@ export async function login(
 
 export async function logout() {
   const store = await cookies()
+  // Read the active shop off the session cookie before deleting it, so logout
+  // returns to the same tenant's login page instead of falling back to default.
+  const shopSlug = getShopSlugFromSessionCookie(
+    store.get(ADMIN_SESSION_COOKIE)?.value,
+  )
   store.delete(ADMIN_SESSION_COOKIE)
-  redirect('/admin/login')
+  redirect(
+    !shopSlug || shopSlug === DEFAULT_SHOP_SLUG
+      ? '/admin/login'
+      : withShopParam('/admin/login', shopSlug),
+  )
 }
