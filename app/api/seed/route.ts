@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
+import { requireShop } from '@/lib/shops'
 
 // Seeding mutates the database, so it must never be statically prerendered.
 export const dynamic = 'force-dynamic'
@@ -37,16 +38,22 @@ export async function POST(request: Request) {
 
   const denied = await requireAdmin(request)
   if (denied) return denied
+  const { shop, response } = await requireShop(request)
+  if (response) return response
 
   try {
     await prisma.$transaction(async (tx) => {
       // Booking holds FKs to Barber and Service, so it must be cleared first.
-      await tx.booking.deleteMany()
-      await tx.barber.deleteMany()
-      await tx.service.deleteMany()
+      await tx.booking.deleteMany({ where: { shopId: shop.id } })
+      await tx.barber.deleteMany({ where: { shopId: shop.id } })
+      await tx.service.deleteMany({ where: { shopId: shop.id } })
 
-      await tx.barber.createMany({ data: barbers })
-      await tx.service.createMany({ data: services })
+      await tx.barber.createMany({
+        data: barbers.map((barber) => ({ ...barber, shopId: shop.id })),
+      })
+      await tx.service.createMany({
+        data: services.map((service) => ({ ...service, shopId: shop.id })),
+      })
     })
 
     return Response.json({

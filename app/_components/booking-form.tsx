@@ -1,12 +1,13 @@
 'use client'
 
 import Image from 'next/image'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import {
   BOOKING_WINDOW_DAYS,
   isDayBookable,
   isScheduleExceptionType,
   type NormalizedScheduleException,
+  type WorkingPeriod,
   toDateKey,
 } from '@/lib/schedule'
 import { normalizeGreekMobilePhone, toNumericPhoneInput } from '@/lib/phone'
@@ -51,12 +52,17 @@ const GR_MONTHS = [
 const STEP_LABELS = ['Υπηρεσία', 'Barber', 'Ημ/νία & Ώρα', 'Στοιχεία Πελάτη']
 // Light-mode input: white field, charcoal text, burgundy focus ring.
 const inputClass =
-  'mt-2 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/30'
+  'mt-2 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
 const phoneInputClass =
-  'mt-2 w-full rounded-2xl border border-neutral-200 bg-white py-3.5 pl-14 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/30'
+  'mt-2 w-full rounded-2xl border border-neutral-200 bg-white py-3.5 pl-14 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
 // Reusable eyebrow for step/section headers: small, uppercase, sharp gray.
 const stepHeaderClass =
   'text-xs font-bold uppercase tracking-wider text-neutral-500'
+
+function apiPath(path: string, shopSlug: string) {
+  const params = new URLSearchParams({ shop: shopSlug })
+  return `${path}?${params.toString()}`
+}
 
 const formatPrice = (price: number) =>
   `${Number.isInteger(price) ? price : price.toFixed(2)}€`
@@ -189,9 +195,9 @@ function Stepper({
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all duration-300 ease-in-out sm:h-9 sm:w-9 ${
                     isDone
-                      ? 'border-[#800020] bg-[#800020] text-white'
+                      ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
                       : isActive
-                        ? 'border-[#800020] bg-[#800020]/10 text-neutral-900 shadow-[0_0_0_4px_rgba(128,0,32,0.10)]'
+                        ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-neutral-900 shadow-[0_0_0_4px_rgba(128,0,32,0.10)]'
                         : 'border-neutral-200 bg-white text-neutral-400'
                   }`}
                 >
@@ -212,7 +218,7 @@ function Stepper({
               {n < STEP_LABELS.length && (
                 <span
                   className={`mt-4 h-0.5 w-4 shrink-0 rounded-full transition-colors duration-300 sm:mt-[18px] sm:w-10 ${
-                    done[n] ? 'bg-[#800020]' : 'bg-neutral-200'
+                    done[n] ? 'bg-[var(--brand)]' : 'bg-neutral-200'
                   }`}
                 />
               )}
@@ -248,14 +254,14 @@ function SlotSkeleton() {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="rounded-2xl border border-[#800020]/40 bg-[#800020]/5 p-6 text-center">
-      <p className="text-sm text-[#800020]">
+    <div className="rounded-2xl border border-[var(--brand)] bg-[var(--brand)]/5 p-6 text-center">
+      <p className="text-sm text-[var(--brand)]">
         Κάτι πήγε στραβά κατά τη φόρτωση.
       </p>
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-md border border-[#800020] px-5 py-2 text-sm font-semibold text-[#800020] transition-all duration-300 ease-in-out hover:bg-[#800020] hover:text-white"
+        className="mt-4 rounded-md border border-[var(--brand)] px-5 py-2 text-sm font-semibold text-[var(--brand)] transition-all duration-300 ease-in-out hover:bg-[var(--brand)] hover:text-white"
       >
         Δοκίμασε ξανά
       </button>
@@ -263,7 +269,36 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-export default function BookingForm() {
+type BookingFormProps = {
+  shopSlug?: string
+  shopName?: string
+  logoUrl?: string | null
+  primaryColor?: string
+  bookingSubtitle?: string | null
+}
+
+type ShopSettings = {
+  name: string
+  logoUrl: string | null
+  primaryColor: string
+  bookingSubtitle: string | null
+  workingPeriods: WorkingPeriod[]
+}
+
+export default function BookingForm({
+  shopSlug = 'twins-bros',
+  shopName = 'TWINS BROS',
+  logoUrl = '/logo.webp',
+  primaryColor = '#800020',
+  bookingSubtitle = 'Καθαρή επιλογή, ακριβής διάρκεια, premium αποτέλεσμα.',
+}: BookingFormProps) {
+  const [shopSettings, setShopSettings] = useState<ShopSettings>({
+    name: shopName,
+    logoUrl: logoUrl ?? null,
+    primaryColor,
+    bookingSubtitle: bookingSubtitle ?? null,
+    workingPeriods: [],
+  })
   const [services, setServices] = useState<Service[]>([])
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [loadingServices, setLoadingServices] = useState(true)
@@ -300,12 +335,36 @@ export default function BookingForm() {
   const calendarDays = buildCalendarGrid(calendarMonth)
   const canGoPreviousMonth = calendarMonth > startOfMonth(today)
   const canGoNextMonth = addMonths(calendarMonth, 1) <= startOfMonth(maxBookingDate)
+  const brandColor = shopSettings.primaryColor || primaryColor
+  const brandName = shopSettings.name || shopName
+  const brandLogo = shopSettings.logoUrl || logoUrl || '/logo.webp'
+  const brandSubtitle =
+    shopSettings.bookingSubtitle ||
+    bookingSubtitle ||
+    'Καθαρή επιλογή, ακριβής διάρκεια, premium αποτέλεσμα.'
+  const brandStyle = { '--brand': brandColor } as CSSProperties
+
+  async function loadShopSettings() {
+    try {
+      const res = await fetch(apiPath('/api/shop', shopSlug))
+      if (!res.ok) throw new Error('Request failed')
+      setShopSettings((await res.json()) as ShopSettings)
+    } catch {
+      setShopSettings({
+        name: shopName,
+        logoUrl: logoUrl ?? null,
+        primaryColor,
+        bookingSubtitle: bookingSubtitle ?? null,
+        workingPeriods: [],
+      })
+    }
+  }
 
   async function loadServices() {
     setLoadingServices(true)
     setServicesError(false)
     try {
-      const res = await fetch('/api/services')
+      const res = await fetch(apiPath('/api/services', shopSlug))
       if (!res.ok) throw new Error('Request failed')
       setServices(await res.json())
     } catch {
@@ -319,7 +378,7 @@ export default function BookingForm() {
     setLoadingBarbers(true)
     setBarbersError(false)
     try {
-      const res = await fetch('/api/barbers')
+      const res = await fetch(apiPath('/api/barbers', shopSlug))
       if (!res.ok) throw new Error('Request failed')
       setBarbers(await res.json())
     } catch {
@@ -331,7 +390,7 @@ export default function BookingForm() {
 
   async function loadScheduleExceptions() {
     try {
-      const res = await fetch('/api/schedule-exceptions')
+      const res = await fetch(apiPath('/api/schedule-exceptions', shopSlug))
       if (!res.ok) throw new Error('Request failed')
       const data = (await res.json()) as Array<{
         dateKey: string
@@ -364,8 +423,9 @@ export default function BookingForm() {
       void loadServices()
       void loadBarbers()
       void loadScheduleExceptions()
+      void loadShopSettings()
     })
-  }, [])
+  }, [shopSlug])
 
   useEffect(() => {
     if (!selectedDate || !selectedBarber) {
@@ -382,7 +442,7 @@ export default function BookingForm() {
     })
 
     fetch(
-      `/api/available-slots?barberId=${encodeURIComponent(
+      `${apiPath('/api/available-slots', shopSlug)}&barberId=${encodeURIComponent(
         selectedBarber.id,
       )}&date=${selectedDate}`,
       { signal: controller.signal },
@@ -407,7 +467,7 @@ export default function BookingForm() {
       active = false
       controller.abort()
     }
-  }, [selectedDate, selectedBarber])
+  }, [selectedDate, selectedBarber, shopSlug])
 
   const stepDone: Record<number, boolean> = {
     1: Boolean(selectedService),
@@ -451,7 +511,7 @@ export default function BookingForm() {
       setSubmittingBooking(true)
       setBookingError(false)
       try {
-        const res = await fetch('/api/bookings', {
+        const res = await fetch(apiPath('/api/bookings', shopSlug), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -498,7 +558,7 @@ export default function BookingForm() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 font-sans text-neutral-900">
         <div className="animate-fade-in w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-7 text-center shadow-md sm:p-8">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#800020] text-white shadow-[0_8px_24px_rgba(128,0,32,0.25)]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-[0_8px_24px_rgba(128,0,32,0.25)]">
             <CheckIcon className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-2xl font-bold tracking-tight text-neutral-900">
@@ -553,21 +613,27 @@ export default function BookingForm() {
   const hasAvailableSlot = slots.some((s) => s.available)
 
   return (
-    <div className="min-h-screen bg-white font-sans text-neutral-900">
+    <div
+      className="min-h-screen bg-white font-sans text-neutral-900"
+      style={brandStyle}
+    >
       <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 pb-36 pt-5 sm:px-6 sm:pb-40 sm:pt-8">
         <header className="text-center">
           <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200 bg-white shadow-sm">
             <Image
-              src="/logo.webp"
-              alt="TWINS BROS logo"
+              src={brandLogo}
+              alt={`${brandName} logo`}
               fill
               priority
               sizes="64px"
               className="object-cover"
             />
           </div>
-          <p className="mt-3 text-sm font-bold uppercase tracking-[0.28em] text-[#800020]">
-            TWINS BROS
+          <p
+            className="mt-3 text-sm font-bold uppercase tracking-[0.28em]"
+            style={{ color: brandColor }}
+          >
+            {brandName}
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
             Κλείσε το ραντεβού σου
@@ -592,7 +658,7 @@ export default function BookingForm() {
               <div>
                 <h2 className={stepHeaderClass}>Επίλεξε υπηρεσία</h2>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  Καθαρή επιλογή, ακριβής διάρκεια, premium αποτέλεσμα.
+                  {brandSubtitle}
                 </p>
               </div>
 
@@ -613,8 +679,8 @@ export default function BookingForm() {
                         onClick={() => handleSelectService(service)}
                         className={`group flex w-full items-center justify-between gap-4 rounded-2xl border p-5 text-left shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md ${
                           isSelected
-                            ? 'border-[#800020] bg-[#800020]/[0.06] ring-1 ring-[#800020]'
-                            : 'border-[#800020] bg-white hover:bg-neutral-50'
+                            ? 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
+                            : 'border-[var(--brand)] bg-white hover:bg-neutral-50'
                         }`}
                       >
                         <div className="min-w-0">
@@ -622,7 +688,7 @@ export default function BookingForm() {
                             {service.name}
                           </h3>
                           <div className="mt-2 flex items-center gap-2 text-sm text-neutral-500">
-                            <ClockIcon className="h-4 w-4 text-[#800020]" />
+                            <ClockIcon className="h-4 w-4 text-[var(--brand)]" />
                             <span>{service.duration} λεπτά</span>
                           </div>
                         </div>
@@ -633,8 +699,8 @@ export default function BookingForm() {
                           <span
                             className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-300 ease-in-out ${
                               isSelected
-                                ? 'border-[#800020] bg-[#800020] text-white'
-                                : 'border-neutral-300 text-transparent group-hover:border-[#800020]'
+                                ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
+                                : 'border-neutral-300 text-transparent group-hover:border-[var(--brand)]'
                             }`}
                           >
                             <CheckIcon className="h-4 w-4" />
@@ -678,11 +744,11 @@ export default function BookingForm() {
                         onClick={() => setSelectedBarber(barber)}
                         className={`group rounded-2xl border bg-white p-3 text-left transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md ${
                           isSelected
-                            ? 'border-[#800020] bg-[#800020]/[0.06] ring-1 ring-[#800020]'
-                            : 'border-[#800020] hover:bg-neutral-50'
+                            ? 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
+                            : 'border-[var(--brand)] hover:bg-neutral-50'
                         }`}
                       >
-                        <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 transition-all duration-300 ease-in-out group-hover:border-[#800020]">
+                        <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 transition-all duration-300 ease-in-out group-hover:border-[var(--brand)]">
                           {showImage && barberImageSrc ? (
                             <Image
                               src={barberImageSrc}
@@ -705,7 +771,7 @@ export default function BookingForm() {
                           )}
                           <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/5" />
                           {isSelected && (
-                            <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#800020] text-white shadow-lg">
+                            <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-lg">
                               <CheckIcon className="h-4 w-4" />
                             </span>
                           )}
@@ -749,7 +815,7 @@ export default function BookingForm() {
                         disabled={!canGoPreviousMonth}
                         onClick={() => setCalendarMonth((current) => addMonths(current, -1))}
                         aria-label="Προηγούμενος μήνας"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition-colors hover:border-[#800020] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition-colors hover:border-[var(--brand)] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         ‹
                       </button>
@@ -758,7 +824,7 @@ export default function BookingForm() {
                         disabled={!canGoNextMonth}
                         onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
                         aria-label="Επόμενος μήνας"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition-colors hover:border-[#800020] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition-colors hover:border-[var(--brand)] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         ›
                       </button>
@@ -781,7 +847,13 @@ export default function BookingForm() {
                       const isDisabled =
                         !isCurrentMonth ||
                         isPast ||
-                        !isDayBookable(day, key, scheduleExceptions, today)
+                        !isDayBookable(
+                          day,
+                          key,
+                          scheduleExceptions,
+                          today,
+                          shopSettings.workingPeriods,
+                        )
                       const isSelected = selectedDate === key
                       const isToday = key === toDateKey(today)
 
@@ -796,15 +868,15 @@ export default function BookingForm() {
                           }}
                           className={`relative flex aspect-square min-h-11 items-center justify-center rounded-xl border text-sm font-semibold transition-all duration-200 ease-in-out sm:min-h-14 ${
                             isSelected
-                              ? 'border-[#800020] bg-[#800020] text-white shadow-sm'
+                              ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
                               : isDisabled
                                 ? 'cursor-not-allowed border-transparent bg-neutral-50 text-neutral-300'
-                                : 'border-neutral-200 bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[#800020] hover:bg-neutral-50'
+                                : 'border-neutral-200 bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
                           }`}
                         >
                           <span>{day.getDate()}</span>
                           {isToday && !isSelected && !isDisabled && (
-                            <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-[#800020]" />
+                            <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-[var(--brand)]" />
                           )}
                         </button>
                       )
@@ -852,8 +924,8 @@ export default function BookingForm() {
                               !slot.available
                                 ? 'cursor-not-allowed border-neutral-100 bg-neutral-50 text-neutral-300 line-through'
                                 : isSelected
-                                  ? 'border-[#800020] bg-[#800020] text-white shadow-sm'
-                                  : 'border-neutral-200 bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[#800020] hover:bg-neutral-50'
+                                  ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
+                                  : 'border-neutral-200 bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
                             }`}
                           >
                             {slot.time}
@@ -933,7 +1005,7 @@ export default function BookingForm() {
               </div>
 
               {bookingError && (
-                <div className="rounded-2xl border border-[#800020]/40 bg-[#800020]/5 p-4 text-sm text-[#800020]">
+                <div className="rounded-2xl border border-[var(--brand)] bg-[var(--brand)]/5 p-4 text-sm text-[var(--brand)]">
                   Δεν μπορέσαμε να καταχωρήσουμε το ραντεβού. Δοκίμασε ξανά.
                 </div>
               )}
@@ -951,7 +1023,7 @@ export default function BookingForm() {
                 setStep((current) => (current - 1) as BookingStep)
               }
               aria-label="Πίσω"
-              className="flex min-h-12 shrink-0 items-center gap-2 rounded-md border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition-all duration-300 ease-in-out hover:border-[#800020] hover:bg-neutral-50 active:scale-95 sm:px-5"
+              className="flex min-h-12 shrink-0 items-center gap-2 rounded-md border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition-all duration-300 ease-in-out hover:border-[var(--brand)] hover:bg-neutral-50 active:scale-95 sm:px-5"
             >
               <ArrowIcon className="h-4 w-4 rotate-180" />
               <span className="hidden sm:inline">Πίσω</span>
@@ -982,7 +1054,7 @@ export default function BookingForm() {
             onClick={handleNext}
             className={`flex min-h-12 shrink-0 items-center gap-2 rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 ease-in-out sm:px-6 ${
               canProceed
-                ? 'bg-[#800020] text-white shadow-sm hover:bg-[#600018] active:scale-95'
+                ? 'bg-[var(--brand)] text-white shadow-sm hover:bg-[var(--brand)] active:scale-95'
                 : 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             }`}
           >

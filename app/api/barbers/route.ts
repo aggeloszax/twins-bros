@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
+import { requireShop } from '@/lib/shops'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,9 +25,13 @@ function normalizeImage(image: unknown) {
   return value
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { shop, response } = await requireShop(request)
+  if (response) return response
+
   try {
     const barbers = await prisma.barber.findMany({
+      where: { shopId: shop.id },
       orderBy: { name: 'asc' },
     })
     return Response.json(barbers)
@@ -42,6 +47,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
+  const { shop, response } = await requireShop(request)
+  if (response) return response
 
   let payload: CreateBarberPayload
   try {
@@ -67,6 +74,7 @@ export async function POST(request: Request) {
 
     const barber = await prisma.barber.create({
       data: {
+        shopId: shop.id,
         name: name.trim(),
         image: normalizedImage,
       },
@@ -84,6 +92,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
+  const { shop, response } = await requireShop(request)
+  if (response) return response
 
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
@@ -96,7 +106,7 @@ export async function DELETE(request: Request) {
     // Safety: never break historic bookings. Refuse deletion while any
     // booking still references this barber.
     const linkedBookings = await prisma.booking.count({
-      where: { barberId: id },
+      where: { shopId: shop.id, barberId: id },
     })
     if (linkedBookings > 0) {
       return Response.json(
@@ -107,7 +117,7 @@ export async function DELETE(request: Request) {
       )
     }
 
-    await prisma.barber.deleteMany({ where: { id } })
+    await prisma.barber.deleteMany({ where: { id, shopId: shop.id } })
     return Response.json({ success: true })
   } catch (error) {
     console.error('Failed to delete barber:', error)

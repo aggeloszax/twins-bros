@@ -6,9 +6,11 @@ import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   computeSessionToken,
+  encodeSessionCookieValue,
   verifyAdminPassword,
 } from '@/lib/admin-auth'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
+import { DEFAULT_SHOP_SLUG, getShopSlugFromFormData, withShopParam } from '@/lib/shops'
 
 export type LoginState = { error: string }
 
@@ -17,9 +19,10 @@ export async function login(
   formData: FormData,
 ): Promise<LoginState> {
   const password = String(formData.get('password') ?? '')
+  const shopSlug = getShopSlugFromFormData(formData)
   const headerStore = await headers()
   const clientIp = getClientIp(headerStore)
-  const limited = rateLimit(`admin-login:${clientIp}`, {
+  const limited = rateLimit(`admin-login:${shopSlug}:${clientIp}`, {
     limit: 5,
     windowMs: 15 * 60_000,
   })
@@ -31,16 +34,16 @@ export async function login(
     }
   }
 
-  const result = await verifyAdminPassword(password)
+  const result = await verifyAdminPassword(password, shopSlug)
   if (!result.valid || !result.tokenSecret) {
     return { error: 'Λάθος κωδικός' }
   }
 
-  const token = await computeSessionToken(result.tokenSecret)
+  const token = await computeSessionToken(result.tokenSecret, shopSlug)
   const store = await cookies()
   store.set({
     name: ADMIN_SESSION_COOKIE,
-    value: token,
+    value: encodeSessionCookieValue(shopSlug, token),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -49,7 +52,7 @@ export async function login(
   })
 
   // redirect throws a control-flow signal; nothing after it runs.
-  redirect('/admin')
+  redirect(shopSlug === DEFAULT_SHOP_SLUG ? '/admin' : withShopParam('/admin', shopSlug))
 }
 
 export async function logout() {

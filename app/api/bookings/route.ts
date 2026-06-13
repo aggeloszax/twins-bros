@@ -15,6 +15,7 @@ import {
   parseDateKey,
 } from '@/lib/schedule'
 import { createSecureToken } from '@/lib/tokens'
+import { requireShop } from '@/lib/shops'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -35,11 +36,17 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 export async function POST(request: Request) {
-  const isAdminSession = await isValidSessionToken(readSessionCookie(request))
+  const { shop, response } = await requireShop(request)
+  if (response) return response
+
+  const isAdminSession = await isValidSessionToken(
+    readSessionCookie(request),
+    shop.slug,
+  )
 
   if (!isAdminSession) {
     const clientIp = getClientIp(request.headers)
-    const limited = rateLimit(`booking:${clientIp}`, {
+    const limited = rateLimit(`booking:${shop.slug}:${clientIp}`, {
       limit: 8,
       windowMs: 15 * 60_000,
     })
@@ -107,8 +114,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const service = await prisma.service.findUnique({
-      where: { id: serviceId },
+    const service = await prisma.service.findFirst({
+      where: { id: serviceId, shopId: shop.id },
       select: { duration: true },
     })
 
@@ -116,8 +123,8 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Service not found' }, { status: 404 })
     }
 
-    const barber = await prisma.barber.findUnique({
-      where: { id: barberId },
+    const barber = await prisma.barber.findFirst({
+      where: { id: barberId, shopId: shop.id },
       select: { id: true, name: true },
     })
 
@@ -140,6 +147,7 @@ export async function POST(request: Request) {
     // trusted, and the slot feed could be stale.
     const rawExceptions = await prisma.scheduleException.findMany({
       where: {
+        shopId: shop.id,
         date: {
           gte: createBookingDateTime(date, '00:00') ?? undefined,
           lt: new Date(startTime.getTime() + 24 * 60 * 60_000),
@@ -153,10 +161,15 @@ export async function POST(request: Request) {
     if (
       !isAdminManualBooking &&
       (forceClosed ||
-        (isClosedDay(selectedDate) && !forceOpen) ||
+        (isClosedDay(selectedDate, shop.workingPeriods) && !forceOpen) ||
         !isWithinBookingWindow(selectedDate, now) ||
         startTime <= now ||
-        !isSlotTimeWithinWorkingHours(slotTime, service.duration) ||
+        !isSlotTimeWithinWorkingHours(
+          slotTime,
+          service.duration,
+          shop.workingPeriods,
+          selectedDate,
+        ) ||
         isSlotBlocked(exceptions, date, slotTime, barber.name))
     ) {
       return Response.json(
@@ -169,13 +182,14 @@ export async function POST(request: Request) {
       async (tx) => {
         await tx.$queryRaw`
           WITH lock AS MATERIALIZED (
-            SELECT pg_advisory_xact_lock(hashtext(${barberId}))
+            SELECT pg_advisory_xact_lock(hashtext(${`${shop.id}:${barberId}`}))
           )
           SELECT 1 AS locked FROM lock
         `
 
         const overlappingBooking = await tx.booking.findFirst({
           where: {
+            shopId: shop.id,
             barberId,
             startTime: { lt: endTime },
             endTime: { gt: startTime },
@@ -189,6 +203,7 @@ export async function POST(request: Request) {
 
         return tx.booking.create({
           data: {
+            shopId: shop.id,
             serviceId,
             barberId,
             startTime,

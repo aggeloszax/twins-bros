@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
+import { requireShop } from '@/lib/shops'
 import {
   getDateKeyInBookingTimeZone,
   isScheduleExceptionType,
@@ -23,9 +24,12 @@ function isNonEmptyString(value: unknown): value is string {
 export async function GET(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
+  const { shop, response } = await requireShop(request)
+  if (response) return response
 
   try {
     const exceptions = await prisma.scheduleException.findMany({
+      where: { shopId: shop.id },
       orderBy: [{ date: 'asc' }, { slotTime: 'asc' }],
     })
 
@@ -52,6 +56,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
+  const { shop, response } = await requireShop(request)
+  if (response) return response
 
   let payload: CreatePayload
   try {
@@ -95,6 +101,7 @@ export async function POST(request: Request) {
   try {
     const created = await prisma.scheduleException.create({
       data: {
+        shopId: shop.id,
         date: exceptionDate,
         barberName: isNonEmptyString(barberName) ? barberName.trim() : null,
         type,

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { requireShop } from '@/lib/shops'
 import {
   BOOKING_WINDOW_DAYS,
   getDateKeyInBookingTimeZone,
@@ -9,7 +10,10 @@ export const dynamic = 'force-dynamic'
 // Public, read-only feed of upcoming overrides so the customer calendar can
 // reflect FORCE_OPEN / FORCE_CLOSE days. BLOCK_SLOT is additionally enforced
 // server-side when computing available slots.
-export async function GET() {
+export async function GET(request: Request) {
+  const { shop, response } = await requireShop(request)
+  if (response) return response
+
   try {
     const now = new Date()
     const windowStart = new Date(now)
@@ -18,7 +22,7 @@ export async function GET() {
     windowEnd.setDate(windowStart.getDate() + BOOKING_WINDOW_DAYS + 1)
 
     const exceptions = await prisma.scheduleException.findMany({
-      where: { date: { gte: windowStart, lt: windowEnd } },
+      where: { shopId: shop.id, date: { gte: windowStart, lt: windowEnd } },
       orderBy: { date: 'asc' },
     })
 
