@@ -10,7 +10,7 @@ import {
   type WorkingPeriod,
   toDateKey,
 } from '@/lib/schedule'
-import { normalizeGreekMobilePhone, toNumericPhoneInput } from '@/lib/phone'
+import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
 
 type Service = {
   id: string
@@ -980,9 +980,9 @@ export default function BookingForm({
                       required
                       value={customerPhone}
                       onChange={(event) =>
-                        setCustomerPhone(toNumericPhoneInput(event.target.value))
+                        setCustomerPhone(toNationalPhoneInput(event.target.value))
                       }
-                      autoComplete="tel-national"
+                      autoComplete="tel"
                       placeholder="69XXXXXXXX"
                       className={phoneInputClass}
                     />

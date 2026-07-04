@@ -16,7 +16,7 @@ import {
   BOOKING_TIME_ZONE,
   getDateKeyInBookingTimeZone,
 } from '@/lib/schedule'
-import { normalizeGreekMobilePhone, toNumericPhoneInput } from '@/lib/phone'
+import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
 import { logout } from './login/actions'
 
 const DEFAULT_SHOP_SLUG = 'twins-bros'
@@ -1558,7 +1558,7 @@ function NewBookingModal({
                 pattern="[0-9]*"
                 value={customerPhone}
                 onChange={(event) =>
-                  setCustomerPhone(toNumericPhoneInput(event.target.value))
+                  setCustomerPhone(toNationalPhoneInput(event.target.value))
                 }
                 placeholder="69XXXXXXXX"
                 className={phoneFieldClass}
