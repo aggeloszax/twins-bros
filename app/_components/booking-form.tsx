@@ -53,8 +53,6 @@ const STEP_LABELS = ['Υπηρεσία', 'Barber', 'Ημ/νία & Ώρα', 'Στ
 // Light-mode input: white field, charcoal text, burgundy focus ring.
 const inputClass =
   'mt-2 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
-const phoneInputClass =
-  'mt-2 w-full rounded-2xl border border-neutral-200 bg-white py-3.5 pl-14 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
 // Reusable eyebrow for step/section headers: small, uppercase, sharp gray.
 const stepHeaderClass =
   'text-xs font-bold uppercase tracking-wider text-neutral-500'
@@ -967,26 +965,24 @@ export default function BookingForm({
 
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                    Κινητό Τηλέφωνο
+                    Κινητό Τηλέφωνο (+30)
                   </span>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 left-0 mt-2 flex items-center pl-3 font-medium text-neutral-500">
-                      +30
-                    </span>
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      required
-                      value={customerPhone}
-                      onChange={(event) =>
-                        setCustomerPhone(toNationalPhoneInput(event.target.value))
-                      }
-                      autoComplete="tel"
-                      placeholder="69XXXXXXXX"
-                      className={phoneInputClass}
-                    />
-                  </div>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    required
+                    value={customerPhone}
+                    onChange={(event) =>
+                      setCustomerPhone(toNationalPhoneInput(event.target.value))
+                    }
+                    onBlur={(event) =>
+                      setCustomerPhone(toNationalPhoneInput(event.target.value))
+                    }
+                    autoComplete="tel"
+                    placeholder="6912345678"
+                    className={inputClass}
+                  />
                 </label>
 
                 <label className="block">
