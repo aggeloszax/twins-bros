@@ -1941,7 +1941,7 @@ export default function AdminDashboard({
   }
 
   function handleLogout() {
-    void logout()
+    void logout(shopSlug)
   }
 
   const calendarDays = buildCalendarDays(calendarMonth)
