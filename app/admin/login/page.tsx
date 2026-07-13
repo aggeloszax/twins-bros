@@ -69,7 +69,7 @@ export default function AdminLoginPage() {
 
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,var(--admin-deep)_0%,var(--admin-bg)_42%,#050505_100%)] px-6 text-white"
+      className="admin-ui flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,var(--admin-deep)_0%,var(--admin-bg)_42%,#050505_100%)] px-6 text-white"
       style={shopTheme}
     >
       <form

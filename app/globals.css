@@ -43,6 +43,17 @@ body {
   animation: fade-in 280ms ease-out both;
 }
 
+/* iOS Safari zooms the viewport when a focused form control renders below
+   16px. Keep admin controls at the threshold on phones without disabling
+   user-controlled page zoom. */
+@media (max-width: 767px) {
+  .admin-ui input,
+  .admin-ui select,
+  .admin-ui textarea {
+    font-size: 16px;
+  }
+}
+
 /* Native HTML5 date inputs ship a tiny dark calendar indicator that
    disappears against our matte-black surfaces. Brighten it (and let the
    whole field invoke the picker) so admins clearly see they can click to

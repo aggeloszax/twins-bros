@@ -1967,7 +1967,7 @@ export default function AdminDashboard({
 
   return (
     <main
-      className="min-h-screen bg-[linear-gradient(145deg,var(--admin-surface)_0%,var(--admin-bg)_35%,#050505_100%)] px-4 pb-16 pt-6 text-zinc-100 sm:px-6"
+      className="admin-ui min-h-screen bg-[linear-gradient(145deg,var(--admin-surface)_0%,var(--admin-bg)_35%,#050505_100%)] px-4 pb-16 pt-6 text-zinc-100 sm:px-6"
       style={shopTheme}
     >
       <div className="mx-auto max-w-7xl">
