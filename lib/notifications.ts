@@ -17,6 +17,7 @@ function getResend() {
 const APP_BASE_URL = (
   process.env.NEXT_PUBLIC_APP_URL ?? 'https://twins-bros.vercel.app'
 ).replace(/\/$/, '')
+const SHOP_LOGO_URL = `${APP_BASE_URL}/logo.webp`
 
 type BookingNotificationDetails = {
   id: string
@@ -110,7 +111,16 @@ export async function sendBookingNotifications(
     const html = `
 <section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #09090b; color: #f4f4f5; border: 1px solid #27272a; border-radius: 18px; overflow: hidden;">
   <div style="padding: 28px; border-bottom: 1px solid #27272a;">
-    <p style="margin: 0 0 8px; color: #fbbf24; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;">Premium Barbershop</p>
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 18px; border-collapse: collapse;">
+      <tr>
+        <td style="padding-right: 12px; vertical-align: middle;">
+          <img src="${SHOP_LOGO_URL}" width="52" height="52" alt="TWINS BROS" style="display: block; width: 52px; height: 52px; border-radius: 50%; border: 1px solid #7f1d1d; object-fit: cover;" />
+        </td>
+        <td style="vertical-align: middle;">
+          <p style="margin: 0; color: #ff4d57; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">TWINS BROS</p>
+        </td>
+      </tr>
+    </table>
     <h1 style="margin: 0; font-size: 24px; line-height: 1.25;">Το ραντεβού σου επιβεβαιώθηκε</h1>
   </div>
   <div style="padding: 28px;">

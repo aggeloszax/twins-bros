@@ -9,9 +9,7 @@ import { CancelClient } from './cancel-client'
 
 export const dynamic = 'force-dynamic'
 
-// TODO: Replace with the shop's real phone number. Leaving the bracketed
-// placeholder renders the cancellation policy message exactly as specified.
-const SHOP_PHONE = '[Βάλε το τηλέφωνο του μαγαζιού]'
+const SHOP_PHONE = '2112180304'
 
 function formatDate(date: Date) {
   return date.toLocaleDateString(BOOKING_LOCALE, {
@@ -108,7 +106,10 @@ export default async function CancelPage({
           <p className="mt-4 text-sm leading-7 text-zinc-300">
             Πολιτική κρατήσεων: Μπορείτε να ακυρώσετε ή να επαναπρογραμματίσετε
             το ραντεβού σας έως και 2,5 ώρες πριν από την ώρα του ραντεβού. Για
-            αλλαγές τελευταίας στιγμής, παρακαλώ καλέστε στο μαγαζί: {SHOP_PHONE}.
+            αλλαγές τελευταίας στιγμής, παρακαλώ καλέστε στο μαγαζί:{' '}
+            <a href={`tel:${SHOP_PHONE}`} className="font-bold text-white underline underline-offset-4">
+              {SHOP_PHONE}
+            </a>.
           </p>
         </div>
       </Shell>
