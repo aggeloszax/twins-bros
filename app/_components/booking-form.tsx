@@ -31,6 +31,14 @@ type Slot = {
 }
 
 type BookingStep = 1 | 2 | 3 | 4
+type EmailDeliveryStatus = 'sent' | 'failed' | 'skipped'
+
+type BookingCreationResponse = {
+  notificationDelivery?: {
+    customerEmail: EmailDeliveryStatus
+    shopEmail: 'sent' | 'failed'
+  }
+}
 
 const GR_DAYS = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ']
 const GR_WEEKDAYS_MON_FIRST = ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ']
@@ -316,6 +324,8 @@ export default function BookingForm({
   const [submittingBooking, setSubmittingBooking] = useState(false)
   const [bookingError, setBookingError] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
+  const [customerEmailDelivery, setCustomerEmailDelivery] =
+    useState<EmailDeliveryStatus | null>(null)
   const [failedBarberImages, setFailedBarberImages] = useState<
     Record<string, boolean>
   >({})
@@ -526,6 +536,11 @@ export default function BookingForm({
         })
 
         if (!res.ok) throw new Error('Booking failed')
+        const result = (await res.json()) as BookingCreationResponse
+        setCustomerEmailDelivery(
+          result.notificationDelivery?.customerEmail ??
+            (customerEmail.trim() ? 'failed' : 'skipped'),
+        )
         setConfirmed(true)
       } catch {
         setBookingError(true)
@@ -562,11 +577,23 @@ export default function BookingForm({
           <h2 className="mt-6 text-2xl font-bold tracking-tight text-neutral-900">
             Το ραντεβού σας κατοχυρώθηκε με επιτυχία! 🎉
           </h2>
-          <p className="mt-3 text-sm leading-6 text-neutral-500">
-            Παρακαλούμε ελέγξτε το email σας για την επιβεβαίωση της κράτησης.
-            (Αν δεν το βρίσκετε στα εισερχόμενα, ρίξτε μια ματιά και στον φάκελο
-            με τα Ανεπιθύμητα / Spam).
-          </p>
+          {customerEmail.trim() ? (
+            customerEmailDelivery === 'sent' ? (
+              <p className="mt-3 text-sm leading-6 text-neutral-500">
+                Το email επιβεβαίωσης στάλθηκε. Αν δεν εμφανίζεται στα εισερχόμενα,
+                ελέγξτε και τον φάκελο Ανεπιθύμητα / Spam.
+              </p>
+            ) : (
+              <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
+                Η κράτηση ολοκληρώθηκε, αλλά η υπηρεσία email δεν αποδέχτηκε την
+                αποστολή. Η κράτηση έχει αποθηκευτεί κανονικά στο σύστημα.
+              </p>
+            )
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-neutral-500">
+              Δεν δηλώθηκε email. Τα στοιχεία του ραντεβού εμφανίζονται παρακάτω.
+            </p>
+          )}
           <div className="mt-6 space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-left text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-neutral-500">Υπηρεσία</span>

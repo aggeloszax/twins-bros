@@ -251,8 +251,16 @@ export async function POST(request: Request) {
       )
     }
 
+    let notificationDelivery: {
+      customerEmail: 'sent' | 'failed' | 'skipped'
+      shopEmail: 'sent' | 'failed'
+    } = {
+      customerEmail: bookingWithToken.customerEmail ? 'failed' : 'skipped',
+      shopEmail: 'failed',
+    }
+
     try {
-      await sendBookingNotifications(bookingWithToken)
+      notificationDelivery = await sendBookingNotifications(bookingWithToken)
     } catch (notificationError) {
       console.error('Failed to send booking notifications:', notificationError)
     }
@@ -260,7 +268,10 @@ export async function POST(request: Request) {
     const booking = { ...bookingWithToken }
     delete (booking as { cancelToken?: string }).cancelToken
 
-    return Response.json(booking, { status: 201 })
+    return Response.json(
+      { ...booking, notificationDelivery },
+      { status: 201 },
+    )
   } catch (error) {
     console.error('Failed to create booking:', error)
     return Response.json(

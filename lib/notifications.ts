@@ -10,6 +10,8 @@ const RESEND_FROM_EMAIL =
 let resendClient: Resend | null = null
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY
+    ?.trim()
+    .replace(/^['"]|['"]$/g, '')
   if (!apiKey) return null
   if (!resendClient) resendClient = new Resend(apiKey)
   return resendClient
@@ -87,16 +89,20 @@ async function sendEmail(email: string, subject: string, html: string) {
     recipient: email,
     emailId: data?.id,
   })
+
+  return data?.id ?? null
 }
 
 async function trySendEmail(email: string, subject: string, html: string) {
   try {
-    await sendEmail(email, subject, html)
+    const emailId = await sendEmail(email, subject, html)
+    return { status: 'sent' as const, emailId }
   } catch (error) {
     console.error('Email delivery failed:', {
       recipient: email,
       error: error instanceof Error ? error.message : String(error),
     })
+    return { status: 'failed' as const }
   }
 }
 
@@ -132,6 +138,10 @@ export async function sendBookingNotifications(
   serviceName = escapeHtml(serviceName)
   barberName = escapeHtml(barberName)
 
+  let customerEmailDelivery: { status: 'sent' | 'failed' | 'skipped' } = {
+    status: 'skipped',
+  }
+
   if (bookingDetails.customerEmail) {
     const subject = `Επιβεβαίωση ραντεβού για ${serviceName}`
     const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
@@ -165,12 +175,16 @@ export async function sendBookingNotifications(
   </div>
 </section>`
 
-    await trySendEmail(bookingDetails.customerEmail, subject, html)
+    customerEmailDelivery = await trySendEmail(
+      bookingDetails.customerEmail,
+      subject,
+      html,
+    )
   }
 
   bookingDetails.customerPhone = customerPhone
 
-  await trySendEmail(
+  const shopEmailDelivery = await trySendEmail(
     SHOP_EMAIL,
     `📅 Νέο Ραντεβού — ${customerName}`,
     `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
@@ -186,4 +200,9 @@ export async function sendBookingNotifications(
 Νέο ραντεβού: ${customerName} για ${serviceName}, ${bookingDate} στις ${bookingTime}.
 =============================================================
 `)
+
+  return {
+    customerEmail: customerEmailDelivery.status,
+    shopEmail: shopEmailDelivery.status,
+  }
 }
