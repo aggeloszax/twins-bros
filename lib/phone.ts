@@ -2,16 +2,29 @@ export function toNumericPhoneInput(value: string) {
   return value.replace(/\D/g, '')
 }
 
+function stripLeadingGreekCountryCode(digits: string) {
+  let previous: string
+
+  do {
+    previous = digits
+    if (digits.startsWith('0030')) {
+      digits = digits.slice(4)
+    } else if (digits.startsWith('30')) {
+      digits = digits.slice(2)
+    }
+  } while (digits !== previous && digits.length > 10)
+
+  return digits
+}
+
+export function toNationalPhoneInput(value: string) {
+  return stripLeadingGreekCountryCode(toNumericPhoneInput(value)).slice(0, 10)
+}
+
 export function normalizeGreekMobilePhone(value: string) {
-  let digits = toNumericPhoneInput(value)
+  const digits = stripLeadingGreekCountryCode(toNumericPhoneInput(value))
 
-  if (digits.startsWith('0030')) {
-    digits = digits.slice(4)
-  } else if (digits.startsWith('30')) {
-    digits = digits.slice(2)
-  }
-
-  if (!/^\d{10}$/.test(digits)) return null
+  if (!/^69\d{8}$/.test(digits)) return null
 
   return `+30${digits}`
 }

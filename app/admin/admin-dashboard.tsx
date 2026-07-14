@@ -16,7 +16,7 @@ import {
   BOOKING_TIME_ZONE,
   getDateKeyInBookingTimeZone,
 } from '@/lib/schedule'
-import { normalizeGreekMobilePhone, toNumericPhoneInput } from '@/lib/phone'
+import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
 import { logout } from './login/actions'
 
 const DEFAULT_SHOP_SLUG = 'twins-bros'
@@ -256,8 +256,6 @@ const cardClass =
   'rounded-2xl border border-white/10 bg-black/30 p-5 shadow-2xl shadow-black/25'
 const fieldClass =
   'mt-2 w-full rounded-xl border border-[var(--admin-deep)] bg-black/70 px-4 py-3 text-sm text-white outline-none transition focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent)]/25'
-const phoneFieldClass =
-  'mt-2 w-full rounded-xl border border-[var(--admin-deep)] bg-black/70 py-3 pl-14 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent)]/25'
 const labelClass =
   'text-xs font-bold uppercase tracking-[0.16em] text-zinc-500'
 const primaryButtonClass =
@@ -329,7 +327,10 @@ function CustomersView({ bookings }: { bookings: Booking[] }) {
       { name: string; phone: string; email: string | null; visits: number }
     >()
     for (const booking of bookings) {
-      const key = booking.customerPhone || booking.customerName
+      const normalizedPhone = normalizeGreekMobilePhone(booking.customerPhone)
+      const key = normalizedPhone
+        ? `phone:${normalizedPhone}`
+        : `name:${booking.customerName.trim().toLocaleLowerCase('el')}`
       const existing = byPhone.get(key)
       if (existing) {
         existing.visits += 1
@@ -339,7 +340,7 @@ function CustomersView({ bookings }: { bookings: Booking[] }) {
       } else {
         byPhone.set(key, {
           name: booking.customerName,
-          phone: booking.customerPhone,
+          phone: normalizedPhone ?? booking.customerPhone,
           email: booking.customerEmail,
           visits: 1,
         })
@@ -1548,22 +1549,21 @@ function NewBookingModal({
 
           <label className="block">
             <span className={labelClass}>Τηλέφωνο</span>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-0 mt-2 flex items-center pl-3 font-medium text-zinc-500">
-                +30
-              </span>
-              <input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={customerPhone}
-                onChange={(event) =>
-                  setCustomerPhone(toNumericPhoneInput(event.target.value))
-                }
-                placeholder="69XXXXXXXX"
-                className={phoneFieldClass}
-              />
-            </div>
+            <input
+              type="tel"
+              inputMode="numeric"
+              pattern="69[0-9]{8}"
+              value={customerPhone}
+              onChange={(event) =>
+                setCustomerPhone(toNationalPhoneInput(event.target.value))
+              }
+              onBlur={(event) =>
+                setCustomerPhone(toNationalPhoneInput(event.target.value))
+              }
+              autoComplete="tel"
+              placeholder="6912345678"
+              className={fieldClass}
+            />
           </label>
 
           <label className="block">

@@ -39,7 +39,10 @@ export async function GET(request: Request) {
     for (const booking of noShowBookings) {
       const phoneKey = normalizeGreekMobilePhone(booking.customerPhone)
       if (!phoneKey) continue
-      noShowCountsByPhone.set(phoneKey, booking._count._all)
+      noShowCountsByPhone.set(
+        phoneKey,
+        (noShowCountsByPhone.get(phoneKey) ?? 0) + booking._count._all,
+      )
     }
 
     return Response.json(
