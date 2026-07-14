@@ -1,6 +1,8 @@
 import { Resend } from 'resend'
 
 const SHOP_EMAIL = 'aggelos2ker@gmail.com'
+const RESEND_FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL ?? 'Twins Bros <onboarding@resend.dev>'
 
 // Lazy init: the Resend constructor throws when no API key is set, which
 // would crash `next build` during page-data collection. Construct it only
@@ -62,15 +64,40 @@ ${message}
 async function sendEmail(email: string, subject: string, html: string) {
   const resend = getResend()
   if (!resend) {
-    console.warn(`RESEND_API_KEY missing — skipping email to ${email}`)
-    return
+    throw new Error('RESEND_API_KEY is not configured')
   }
-  await resend.emails.send({
-    from: 'Twins Bros <onboarding@resend.dev>',
+
+  const { data, error } = await resend.emails.send({
+    from: RESEND_FROM_EMAIL,
     to: email,
     subject,
     html,
   })
+
+  if (error) {
+    console.error('Resend rejected email:', {
+      recipient: email,
+      name: error.name,
+      message: error.message,
+    })
+    throw new Error(`Resend rejected email: ${error.message}`)
+  }
+
+  console.info('Resend accepted email:', {
+    recipient: email,
+    emailId: data?.id,
+  })
+}
+
+async function trySendEmail(email: string, subject: string, html: string) {
+  try {
+    await sendEmail(email, subject, html)
+  } catch (error) {
+    console.error('Email delivery failed:', {
+      recipient: email,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
 }
 
 export async function sendBookingNotifications(
@@ -138,12 +165,12 @@ export async function sendBookingNotifications(
   </div>
 </section>`
 
-    await sendEmail(bookingDetails.customerEmail, subject, html)
+    await trySendEmail(bookingDetails.customerEmail, subject, html)
   }
 
   bookingDetails.customerPhone = customerPhone
 
-  await sendEmail(
+  await trySendEmail(
     SHOP_EMAIL,
     `📅 Νέο Ραντεβού — ${customerName}`,
     `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
