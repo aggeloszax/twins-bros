@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 
 const SHOP_EMAIL = 'aggelos2ker@gmail.com'
-const RESEND_FROM_EMAIL =
+const DEFAULT_RESEND_FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? 'Twins Bros <onboarding@resend.dev>'
 
 // Lazy init: the Resend constructor throws when no API key is set, which
@@ -21,8 +21,6 @@ function getResend() {
 const APP_BASE_URL = (
   process.env.NEXT_PUBLIC_APP_URL ?? 'https://twins-bros.vercel.app'
 ).replace(/\/$/, '')
-const SHOP_LOGO_URL = `${APP_BASE_URL}/logo.webp`
-
 type BookingNotificationDetails = {
   id: string
   cancelToken: string
@@ -35,6 +33,12 @@ type BookingNotificationDetails = {
   }
   service: {
     name: string
+  }
+  shop: {
+    slug: string
+    name: string
+    logoUrl: string | null
+    primaryColor: string
   }
 }
 
@@ -63,14 +67,30 @@ ${message}
   // })
 }
 
-async function sendEmail(email: string, subject: string, html: string) {
+function getShopSender(shopName: string) {
+  const addressMatch = DEFAULT_RESEND_FROM_EMAIL.match(/<([^<>]+)>\s*$/)
+  const address = (addressMatch?.[1] ?? DEFAULT_RESEND_FROM_EMAIL).trim()
+  const safeShopName = shopName.replace(/[\r\n<>"]/g, '').trim() || 'Booking'
+  return `${safeShopName} <${address}>`
+}
+
+function getShopLogoUrl(logoUrl: string | null) {
+  return new URL(logoUrl || '/logo.webp', `${APP_BASE_URL}/`).toString()
+}
+
+async function sendEmail(
+  email: string,
+  subject: string,
+  html: string,
+  from: string,
+) {
   const resend = getResend()
   if (!resend) {
     throw new Error('RESEND_API_KEY is not configured')
   }
 
   const { data, error } = await resend.emails.send({
-    from: RESEND_FROM_EMAIL,
+    from,
     to: email,
     subject,
     html,
@@ -93,9 +113,14 @@ async function sendEmail(email: string, subject: string, html: string) {
   return data?.id ?? null
 }
 
-async function trySendEmail(email: string, subject: string, html: string) {
+async function trySendEmail(
+  email: string,
+  subject: string,
+  html: string,
+  from: string,
+) {
   try {
-    const emailId = await sendEmail(email, subject, html)
+    const emailId = await sendEmail(email, subject, html, from)
     return { status: 'sent' as const, emailId }
   } catch (error) {
     console.error('Email delivery failed:', {
@@ -129,6 +154,12 @@ export async function sendBookingNotifications(
   const customerPhone = escapeHtml(bookingDetails.customerPhone)
   const bookingDate = emailDate
   const bookingTime = emailTime
+  const shopName = escapeHtml(bookingDetails.shop.name)
+  const shopSender = getShopSender(bookingDetails.shop.name)
+  const shopLogoUrl = escapeHtml(getShopLogoUrl(bookingDetails.shop.logoUrl))
+  const brandColor = /^#[0-9a-f]{6}$/i.test(bookingDetails.shop.primaryColor)
+    ? bookingDetails.shop.primaryColor
+    : '#A61E22'
 
   const smsMessage = `Γεια σου ${customerName}! Το ραντεβού σου για ${serviceName} με τον ${barberName} επιβεβαιώθηκε για ${bookingDate} στις ${bookingTime}. Σε περιμένουμε!`
 
@@ -143,7 +174,7 @@ export async function sendBookingNotifications(
   }
 
   if (bookingDetails.customerEmail) {
-    const subject = `Επιβεβαίωση ραντεβού για ${serviceName}`
+    const subject = `Επιβεβαίωση ραντεβού · ${bookingDetails.shop.name}`
     const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
     const html = `
 <section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #09090b; color: #f4f4f5; border: 1px solid #27272a; border-radius: 18px; overflow: hidden;">
@@ -151,10 +182,10 @@ export async function sendBookingNotifications(
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 18px; border-collapse: collapse;">
       <tr>
         <td style="padding-right: 12px; vertical-align: middle;">
-          <img src="${SHOP_LOGO_URL}" width="52" height="52" alt="TWINS BROS" style="display: block; width: 52px; height: 52px; border-radius: 50%; border: 1px solid #7f1d1d; object-fit: cover;" />
+          <img src="${shopLogoUrl}" width="52" height="52" alt="${shopName}" style="display: block; width: 52px; height: 52px; border-radius: 50%; border: 1px solid ${brandColor}; object-fit: cover;" />
         </td>
         <td style="vertical-align: middle;">
-          <p style="margin: 0; color: #ff4d57; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">TWINS BROS</p>
+          <p style="margin: 0; color: ${brandColor}; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">${shopName}</p>
         </td>
       </tr>
     </table>
@@ -171,7 +202,7 @@ export async function sendBookingNotifications(
   </div>
   <div style="padding: 24px 28px; border-top: 1px solid #27272a; text-align: center;">
     <p style="margin: 0 0 14px; color: #a1a1aa; font-size: 13px; line-height: 1.6;">Δεν μπορείτε να έρθετε; Μπορείτε να ακυρώσετε έως και 2,5 ώρες πριν το ραντεβού.</p>
-    <a href="${cancelUrl}" style="display: inline-block; padding: 12px 26px; border-radius: 999px; background: #A61E22; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none;">Ακύρωση Ραντεβού</a>
+    <a href="${cancelUrl}" style="display: inline-block; padding: 12px 26px; border-radius: 999px; background: ${brandColor}; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none;">Ακύρωση Ραντεβού</a>
   </div>
 </section>`
 
@@ -179,6 +210,7 @@ export async function sendBookingNotifications(
       bookingDetails.customerEmail,
       subject,
       html,
+      shopSender,
     )
   }
 
@@ -191,7 +223,8 @@ export async function sendBookingNotifications(
       <strong>${customerName}</strong> · ${bookingDetails.customerPhone}<br/>
       ${serviceName} με τον ${barberName}<br/>
       ${emailDate} στις ${emailTime}
-    </p>`
+    </p>`,
+    shopSender,
   )
 
   console.log(`

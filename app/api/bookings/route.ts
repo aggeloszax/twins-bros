@@ -238,6 +238,14 @@ export async function POST(request: Request) {
                 price: true,
               },
             },
+            shop: {
+              select: {
+                slug: true,
+                name: true,
+                logoUrl: true,
+                primaryColor: true,
+              },
+            },
           },
         })
       },
