@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { cache } from 'react'
 
 export const DEFAULT_SHOP_SLUG = 'twins-bros'
 export const SHOP_QUERY_PARAM = 'shop'
@@ -113,6 +114,13 @@ export async function resolveShop(options: {
 
   return getShopBySlug(DEFAULT_SHOP_SLUG)
 }
+
+// The booking page and its metadata need the same shop. React cache keeps that
+// lookup to one database request during a single server render.
+export const resolveBookingPageShop = cache(
+  (explicitSlug: string | null, hostname: string | null) =>
+    resolveShop({ explicitSlug, hostname }),
+)
 
 export async function requireShop(request: Request): Promise<
   | { shop: ShopContext; response?: never }

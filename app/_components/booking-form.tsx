@@ -1059,6 +1059,40 @@ export default function BookingForm({
             </div>
           )}
         </section>
+
+        {shopSlug === 'salut' && (
+          <footer className="mt-10 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
+            <p className="font-semibold text-neutral-700">SALUT</p>
+            <p>Ακτή Καραϊσκάκη 49, Σαλαμίνα 189 00</p>
+            <a
+              href="tel:+302104654063"
+              className="transition-colors hover:text-[var(--brand)]"
+            >
+              +30 210 465 4063
+            </a>
+            <nav
+              aria-label="Νομικές πληροφορίες"
+              className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2"
+            >
+              <Link
+                href={`/booking-terms?${new URLSearchParams({ shop: shopSlug }).toString()}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-[var(--brand)] underline underline-offset-4"
+              >
+                Όροι Κράτησης
+              </Link>
+              <Link
+                href={`/privacy?${new URLSearchParams({ shop: shopSlug }).toString()}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-[var(--brand)] underline underline-offset-4"
+              >
+                Πολιτική Απορρήτου
+              </Link>
+            </nav>
+          </footer>
+        )}
       </main>
 
       <div className="fixed inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 backdrop-blur-xl">
