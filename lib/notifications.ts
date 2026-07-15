@@ -39,6 +39,9 @@ type BookingNotificationDetails = {
     name: string
     logoUrl: string | null
     primaryColor: string
+    domains: {
+      hostname: string
+    }[]
   }
 }
 
@@ -74,8 +77,18 @@ function getShopSender(shopName: string) {
   return `${safeShopName} <${address}>`
 }
 
-function getShopLogoUrl(logoUrl: string | null) {
-  return new URL(logoUrl || '/logo.webp', `${APP_BASE_URL}/`).toString()
+function getShopBaseUrl(domains: { hostname: string }[]) {
+  const hostnames = domains
+    .map(({ hostname }) => hostname.trim().toLowerCase())
+    .filter((hostname) => /^[a-z0-9.-]+$/.test(hostname))
+  const hostname =
+    hostnames.find((candidate) => !candidate.startsWith('www.')) ?? hostnames[0]
+
+  return hostname ? `https://${hostname}` : APP_BASE_URL
+}
+
+function getShopLogoUrl(logoUrl: string | null, shopBaseUrl: string) {
+  return new URL(logoUrl || '/logo.webp', `${shopBaseUrl}/`).toString()
 }
 
 async function sendEmail(
@@ -156,7 +169,10 @@ export async function sendBookingNotifications(
   const bookingTime = emailTime
   const shopName = escapeHtml(bookingDetails.shop.name)
   const shopSender = getShopSender(bookingDetails.shop.name)
-  const shopLogoUrl = escapeHtml(getShopLogoUrl(bookingDetails.shop.logoUrl))
+  const shopBaseUrl = getShopBaseUrl(bookingDetails.shop.domains)
+  const shopLogoUrl = escapeHtml(
+    getShopLogoUrl(bookingDetails.shop.logoUrl, shopBaseUrl),
+  )
   const brandColor = /^#[0-9a-f]{6}$/i.test(bookingDetails.shop.primaryColor)
     ? bookingDetails.shop.primaryColor
     : '#A61E22'
@@ -175,7 +191,7 @@ export async function sendBookingNotifications(
 
   if (bookingDetails.customerEmail) {
     const subject = `Επιβεβαίωση ραντεβού · ${bookingDetails.shop.name}`
-    const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
+    const cancelUrl = `${shopBaseUrl}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
     const html = `
 <section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #09090b; color: #f4f4f5; border: 1px solid #27272a; border-radius: 18px; overflow: hidden;">
   <div style="padding: 28px; border-bottom: 1px solid #27272a;">

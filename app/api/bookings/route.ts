@@ -244,6 +244,10 @@ export async function POST(request: Request) {
                 name: true,
                 logoUrl: true,
                 primaryColor: true,
+                domains: {
+                  select: { hostname: true },
+                  orderBy: { hostname: 'asc' },
+                },
               },
             },
           },

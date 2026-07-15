@@ -9,7 +9,11 @@ import { CancelClient } from './cancel-client'
 
 export const dynamic = 'force-dynamic'
 
-const SHOP_PHONE = '2112180304'
+type CancelShop = {
+  name: string
+  logoUrl: string | null
+  primaryColor: string
+}
 
 function formatDate(date: Date) {
   return date.toLocaleDateString(BOOKING_LOCALE, {
@@ -30,22 +34,48 @@ function formatTime(date: Date) {
   })
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({
+  children,
+  shop,
+}: {
+  children: React.ReactNode
+  shop?: CancelShop
+}) {
+  const shopName = shop?.name ?? 'Twins Bros'
+  const logoUrl = shop?.logoUrl ?? '/logo.webp'
+  const brandColor = /^#[0-9a-f]{6}$/i.test(shop?.primaryColor ?? '')
+    ? shop!.primaryColor
+    : '#ff1f2d'
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[radial-gradient(circle_at_top,#4b0710_0%,#120306_42%,#050505_100%)] px-5 py-10 font-sans text-zinc-50">
-      <div className="animate-fade-in w-full max-w-md rounded-3xl border border-white/10 bg-black/45 p-7 shadow-2xl shadow-[#ff1f2d]/10 backdrop-blur sm:p-8">
+    <main
+      className="flex min-h-screen flex-col items-center justify-center px-5 py-10 font-sans text-zinc-50"
+      style={{
+        background: `radial-gradient(circle at top, ${brandColor} 0%, #050505 58%, #050505 100%)`,
+      }}
+    >
+      <div
+        className="animate-fade-in w-full max-w-md rounded-3xl border border-white/10 bg-black/55 p-7 shadow-2xl backdrop-blur sm:p-8"
+        style={{ boxShadow: `0 25px 60px -20px ${brandColor}` }}
+      >
         <div className="flex flex-col items-center text-center">
-          <div className="relative h-14 w-14 overflow-hidden rounded-full border border-[#ff1f2d]/70 bg-[#120306] shadow-[0_0_30px_rgba(255,31,45,0.18)]">
+          <div
+            className="relative h-14 w-14 overflow-hidden rounded-full border bg-black/40"
+            style={{ borderColor: brandColor }}
+          >
             <Image
-              src="/logo.webp"
-              alt="TWINS BROS logo"
+              src={logoUrl}
+              alt={`${shopName} logo`}
               fill
               sizes="56px"
               className="object-cover"
             />
           </div>
-          <p className="mt-3 text-xs font-bold uppercase tracking-[0.28em] text-[#ff1f2d]">
-            TWINS BROS
+          <p
+            className="mt-3 text-xs font-bold uppercase tracking-[0.28em]"
+            style={{ color: brandColor }}
+          >
+            {shopName}
           </p>
         </div>
         <div className="mt-7">{children}</div>
@@ -74,12 +104,19 @@ export default async function CancelPage({
       customerName: true,
       barber: { select: { name: true } },
       service: { select: { name: true } },
+      shop: {
+        select: {
+          name: true,
+          logoUrl: true,
+          primaryColor: true,
+        },
+      },
     },
   })
 
   if (!booking || !token || booking.cancelToken !== token) {
     return (
-      <Shell>
+      <Shell shop={booking?.shop}>
         <div className="text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
             Το ραντεβού δεν βρέθηκε
@@ -95,9 +132,12 @@ export default async function CancelPage({
 
   if (!canCancelBooking(booking.startTime, new Date())) {
     return (
-      <Shell>
+      <Shell shop={booking.shop}>
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[#ff1f2d]/40 bg-[#ff1f2d]/10 text-2xl">
+          <div
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border bg-white/5 text-2xl"
+            style={{ borderColor: booking.shop.primaryColor }}
+          >
             ⏳
           </div>
           <h1 className="mt-5 text-xl font-semibold tracking-tight text-zinc-50">
@@ -106,10 +146,8 @@ export default async function CancelPage({
           <p className="mt-4 text-sm leading-7 text-zinc-300">
             Πολιτική κρατήσεων: Μπορείτε να ακυρώσετε ή να επαναπρογραμματίσετε
             το ραντεβού σας έως και 2,5 ώρες πριν από την ώρα του ραντεβού. Για
-            αλλαγές τελευταίας στιγμής, παρακαλώ καλέστε στο μαγαζί:{' '}
-            <a href={`tel:${SHOP_PHONE}`} className="font-bold text-white underline underline-offset-4">
-              {SHOP_PHONE}
-            </a>.
+            αλλαγές τελευταίας στιγμής, παρακαλώ επικοινωνήστε απευθείας με το
+            κατάστημα.
           </p>
         </div>
       </Shell>
@@ -117,10 +155,11 @@ export default async function CancelPage({
   }
 
   return (
-    <Shell>
+    <Shell shop={booking.shop}>
       <CancelClient
         id={booking.id}
         token={token}
+        brandColor={booking.shop.primaryColor}
         details={{
           customerName: booking.customerName,
           service: booking.service.name,

@@ -37,10 +37,12 @@ export function CancelClient({
   id,
   token,
   details,
+  brandColor,
 }: {
   id: string
   token: string
   details: BookingDetails
+  brandColor: string
 }) {
   const [isPending, startTransition] = useTransition()
   const [done, setDone] = useState(false)
@@ -116,7 +118,8 @@ export function CancelClient({
         type="button"
         onClick={handleCancel}
         disabled={isPending}
-        className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#ff1f2d] px-6 py-3.5 text-sm font-bold text-white shadow-[0_16px_40px_rgba(255,31,45,0.22)] transition-all duration-300 ease-in-out hover:bg-[#d80d19] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#ff1f2d]"
+        className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 ease-in-out hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        style={{ backgroundColor: brandColor }}
       >
         {isPending ? 'Γίνεται ακύρωση…' : 'Επιβεβαίωση Ακύρωσης Ραντεβού'}
       </button>
