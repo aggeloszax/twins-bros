@@ -571,7 +571,7 @@ export default function BookingForm({
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 font-sans text-neutral-900">
         <div className="animate-fade-in w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-7 text-center shadow-md sm:p-8">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-[0_8px_24px_rgba(128,0,32,0.25)]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_8px_24px_rgba(16,185,129,0.28)]">
             <CheckIcon className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-2xl font-bold tracking-tight text-neutral-900">
