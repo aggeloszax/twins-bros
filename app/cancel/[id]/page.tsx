@@ -101,6 +101,7 @@ export default async function CancelPage({
       id: true,
       cancelToken: true,
       startTime: true,
+      status: true,
       customerName: true,
       barber: { select: { name: true } },
       service: { select: { name: true } },
@@ -124,6 +125,25 @@ export default async function CancelPage({
           <p className="mt-3 text-sm leading-6 text-zinc-400">
             Ο σύνδεσμος δεν είναι έγκυρος ή το ραντεβού έχει ήδη ακυρωθεί. Αν
             χρειάζεστε βοήθεια, επικοινωνήστε με το μαγαζί.
+          </p>
+        </div>
+      </Shell>
+    )
+  }
+
+  if (booking.status === 'CANCELLED') {
+    return (
+      <Shell shop={booking.shop}>
+        <div className="text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-3xl text-emerald-400">
+            ✓
+          </div>
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-50">
+            Το ραντεβού έχει ήδη ακυρωθεί
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Δεν χρειάζεται να κάνετε κάποια άλλη ενέργεια. Η συγκεκριμένη ώρα
+            είναι ξανά διαθέσιμη για κράτηση.
           </p>
         </div>
       </Shell>

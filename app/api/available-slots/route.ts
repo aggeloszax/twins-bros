@@ -68,6 +68,7 @@ export async function GET(request: Request) {
         where: {
           barberId,
           shopId: shop.id,
+          status: { not: 'CANCELLED' },
           startTime: { gte: dayStart, lt: dayEnd },
         },
         select: { startTime: true, endTime: true },

@@ -60,6 +60,8 @@ export function CancelClient({
         setError(
           'Το χρονικό περιθώριο ακύρωσης έχει παρέλθει. Παρακαλώ καλέστε στο μαγαζί για αλλαγές τελευταίας στιγμής.',
         )
+      } else if (result.reason === 'already-cancelled') {
+        setDone(true)
       } else if (result.reason === 'not-found') {
         setError('Το ραντεβού δεν βρέθηκε — ίσως έχει ήδη ακυρωθεί.')
       } else {

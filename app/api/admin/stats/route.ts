@@ -35,11 +35,19 @@ export async function GET(request: Request) {
 
     const [todayBookings, weekBookings] = await Promise.all([
       prisma.booking.findMany({
-        where: { shopId: shop.id, startTime: { gte: todayStart, lt: todayEnd } },
+        where: {
+          shopId: shop.id,
+          status: { not: 'CANCELLED' },
+          startTime: { gte: todayStart, lt: todayEnd },
+        },
         include: { service: { select: { price: true } } },
       }),
       prisma.booking.findMany({
-        where: { shopId: shop.id, startTime: { gte: weekStart, lt: weekEnd } },
+        where: {
+          shopId: shop.id,
+          status: { not: 'CANCELLED' },
+          startTime: { gte: weekStart, lt: weekEnd },
+        },
         include: { service: { select: { price: true } } },
       }),
     ])

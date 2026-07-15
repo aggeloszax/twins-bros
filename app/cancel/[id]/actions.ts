@@ -5,7 +5,10 @@ import { canCancelBooking } from '@/lib/schedule'
 
 export type CancelResult =
   | { ok: true }
-  | { ok: false; reason: 'not-found' | 'too-late' | 'error' }
+  | {
+      ok: false
+      reason: 'not-found' | 'already-cancelled' | 'too-late' | 'error'
+    }
 
 export async function cancelBooking(
   id: string,
@@ -23,11 +26,15 @@ export async function cancelBooking(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, cancelToken: true, startTime: true },
+      select: { id: true, cancelToken: true, startTime: true, status: true },
     })
 
     if (!booking || booking.cancelToken !== token) {
       return { ok: false, reason: 'not-found' }
+    }
+
+    if (booking.status === 'CANCELLED') {
+      return { ok: false, reason: 'already-cancelled' }
     }
 
     // Re-enforce the 2.5h policy on the server — the client cannot be trusted,
@@ -36,9 +43,19 @@ export async function cancelBooking(
       return { ok: false, reason: 'too-late' }
     }
 
-    // deleteMany is idempotent: if the record was already removed (e.g. by an
-    // admin) the end state still matches the customer's intent.
-    await prisma.booking.deleteMany({ where: { id: booking.id } })
+    const result = await prisma.booking.updateMany({
+      where: {
+        id: booking.id,
+        cancelToken: token,
+        status: { not: 'CANCELLED' },
+      },
+      data: { status: 'CANCELLED', noShow: false },
+    })
+
+    if (result.count === 0) {
+      return { ok: false, reason: 'already-cancelled' }
+    }
+
     return { ok: true }
   } catch (error) {
     console.error('Failed to cancel booking:', error)

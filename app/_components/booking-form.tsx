@@ -1029,8 +1029,16 @@ export default function BookingForm({
 
               {shopSlug === 'salut' && (
                 <p className="text-xs leading-5 text-neutral-500">
-                  Με την καταχώριση του ραντεβού επιβεβαιώνεις ότι ενημερώθηκες
-                  για την{' '}
+                  Με την καταχώριση του ραντεβού αποδέχεσαι τους{' '}
+                  <Link
+                    href={`/booking-terms?${new URLSearchParams({ shop: shopSlug }).toString()}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-[var(--brand)] underline underline-offset-4"
+                  >
+                    Όρους Κράτησης
+                  </Link>{' '}
+                  και επιβεβαιώνεις ότι ενημερώθηκες για την{' '}
                   <Link
                     href={`/privacy?${new URLSearchParams({ shop: shopSlug }).toString()}`}
                     target="_blank"

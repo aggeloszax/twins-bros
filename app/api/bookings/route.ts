@@ -191,6 +191,7 @@ export async function POST(request: Request) {
           where: {
             shopId: shop.id,
             barberId,
+            status: { not: 'CANCELLED' },
             startTime: { lt: endTime },
             endTime: { gt: startTime },
           },
