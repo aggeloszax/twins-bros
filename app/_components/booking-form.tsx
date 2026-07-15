@@ -556,7 +556,6 @@ export default function BookingForm({
 
   function handleSelectService(service: Service) {
     setSelectedService(service)
-    setStep(2)
   }
 
   if (
