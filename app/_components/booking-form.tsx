@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import {
   BOOKING_WINDOW_DAYS,
@@ -1025,6 +1026,22 @@ export default function BookingForm({
                   />
                 </label>
               </div>
+
+              {shopSlug === 'salut' && (
+                <p className="text-xs leading-5 text-neutral-500">
+                  Με την καταχώριση του ραντεβού επιβεβαιώνεις ότι ενημερώθηκες
+                  για την{' '}
+                  <Link
+                    href={`/privacy?${new URLSearchParams({ shop: shopSlug }).toString()}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-[var(--brand)] underline underline-offset-4"
+                  >
+                    Πολιτική Απορρήτου
+                  </Link>
+                  .
+                </p>
+              )}
 
               {bookingError && (
                 <div className="rounded-2xl border border-[var(--brand)] bg-[var(--brand)]/5 p-4 text-sm text-[var(--brand)]">
