@@ -39,9 +39,6 @@ type BookingNotificationDetails = {
     name: string
     logoUrl: string | null
     primaryColor: string
-    domains: {
-      hostname: string
-    }[]
   }
 }
 
@@ -75,16 +72,6 @@ function getShopSender(shopName: string) {
   const address = (addressMatch?.[1] ?? DEFAULT_RESEND_FROM_EMAIL).trim()
   const safeShopName = shopName.replace(/[\r\n<>"]/g, '').trim() || 'Booking'
   return `${safeShopName} <${address}>`
-}
-
-function getShopBaseUrl(domains: { hostname: string }[]) {
-  const hostnames = domains
-    .map(({ hostname }) => hostname.trim().toLowerCase())
-    .filter((hostname) => /^[a-z0-9.-]+$/.test(hostname))
-  const hostname =
-    hostnames.find((candidate) => !candidate.startsWith('www.')) ?? hostnames[0]
-
-  return hostname ? `https://${hostname}` : APP_BASE_URL
 }
 
 function getShopLogoUrl(logoUrl: string | null, shopBaseUrl: string) {
@@ -169,7 +156,9 @@ export async function sendBookingNotifications(
   const bookingTime = emailTime
   const shopName = escapeHtml(bookingDetails.shop.name)
   const shopSender = getShopSender(bookingDetails.shop.name)
-  const shopBaseUrl = getShopBaseUrl(bookingDetails.shop.domains)
+  // Shop domains may be reserved in the database before their DNS is live.
+  // Email actions must always point to the deployed booking application.
+  const shopBaseUrl = APP_BASE_URL
   const shopLogoUrl = escapeHtml(
     getShopLogoUrl(bookingDetails.shop.logoUrl, shopBaseUrl),
   )
