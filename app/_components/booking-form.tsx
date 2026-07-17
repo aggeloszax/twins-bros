@@ -168,6 +168,21 @@ function ArrowIcon({ className }: { className?: string }) {
   )
 }
 
+function MapPinIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
 function Stepper({
   step,
   done,
@@ -1061,15 +1076,103 @@ export default function BookingForm({
         </section>
 
         {shopSlug === 'salut' && (
-          <footer className="mt-10 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
-            <p className="font-semibold text-neutral-700">SALUT</p>
-            <p>Ακτή Καραϊσκάκη 49, Σαλαμίνα 189 00</p>
-            <a
-              href="tel:+302104654063"
-              className="transition-colors hover:text-[var(--brand)]"
+          <>
+            <section
+              aria-labelledby="salut-visit-title"
+              className="mt-12 border-t border-neutral-200 pt-10"
             >
-              +30 210 465 4063
-            </a>
+              <div className="mb-6">
+                <p className={stepHeaderClass}>Βρες μας</p>
+                <h2
+                  id="salut-visit-title"
+                  className="mt-2 text-2xl font-bold tracking-tight text-neutral-900"
+                >
+                  Επισκέψου το Salut
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-neutral-500">
+                  Όλες οι πληροφορίες που χρειάζεσαι πριν από το ραντεβού σου.
+                </p>
+              </div>
+
+              <div className="grid overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm md:grid-cols-[0.9fr_1.1fr]">
+                <div className="p-5 sm:p-7">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/[0.08] text-[var(--brand)]">
+                      <MapPinIcon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-neutral-900">Τοποθεσία</h3>
+                      <address className="mt-1 not-italic text-sm leading-6 text-neutral-500">
+                        Ακτή Καραϊσκάκη 49
+                        <br />
+                        Σαλαμίνα, 189 00
+                      </address>
+                    </div>
+                  </div>
+
+                  <a
+                    href="https://www.google.com/maps/dir/?api=1&destination=%CE%91%CE%BA%CF%84%CE%AE+%CE%9A%CE%B1%CF%81%CE%B1%CF%8A%CF%83%CE%BA%CE%AC%CE%BA%CE%B7+49%2C+%CE%A3%CE%B1%CE%BB%CE%B1%CE%BC%CE%AF%CE%BD%CE%B1+189+00"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    Οδηγίες στο Google Maps
+                    <ArrowIcon className="h-4 w-4" />
+                  </a>
+
+                  <div className="my-6 h-px bg-neutral-200" />
+
+                  <div className="flex items-center gap-2">
+                    <ClockIcon className="h-5 w-5 text-[var(--brand)]" />
+                    <h3 className="font-bold text-neutral-900">Ώρες λειτουργίας</h3>
+                  </div>
+                  <dl className="mt-4 space-y-2.5 text-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <dt className="text-neutral-500">Δευτέρα</dt>
+                      <dd className="font-semibold text-neutral-900">Κλειστά</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <dt className="text-neutral-500">Τρίτη</dt>
+                      <dd className="font-semibold tabular-nums text-neutral-900">11:00–19:30</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <dt className="text-neutral-500">Τετάρτη</dt>
+                      <dd className="text-right font-semibold tabular-nums text-neutral-900">
+                        09:30–13:30
+                        <br />
+                        17:30–21:00
+                      </dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <dt className="text-neutral-500">Πέμπτη–Κυριακή</dt>
+                      <dd className="font-semibold text-neutral-900">Κλειστά</dd>
+                    </div>
+                  </dl>
+
+                  <a
+                    href="tel:+302104654063"
+                    className="mt-6 inline-flex text-sm font-bold text-[var(--brand)] underline decoration-[var(--brand)]/30 underline-offset-4 transition-colors hover:decoration-[var(--brand)]"
+                  >
+                    +30 210 465 4063
+                  </a>
+                </div>
+
+                <div className="min-h-72 border-t border-neutral-200 bg-neutral-100 md:min-h-full md:border-l md:border-t-0">
+                  <iframe
+                    title="Χάρτης τοποθεσίας Salut"
+                    src="https://www.google.com/maps?q=%CE%91%CE%BA%CF%84%CE%AE+%CE%9A%CE%B1%CF%81%CE%B1%CF%8A%CF%83%CE%BA%CE%AC%CE%BA%CE%B7+49%2C+%CE%A3%CE%B1%CE%BB%CE%B1%CE%BC%CE%AF%CE%BD%CE%B1+189+00&output=embed"
+                    className="h-full min-h-72 w-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            </section>
+
+            <footer className="mt-10 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
+              <p className="font-semibold text-neutral-700">SALUT</p>
+              <p>Ακτή Καραϊσκάκη 49, Σαλαμίνα 189 00</p>
             <nav
               aria-label="Νομικές πληροφορίες"
               className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2"
@@ -1091,7 +1194,8 @@ export default function BookingForm({
                 Πολιτική Απορρήτου
               </Link>
             </nav>
-          </footer>
+            </footer>
+          </>
         )}
       </main>
 
