@@ -12,6 +12,7 @@ import {
   toDateKey,
 } from '@/lib/schedule'
 import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
+import { getShopUiConfig } from '@/lib/shop-ui'
 
 type Service = {
   id: string
@@ -651,7 +652,9 @@ export default function BookingForm({
   }
 
   const hasAvailableSlot = slots.some((s) => s.available)
-  const usesCompactMobileServiceList = shopSlug === 'salut'
+  const shopUiConfig = getShopUiConfig(shopSlug)
+  const usesCompactMobileServiceList = shopUiConfig.compactMobileServiceList
+  const visitInfo = shopUiConfig.visitInfo
 
   return (
     <div
@@ -1083,7 +1086,7 @@ export default function BookingForm({
                 </label>
               </div>
 
-              {shopSlug === 'salut' && (
+              {shopUiConfig.showLegalNotice && (
                 <p className="text-xs leading-5 text-neutral-500">
                   Με την καταχώριση του ραντεβού αποδέχεσαι τους{' '}
                   <Link
@@ -1116,22 +1119,22 @@ export default function BookingForm({
           )}
         </section>
 
-        {shopSlug === 'salut' && (
+        {visitInfo && (
           <>
             <section
-              aria-labelledby="salut-visit-title"
+              aria-labelledby={visitInfo.id}
               className="mt-12 border-t border-neutral-200 pt-10"
             >
               <div className="mb-6">
-                <p className={stepHeaderClass}>Βρες μας</p>
+                <p className={stepHeaderClass}>{visitInfo.eyebrow}</p>
                 <h2
-                  id="salut-visit-title"
+                  id={visitInfo.id}
                   className="mt-2 text-2xl font-bold tracking-tight text-neutral-900"
                 >
-                  Επισκέψου το Salut
+                  {visitInfo.title}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  Όλες οι πληροφορίες που χρειάζεσαι πριν από το ραντεβού σου.
+                  {visitInfo.description}
                 </p>
               </div>
 
@@ -1142,17 +1145,22 @@ export default function BookingForm({
                       <MapPinIcon className="h-5 w-5" />
                     </span>
                     <div>
-                      <h3 className="font-bold text-neutral-900">Τοποθεσία</h3>
+                      <h3 className="font-bold text-neutral-900">
+                        {visitInfo.locationTitle}
+                      </h3>
                       <address className="mt-1 not-italic text-sm leading-6 text-neutral-500">
-                        Ακτή Καραϊσκάκη 49
-                        <br />
-                        Σαλαμίνα, 189 00
+                        {visitInfo.addressLines.map((line, index) => (
+                          <Fragment key={line}>
+                            {index > 0 && <br />}
+                            {line}
+                          </Fragment>
+                        ))}
                       </address>
                     </div>
                   </div>
 
                   <a
-                    href="https://www.google.com/maps/dir/?api=1&destination=%CE%91%CE%BA%CF%84%CE%AE+%CE%9A%CE%B1%CF%81%CE%B1%CF%8A%CF%83%CE%BA%CE%AC%CE%BA%CE%B7+49%2C+%CE%A3%CE%B1%CE%BB%CE%B1%CE%BC%CE%AF%CE%BD%CE%B1+189+00"
+                    href={visitInfo.directionsUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 active:translate-y-0"
@@ -1165,43 +1173,41 @@ export default function BookingForm({
 
                   <div className="flex items-center gap-2">
                     <ClockIcon className="h-5 w-5 text-[var(--brand)]" />
-                    <h3 className="font-bold text-neutral-900">Ώρες λειτουργίας</h3>
+                    <h3 className="font-bold text-neutral-900">
+                      {visitInfo.hoursTitle}
+                    </h3>
                   </div>
                   <dl className="mt-4 space-y-2.5 text-sm">
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-neutral-500">Δευτέρα</dt>
-                      <dd className="font-semibold text-neutral-900">Κλειστά</dd>
-                    </div>
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-neutral-500">Τρίτη</dt>
-                      <dd className="font-semibold tabular-nums text-neutral-900">11:00–19:30</dd>
-                    </div>
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-neutral-500">Τετάρτη</dt>
-                      <dd className="text-right font-semibold tabular-nums text-neutral-900">
-                        09:30–13:30
-                        <br />
-                        17:30–21:00
-                      </dd>
-                    </div>
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-neutral-500">Πέμπτη–Κυριακή</dt>
-                      <dd className="font-semibold text-neutral-900">Κλειστά</dd>
-                    </div>
+                    {visitInfo.hours.map((item) => (
+                      <div
+                        key={item.day}
+                        className="flex items-start justify-between gap-4"
+                      >
+                        <dt className="text-neutral-500">{item.day}</dt>
+                        <dd className="text-right font-semibold tabular-nums text-neutral-900">
+                          {item.times.map((time, index) => (
+                            <Fragment key={time}>
+                              {index > 0 && <br />}
+                              {time}
+                            </Fragment>
+                          ))}
+                        </dd>
+                      </div>
+                    ))}
                   </dl>
 
                   <a
-                    href="tel:+302104654063"
+                    href={visitInfo.phone.href}
                     className="mt-6 inline-flex text-sm font-bold text-[var(--brand)] underline decoration-[var(--brand)]/30 underline-offset-4 transition-colors hover:decoration-[var(--brand)]"
                   >
-                    +30 210 465 4063
+                    {visitInfo.phone.label}
                   </a>
                 </div>
 
                 <div className="min-h-72 border-t border-neutral-200 bg-neutral-100 md:min-h-full md:border-l md:border-t-0">
                   <iframe
-                    title="Χάρτης τοποθεσίας Salut"
-                    src="https://www.google.com/maps?q=%CE%91%CE%BA%CF%84%CE%AE+%CE%9A%CE%B1%CF%81%CE%B1%CF%8A%CF%83%CE%BA%CE%AC%CE%BA%CE%B7+49%2C+%CE%A3%CE%B1%CE%BB%CE%B1%CE%BC%CE%AF%CE%BD%CE%B1+189+00&output=embed"
+                    title={visitInfo.mapTitle}
+                    src={visitInfo.mapEmbedUrl}
                     className="h-full min-h-72 w-full border-0"
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
@@ -1212,8 +1218,10 @@ export default function BookingForm({
             </section>
 
             <footer className="mt-10 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
-              <p className="font-semibold text-neutral-700">SALUT</p>
-              <p>Ακτή Καραϊσκάκη 49, Σαλαμίνα 189 00</p>
+              <p className="font-semibold text-neutral-700">
+                {visitInfo.footerName}
+              </p>
+              <p>{visitInfo.footerAddress}</p>
             <nav
               aria-label="Νομικές πληροφορίες"
               className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2"
