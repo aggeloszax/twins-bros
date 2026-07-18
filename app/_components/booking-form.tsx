@@ -651,6 +651,7 @@ export default function BookingForm({
   }
 
   const hasAvailableSlot = slots.some((s) => s.available)
+  const usesCompactMobileServiceList = shopSlug === 'salut'
 
   return (
     <div
@@ -702,7 +703,13 @@ export default function BookingForm({
                 </p>
               </div>
 
-              <div className="divide-y divide-neutral-200 overflow-hidden rounded-2xl border border-neutral-200 bg-white sm:space-y-3 sm:divide-y-0 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent">
+              <div
+                className={
+                  usesCompactMobileServiceList
+                    ? 'divide-y divide-neutral-200 overflow-hidden rounded-2xl border border-neutral-200 bg-white sm:space-y-3 sm:divide-y-0 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent'
+                    : 'space-y-3'
+                }
+              >
                 {loadingServices ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <CardSkeleton key={i} />
@@ -717,27 +724,61 @@ export default function BookingForm({
                         key={service.id}
                         type="button"
                         onClick={() => handleSelectService(service)}
-                        className={`group flex min-h-[60px] w-full items-center justify-between gap-3 px-3 py-2 text-left transition-all duration-300 ease-in-out sm:min-h-0 sm:rounded-2xl sm:border sm:p-5 sm:shadow-sm sm:hover:-translate-y-0.5 sm:hover:shadow-md ${
+                        className={`${
+                          usesCompactMobileServiceList
+                            ? 'group flex min-h-[60px] w-full items-center justify-between gap-3 px-3 py-2 text-left transition-all duration-300 ease-in-out sm:min-h-0 sm:rounded-2xl sm:border sm:p-5 sm:shadow-sm sm:hover:-translate-y-0.5 sm:hover:shadow-md'
+                            : 'group flex w-full items-center justify-between gap-4 rounded-2xl border p-5 text-left shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md'
+                        } ${
                           isSelected
-                            ? 'bg-[var(--brand)]/[0.08] shadow-[inset_3px_0_0_var(--brand)] sm:border-[var(--brand)] sm:bg-[var(--brand)]/[0.06] sm:shadow-sm sm:ring-1 sm:ring-[var(--brand)]'
-                            : 'bg-white hover:bg-neutral-50 sm:border-[var(--brand)]'
+                            ? usesCompactMobileServiceList
+                              ? 'bg-[var(--brand)]/[0.08] shadow-[inset_3px_0_0_var(--brand)] sm:border-[var(--brand)] sm:bg-[var(--brand)]/[0.06] sm:shadow-sm sm:ring-1 sm:ring-[var(--brand)]'
+                              : 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
+                            : usesCompactMobileServiceList
+                              ? 'bg-white hover:bg-neutral-50 sm:border-[var(--brand)]'
+                              : 'border-[var(--brand)] bg-white hover:bg-neutral-50'
                         }`}
                       >
                         <div className="min-w-0">
-                          <h3 className="line-clamp-2 text-[13px] font-bold leading-[1.15rem] text-neutral-900 sm:truncate sm:text-lg sm:leading-normal">
+                          <h3
+                            className={
+                              usesCompactMobileServiceList
+                                ? 'line-clamp-2 text-[13px] font-bold leading-[1.15rem] text-neutral-900 sm:truncate sm:text-lg sm:leading-normal'
+                                : 'truncate text-base font-bold text-neutral-900 sm:text-lg'
+                            }
+                          >
                             {service.name}
                           </h3>
-                          <div className="mt-0.5 flex items-center gap-1 text-[11px] text-neutral-500 sm:mt-2 sm:gap-2 sm:text-sm">
-                            <ClockIcon className="h-3 w-3 text-[var(--brand)] sm:h-4 sm:w-4" />
+                          <div
+                            className={
+                              usesCompactMobileServiceList
+                                ? 'mt-0.5 flex items-center gap-1 text-[11px] text-neutral-500 sm:mt-2 sm:gap-2 sm:text-sm'
+                                : 'mt-2 flex items-center gap-2 text-sm text-neutral-500'
+                            }
+                          >
+                            <ClockIcon
+                              className={
+                                usesCompactMobileServiceList
+                                  ? 'h-3 w-3 text-[var(--brand)] sm:h-4 sm:w-4'
+                                  : 'h-4 w-4 text-[var(--brand)]'
+                              }
+                            />
                             <span>{service.duration} λεπτά</span>
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                          <span className="text-sm font-bold tabular-nums text-neutral-900 sm:text-lg">
+                          <span
+                            className={
+                              usesCompactMobileServiceList
+                                ? 'text-sm font-bold tabular-nums text-neutral-900 sm:text-lg'
+                                : 'text-lg font-bold tabular-nums text-neutral-900'
+                            }
+                          >
                             {formatPrice(service.price)}
                           </span>
                           <span
-                            className={`hidden h-7 w-7 items-center justify-center rounded-full border transition-all duration-300 ease-in-out sm:flex ${
+                            className={`${
+                              usesCompactMobileServiceList ? 'hidden sm:flex' : 'flex'
+                            } h-7 w-7 items-center justify-center rounded-full border transition-all duration-300 ease-in-out ${
                               isSelected
                                 ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
                                 : 'border-neutral-300 text-transparent group-hover:border-[var(--brand)]'
