@@ -19,7 +19,7 @@ function getResend() {
 
 // Default to the production URL; override locally via NEXT_PUBLIC_APP_URL.
 const APP_BASE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL ?? 'https://twins-bros.vercel.app'
+  process.env.NEXT_PUBLIC_APP_URL ?? 'https://barber-booking-gr.vercel.app'
 ).replace(/\/$/, '')
 type BookingNotificationDetails = {
   id: string
