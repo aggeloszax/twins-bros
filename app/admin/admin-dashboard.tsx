@@ -252,6 +252,21 @@ function TrashIcon({ className }: { className?: string }) {
   )
 }
 
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="m4 20 4.2-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+      <path d="m14.5 6.7 3 3" stroke="currentColor" strokeWidth="1.9" />
+    </svg>
+  )
+}
+
 const cardClass =
   'rounded-2xl border border-white/10 bg-black/30 p-5 shadow-2xl shadow-black/25'
 const fieldClass =
@@ -529,15 +544,18 @@ function ModalShell({
 function BarbersView({
   barbers,
   onCreated,
+  onUpdated,
   onDeleted,
   shopSlug,
 }: {
   barbers: BarberItem[]
   onCreated: (barber: BarberItem) => void
+  onUpdated: (barber: BarberItem) => void
   onDeleted: (id: string) => void
   shopSlug: string
 }) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingBarber, setEditingBarber] = useState<BarberItem | null>(null)
   const [name, setName] = useState('')
   const [imageData, setImageData] = useState<string | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -551,7 +569,7 @@ function BarbersView({
     const file = event.target.files?.[0]
     setModalError(null)
     setImageData(null)
-    setImagePreview(null)
+    setImagePreview(editingBarber?.image ?? null)
 
     if (!file) return
 
@@ -617,6 +635,46 @@ function BarbersView({
     }
   }
 
+  async function handleUpdate(event: FormEvent) {
+    event.preventDefault()
+    if (!editingBarber) return
+    if (!imageData) {
+      setModalError('Επίλεξε τη νέα φωτογραφία του κουρέα.')
+      return
+    }
+    if (imageProcessing) {
+      setModalError('Περίμενε να ολοκληρωθεί η επεξεργασία της φωτογραφίας.')
+      return
+    }
+
+    setSubmitting(true)
+    setModalError(null)
+    try {
+      const res = await fetch(apiPath('/api/barbers', shopSlug), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingBarber.id, image: imageData }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null
+        setModalError(data?.error ?? 'Η ενημέρωση απέτυχε.')
+        return
+      }
+
+      onUpdated((await res.json()) as BarberItem)
+      setEditingBarber(null)
+      setImageData(null)
+      setImagePreview(null)
+      setModalOpen(false)
+    } catch {
+      setModalError('Σφάλμα σύνδεσης. Δοκίμασε ξανά.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   async function handleDelete(id: string) {
     setDeletingId(id)
     setListError(null)
@@ -650,6 +708,7 @@ function BarbersView({
         actionLabel="+ Νέος Κουρέας"
         onAction={() => {
           setModalError(null)
+          setEditingBarber(null)
           setName('')
           setImageData(null)
           setImagePreview(null)
@@ -681,10 +740,27 @@ function BarbersView({
                 <p className="truncate text-base font-black text-white">{barber.name}</p>
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--admin-accent-soft)]">Barber</p>
               </div>
-              <InlineDeleteButton
-                busy={deletingId === barber.id}
-                onConfirm={() => void handleDelete(barber.id)}
-              />
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalError(null)
+                    setEditingBarber(barber)
+                    setName(barber.name)
+                    setImageData(null)
+                    setImagePreview(barber.image)
+                    setModalOpen(true)
+                  }}
+                  aria-label={`Επεξεργασία φωτογραφίας ${barber.name}`}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:border-[var(--admin-accent)]/40 hover:text-[var(--admin-accent-soft)]"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+                <InlineDeleteButton
+                  busy={deletingId === barber.id}
+                  onConfirm={() => void handleDelete(barber.id)}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -692,27 +768,40 @@ function BarbersView({
 
       {modalOpen && (
         <ModalShell
-          title="Νέος Κουρέας"
-          subtitle="Πρόσθεσε ένα μέλος στην ομάδα."
-          onClose={() => setModalOpen(false)}
-          onSubmit={(event) => void handleCreate(event)}
+          title={editingBarber ? 'Αλλαγή φωτογραφίας' : 'Νέος Κουρέας'}
+          subtitle={
+            editingBarber
+              ? `Επίλεξε νέα φωτογραφία για τον ${editingBarber.name}.`
+              : 'Πρόσθεσε ένα μέλος στην ομάδα.'
+          }
+          onClose={() => {
+            setModalOpen(false)
+            setEditingBarber(null)
+          }}
+          onSubmit={(event) =>
+            editingBarber ? void handleUpdate(event) : void handleCreate(event)
+          }
           submitting={submitting || imageProcessing}
-          submitLabel="Προσθήκη κουρέα"
+          submitLabel={editingBarber ? 'Αποθήκευση φωτογραφίας' : 'Προσθήκη κουρέα'}
           shopName={getShopName(shopSlug)}
         >
+          {!editingBarber && (
+            <label className="block">
+              <span className={labelClass}>Όνομα Κουρέα</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="π.χ. Goni"
+                className={fieldClass}
+                autoFocus
+              />
+            </label>
+          )}
           <label className="block">
-            <span className={labelClass}>Όνομα Κουρέα</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="π.χ. Goni"
-              className={fieldClass}
-              autoFocus
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>Φωτογραφία Κουρέα</span>
+            <span className={labelClass}>
+              {editingBarber ? 'Νέα φωτογραφία κουρέα' : 'Φωτογραφία Κουρέα'}
+            </span>
             <input
               type="file"
               accept="image/*"
@@ -1790,6 +1879,13 @@ export default function AdminDashboard({
       [...prev, barber].sort((a, b) => a.name.localeCompare(b.name, 'el')),
     )
   }, [])
+  const handleBarberUpdated = useCallback((updatedBarber: BarberItem) => {
+    setBarbers((prev) =>
+      prev.map((barber) =>
+        barber.id === updatedBarber.id ? updatedBarber : barber,
+      ),
+    )
+  }, [])
   const handleBarberDeleted = useCallback((id: string) => {
     setBarbers((prev) => prev.filter((barber) => barber.id !== id))
   }, [])
@@ -2224,6 +2320,7 @@ export default function AdminDashboard({
           <BarbersView
             barbers={barbers}
             onCreated={handleBarberCreated}
+            onUpdated={handleBarberUpdated}
             onDeleted={handleBarberDeleted}
             shopSlug={shopSlug}
           />

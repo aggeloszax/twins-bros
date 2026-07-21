@@ -9,6 +9,11 @@ type CreateBarberPayload = {
   image?: unknown
 }
 
+type UpdateBarberPayload = {
+  id?: unknown
+  image?: unknown
+}
+
 const MAX_IMAGE_DATA_URL_LENGTH = 1_500_000
 
 function normalizeImage(image: unknown) {
@@ -84,6 +89,57 @@ export async function POST(request: Request) {
     console.error('Failed to create barber:', error)
     return Response.json(
       { error: 'Failed to create barber' },
+      { status: 500 },
+    )
+  }
+}
+
+export async function PATCH(request: Request) {
+  const denied = await requireAdmin(request)
+  if (denied) return denied
+  const { shop, response } = await requireShop(request)
+  if (response) return response
+
+  let payload: UpdateBarberPayload
+  try {
+    payload = (await request.json()) as UpdateBarberPayload
+  } catch {
+    return Response.json({ error: 'Invalid JSON payload' }, { status: 400 })
+  }
+
+  const { id, image } = payload
+  if (typeof id !== 'string' || !id.trim()) {
+    return Response.json({ error: 'id is required' }, { status: 400 })
+  }
+
+  const normalizedImage = normalizeImage(image)
+  if (!normalizedImage) {
+    return Response.json(
+      { error: 'Η νέα φωτογραφία δεν είναι έγκυρη ή είναι πολύ μεγάλη.' },
+      { status: 400 },
+    )
+  }
+
+  try {
+    const existingBarber = await prisma.barber.findFirst({
+      where: { id: id.trim(), shopId: shop.id },
+      select: { id: true },
+    })
+
+    if (!existingBarber) {
+      return Response.json({ error: 'Ο κουρέας δεν βρέθηκε.' }, { status: 404 })
+    }
+
+    const barber = await prisma.barber.update({
+      where: { id: existingBarber.id },
+      data: { image: normalizedImage },
+    })
+
+    return Response.json(barber)
+  } catch (error) {
+    console.error('Failed to update barber:', error)
+    return Response.json(
+      { error: 'Failed to update barber' },
       { status: 500 },
     )
   }
