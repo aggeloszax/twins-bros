@@ -62,7 +62,7 @@ const GR_MONTHS = [
 const STEP_LABELS = ['Υπηρεσία', 'Barber', 'Ημ/νία & Ώρα', 'Στοιχεία Πελάτη']
 // Light-mode input: white field, charcoal text, burgundy focus ring.
 const inputClass =
-  'mt-2 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
+  'w-full rounded-2xl border border-neutral-200 bg-white py-3.5 pl-12 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
 // Reusable eyebrow for step/section headers: small, uppercase, sharp gray.
 const stepHeaderClass =
   'text-xs font-bold uppercase tracking-wider text-neutral-500'
@@ -182,6 +182,54 @@ function MapPinIcon({ className }: { className?: string }) {
       <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   )
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
+function PhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M7.2 3.5 10 7.8 7.8 10c1.2 2.6 3.3 4.7 5.9 5.9l2.2-2.2 4.4 2.8-.7 3.4c-.2.8-.9 1.3-1.7 1.3C9.6 20.7 3.3 14.4 2.8 6.1c0-.8.5-1.5 1.3-1.7l3.1-.9Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
+function EmailIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="m5 8 7 5 7-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
+function isValidCustomerEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 }
 
 function Stepper({
@@ -498,7 +546,11 @@ export default function BookingForm({
     1: Boolean(selectedService),
     2: Boolean(selectedBarber),
     3: Boolean(selectedDate && selectedTime),
-    4: Boolean(customerName.trim() && normalizeGreekMobilePhone(customerPhone)),
+    4: Boolean(
+      customerName.trim() &&
+        normalizeGreekMobilePhone(customerPhone) &&
+        isValidCustomerEmail(customerEmail),
+    ),
   }
 
   const canReach = (n: number) =>
@@ -517,7 +569,11 @@ export default function BookingForm({
         ? Boolean(selectedService && selectedBarber)
         : step === 3
           ? Boolean(selectedDate && selectedTime)
-          : Boolean(customerName.trim() && normalizedCustomerPhone) &&
+          : Boolean(
+              customerName.trim() &&
+                normalizedCustomerPhone &&
+                isValidCustomerEmail(customerEmail),
+            ) &&
             !submittingBooking
 
   async function handleNext() {
@@ -531,7 +587,8 @@ export default function BookingForm({
       selectedDate &&
       selectedTime &&
       customerName.trim() &&
-      normalizedCustomerPhone
+      normalizedCustomerPhone &&
+      isValidCustomerEmail(customerEmail)
     ) {
       setSubmittingBooking(true)
       setBookingError(false)
@@ -1038,51 +1095,58 @@ export default function BookingForm({
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
                     Όνοματεπώνυμο
                   </span>
-                  <input
-                    type="text"
-                    required
-                    value={customerName}
-                    onChange={(event) => setCustomerName(event.target.value)}
-                    autoComplete="name"
-                    placeholder="π.χ. Γιώργος Παπαδόπουλος"
-                    className={inputClass}
-                  />
+                  <span className="relative mt-2 block">
+                    <UserIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+                    <input
+                      type="text"
+                      required
+                      value={customerName}
+                      onChange={(event) => setCustomerName(event.target.value)}
+                      autoComplete="name"
+                      className={inputClass}
+                    />
+                  </span>
                 </label>
 
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
                     Κινητό Τηλέφωνο
                   </span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="69[0-9]{8}"
-                    required
-                    value={customerPhone}
-                    onChange={(event) =>
-                      setCustomerPhone(toNationalPhoneInput(event.target.value))
-                    }
-                    onBlur={(event) =>
-                      setCustomerPhone(toNationalPhoneInput(event.target.value))
-                    }
-                    autoComplete="tel"
-                    placeholder="6912345678"
-                    className={inputClass}
-                  />
+                  <span className="relative mt-2 block">
+                    <PhoneIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="69[0-9]{8}"
+                      required
+                      value={customerPhone}
+                      onChange={(event) =>
+                        setCustomerPhone(toNationalPhoneInput(event.target.value))
+                      }
+                      onBlur={(event) =>
+                        setCustomerPhone(toNationalPhoneInput(event.target.value))
+                      }
+                      autoComplete="tel"
+                      className={inputClass}
+                    />
+                  </span>
                 </label>
 
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
                     Email
                   </span>
-                  <input
-                    type="email"
-                    value={customerEmail}
-                    onChange={(event) => setCustomerEmail(event.target.value)}
-                    autoComplete="email"
-                    placeholder="προαιρετικό"
-                    className={inputClass}
-                  />
+                  <span className="relative mt-2 block">
+                    <EmailIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+                    <input
+                      type="email"
+                      required
+                      value={customerEmail}
+                      onChange={(event) => setCustomerEmail(event.target.value)}
+                      autoComplete="email"
+                      className={inputClass}
+                    />
+                  </span>
                 </label>
               </div>
 

@@ -34,6 +34,7 @@ export async function login(
   })
 
   if (!limited.allowed) {
+    console.warn('Admin login rate limited', { shopSlug, clientIp })
     return {
       error:
         'Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.',
@@ -42,6 +43,7 @@ export async function login(
 
   const result = await verifyAdminPassword(password, shopSlug)
   if (!result.valid || !result.tokenSecret) {
+    console.warn('Admin login rejected', { shopSlug, clientIp })
     return { error: 'Λάθος κωδικός' }
   }
 

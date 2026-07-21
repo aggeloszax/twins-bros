@@ -1,7 +1,12 @@
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import AdminDashboard from './admin-dashboard'
-import { ADMIN_SESSION_COOKIE } from '@/lib/admin-auth'
-import { DEFAULT_SHOP_SLUG, getShopSlugFromSessionCookie } from '@/lib/shops'
+import { ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/admin-auth'
+import {
+  DEFAULT_SHOP_SLUG,
+  getShopSlugFromSessionCookie,
+  withShopParam,
+} from '@/lib/shops'
 
 // The active shop is bound to the admin session cookie (`shopSlug:token`), which
 // `proxy.ts` guarantees is present before this route renders. Reading it here —
@@ -11,6 +16,14 @@ export default async function AdminPage() {
   const store = await cookies()
   const raw = store.get(ADMIN_SESSION_COOKIE)?.value
   const shopSlug = getShopSlugFromSessionCookie(raw) ?? DEFAULT_SHOP_SLUG
+
+  if (!raw || !(await isValidSessionToken(raw, shopSlug))) {
+    redirect(
+      shopSlug === DEFAULT_SHOP_SLUG
+        ? '/admin/login'
+        : withShopParam('/admin/login', shopSlug),
+    )
+  }
 
   return <AdminDashboard initialShopSlug={shopSlug} />
 }

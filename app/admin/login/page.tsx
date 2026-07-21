@@ -105,6 +105,7 @@ export default function AdminLoginPage() {
             name="password"
             autoFocus
             autoComplete="current-password"
+            maxLength={128}
             className="mt-2 w-full rounded-xl border border-[var(--admin-deep)] bg-black/70 px-4 py-3 text-sm text-white outline-none transition focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent)]/25"
             placeholder="••••••••"
           />

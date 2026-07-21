@@ -1716,7 +1716,8 @@ function SecuritySettingsView({ shopSlug }: { shopSlug: string }) {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="new-password"
-            minLength={8}
+            minLength={15}
+            maxLength={128}
             required
             className="mt-2 w-full rounded-xl border border-zinc-400 bg-white px-4 py-3 text-base font-semibold text-zinc-950 outline-none transition focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent)]/25"
           />

@@ -9,7 +9,8 @@ import {
 import { hashPassword } from '@/lib/admin-password'
 import { requireShop } from '@/lib/shops'
 
-const MIN_PASSWORD_LENGTH = 8
+const MIN_PASSWORD_LENGTH = 15
+const MAX_PASSWORD_LENGTH = 128
 
 function sessionCookie(token: string) {
   const parts = [
@@ -38,9 +39,14 @@ export async function POST(request: Request) {
     | null
   const password = typeof body?.password === 'string' ? body.password : ''
 
-  if (password.length < MIN_PASSWORD_LENGTH) {
+  if (
+    password.length < MIN_PASSWORD_LENGTH ||
+    password.length > MAX_PASSWORD_LENGTH
+  ) {
     return Response.json(
-      { error: 'Ο νέος κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.' },
+      {
+        error: `Ο νέος κωδικός πρέπει να έχει από ${MIN_PASSWORD_LENGTH} έως ${MAX_PASSWORD_LENGTH} χαρακτήρες.`,
+      },
       { status: 400 },
     )
   }

@@ -13,7 +13,9 @@ import {
 } from '@/lib/shops'
 
 export const ADMIN_SESSION_COOKIE = 'twins_admin_session'
-export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 30 // 30 days, in seconds
+export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days, in seconds
+
+const MAX_PASSWORD_LENGTH = 128
 
 const TOKEN_SALT = 'twins-bros::admin-session::v1'
 
@@ -99,7 +101,7 @@ export async function verifyAdminPassword(password: string, shopSlug = DEFAULT_S
   shop?: ShopContext
   tokenSecret?: string
 }> {
-  if (!password) return { valid: false }
+  if (!password || password.length > MAX_PASSWORD_LENGTH) return { valid: false }
   const shop = await getShopBySlug(shopSlug)
   if (!shop) return { valid: false }
 

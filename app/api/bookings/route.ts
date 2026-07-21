@@ -35,6 +35,13 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function isValidEmail(value: unknown): value is string {
+  return (
+    isNonEmptyString(value) &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+  )
+}
+
 export async function POST(request: Request) {
   const { shop, response } = await requireShop(request)
   if (response) return response
@@ -88,7 +95,8 @@ export async function POST(request: Request) {
     !isNonEmptyString(date) ||
     !isNonEmptyString(slotTime) ||
     !isNonEmptyString(customerName) ||
-    !isNonEmptyString(customerPhone)
+    !isNonEmptyString(customerPhone) ||
+    !isValidEmail(customerEmail)
   ) {
     return Response.json(
       { error: 'Required booking fields are missing' },
@@ -212,9 +220,7 @@ export async function POST(request: Request) {
             cancelToken: createSecureToken(),
             customerName: customerName.trim(),
             customerPhone: normalizedCustomerPhone,
-            customerEmail: isNonEmptyString(customerEmail)
-              ? customerEmail.trim()
-              : null,
+            customerEmail: customerEmail.trim(),
           },
           select: {
             id: true,
