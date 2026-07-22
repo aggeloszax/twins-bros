@@ -7,6 +7,7 @@ import {
   isDateForceClosed,
   isDateForceOpen,
   isSlotBlocked,
+  isSlotTimeWithinWorkingHours,
   isWithinBookingWindow,
   normalizeScheduleExceptions,
   parseDateKey,
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const barberId = searchParams.get('barberId')
+  const serviceId = searchParams.get('serviceId')
   const date = searchParams.get('date')
 
   if (!barberId || !date) {
@@ -59,11 +61,17 @@ export async function GET(request: Request) {
 
     dayEnd.setMinutes(dayEnd.getMinutes() + 1)
 
-    const [barber, bookings, rawExceptions] = await Promise.all([
+    const [barber, service, bookings, rawExceptions] = await Promise.all([
       prisma.barber.findFirst({
         where: { id: barberId, shopId: shop.id },
         select: { name: true },
       }),
+      serviceId
+        ? prisma.service.findFirst({
+            where: { id: serviceId, shopId: shop.id },
+            select: { duration: true },
+          })
+        : Promise.resolve(null),
       prisma.booking.findMany({
         where: {
           barberId,
@@ -79,6 +87,9 @@ export async function GET(request: Request) {
     ])
 
     if (!barber) {
+      return Response.json([], { status: 404 })
+    }
+    if (serviceId && !service) {
       return Response.json([], { status: 404 })
     }
 
@@ -97,6 +108,7 @@ export async function GET(request: Request) {
 
     const now = new Date()
     const slots: Slot[] = []
+    const durationMinutes = service?.duration ?? SLOT_MINUTES
 
     for (const time of buildSlotTimes(date, now, shop.workingPeriods)) {
       // Manually blocked slots are removed entirely so they can't be picked.
@@ -105,7 +117,20 @@ export async function GET(request: Request) {
       const slotStart = createBookingDateTime(date, time)
       if (!slotStart) continue
 
-      const slotEnd = new Date(slotStart.getTime() + SLOT_MINUTES * 60_000)
+      if (
+        !isSlotTimeWithinWorkingHours(
+          time,
+          durationMinutes,
+          shop.workingPeriods,
+          selectedDate,
+        )
+      ) {
+        continue
+      }
+
+      const slotEnd = new Date(
+        slotStart.getTime() + durationMinutes * 60_000,
+      )
 
       const overlapsBooking = bookings.some(
         (booking: BookingWindow) =>

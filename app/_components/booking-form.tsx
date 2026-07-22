@@ -501,7 +501,7 @@ export default function BookingForm({
   }, [shopSlug])
 
   useEffect(() => {
-    if (!selectedDate || !selectedBarber) {
+    if (!selectedDate || !selectedBarber || !selectedService) {
       queueMicrotask(() => setSlots([]))
       return
     }
@@ -517,7 +517,7 @@ export default function BookingForm({
     fetch(
       `${apiPath('/api/available-slots', shopSlug)}&barberId=${encodeURIComponent(
         selectedBarber.id,
-      )}&date=${selectedDate}`,
+      )}&serviceId=${encodeURIComponent(selectedService.id)}&date=${selectedDate}`,
       { signal: controller.signal },
     )
       .then((res) => {
@@ -540,7 +540,7 @@ export default function BookingForm({
       active = false
       controller.abort()
     }
-  }, [selectedDate, selectedBarber, shopSlug])
+  }, [selectedDate, selectedBarber, selectedService, shopSlug])
 
   const stepDone: Record<number, boolean> = {
     1: Boolean(selectedService),

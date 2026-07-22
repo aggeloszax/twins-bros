@@ -105,6 +105,7 @@ type Stats = {
 
 type ServiceItem = { id: string; name: string; price: number; duration: number }
 type BarberItem = { id: string; name: string; image: string | null }
+type AvailableSlot = { time: string; available: boolean }
 
 type ExceptionType = 'BLOCK_SLOT' | 'FORCE_OPEN' | 'FORCE_CLOSE'
 type ScheduleException = {
@@ -1539,12 +1540,71 @@ function NewBookingModal({
   const [customerEmail, setCustomerEmail] = useState('')
   const [barberId, setBarberId] = useState(initialBarberId)
   const [date, setDate] = useState(defaultDate)
-  const [slotTime, setSlotTime] = useState(SLOT_OPTIONS[0])
+  const [slotTime, setSlotTime] = useState('')
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [slotsError, setSlotsError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const ready = services.length > 0 && barbers.length > 0
+  useEffect(() => {
+    if (!barberId || !date || !serviceId) {
+      queueMicrotask(() => {
+        setAvailableSlots([])
+        setSlotTime('')
+      })
+      return
+    }
+
+    let active = true
+    const controller = new AbortController()
+    queueMicrotask(() => {
+      if (!active) return
+      setLoadingSlots(true)
+      setSlotsError(false)
+      setAvailableSlots([])
+      setSlotTime('')
+    })
+
+    fetch(
+      `${apiPath('/api/available-slots', shopSlug)}&barberId=${encodeURIComponent(
+        barberId,
+      )}&serviceId=${encodeURIComponent(serviceId)}&date=${encodeURIComponent(date)}`,
+      { signal: controller.signal },
+    )
+      .then((res) => {
+        if (!res.ok) throw new Error('Request failed')
+        return res.json() as Promise<AvailableSlot[]>
+      })
+      .then((slots) => {
+        if (!active) return
+        const openSlots = slots
+          .filter((slot) => slot.available)
+          .map((slot) => slot.time)
+        setAvailableSlots(openSlots)
+        setSlotTime(openSlots[0] ?? '')
+      })
+      .catch((fetchError: unknown) => {
+        if (active && (fetchError as Error).name !== 'AbortError') {
+          setSlotsError(true)
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingSlots(false)
+      })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [barberId, date, serviceId, shopSlug])
+
+  const ready =
+    services.length > 0 &&
+    barbers.length > 0 &&
+    Boolean(slotTime) &&
+    !loadingSlots
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -1556,6 +1616,10 @@ function NewBookingModal({
     }
     if (!serviceId || !barberId) {
       setError('Επίλεξε υπηρεσία και κουρέα.')
+      return
+    }
+    if (!slotTime) {
+      setError('Δεν υπάρχει διαθέσιμη ώρα για αυτές τις επιλογές.')
       return
     }
 
@@ -1701,13 +1765,29 @@ function NewBookingModal({
               value={slotTime}
               onChange={(event) => setSlotTime(event.target.value)}
               className={fieldClass}
+              disabled={loadingSlots || availableSlots.length === 0}
             >
-              {SLOT_OPTIONS.map((slot) => (
+              {loadingSlots && (
+                <option value="" className="bg-[var(--admin-bg)]">
+                  Φόρτωση διαθέσιμων ωρών...
+                </option>
+              )}
+              {!loadingSlots && availableSlots.length === 0 && (
+                <option value="" className="bg-[var(--admin-bg)]">
+                  Δεν υπάρχουν διαθέσιμες ώρες
+                </option>
+              )}
+              {availableSlots.map((slot) => (
                 <option key={slot} value={slot} className="bg-[var(--admin-bg)]">
                   {slot}
                 </option>
               ))}
             </select>
+            {slotsError && (
+              <span className="mt-2 block text-xs text-[var(--admin-accent-soft)]">
+                Δεν ήταν δυνατή η φόρτωση των διαθέσιμων ωρών.
+              </span>
+            )}
           </label>
 
           <label className="block sm:col-span-2">
