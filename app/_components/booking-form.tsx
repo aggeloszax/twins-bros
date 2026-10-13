@@ -8,11 +8,10 @@ import {
   isDayBookable,
   isScheduleExceptionType,
   type NormalizedScheduleException,
-  type WorkingPeriod,
   toDateKey,
 } from '@/lib/schedule'
 import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
-import { getShopUiConfig } from '@/lib/shop-ui'
+import { SHOP } from '@/lib/shop'
 
 type Service = {
   id: string
@@ -66,11 +65,6 @@ const inputClass =
 // Reusable eyebrow for step/section headers: small, uppercase, sharp gray.
 const stepHeaderClass =
   'text-xs font-bold uppercase tracking-wider text-neutral-500'
-
-function apiPath(path: string, shopSlug: string) {
-  const params = new URLSearchParams({ shop: shopSlug })
-  return `${path}?${params.toString()}`
-}
 
 const formatPrice = (price: number) =>
   `${Number.isInteger(price) ? price : price.toFixed(2)}€`
@@ -165,21 +159,6 @@ function ArrowIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth="2.2"
       />
-    </svg>
-  )
-}
-
-function MapPinIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <path
-        d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   )
 }
@@ -340,36 +319,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-type BookingFormProps = {
-  shopSlug?: string
-  shopName?: string
-  logoUrl?: string | null
-  primaryColor?: string
-  bookingSubtitle?: string | null
-}
-
-type ShopSettings = {
-  name: string
-  logoUrl: string | null
-  primaryColor: string
-  bookingSubtitle: string | null
-  workingPeriods: WorkingPeriod[]
-}
-
-export default function BookingForm({
-  shopSlug = 'twins-bros',
-  shopName = 'TWINS BROS',
-  logoUrl = '/logo.webp',
-  primaryColor = '#800020',
-  bookingSubtitle = 'Καθαρή επιλογή, ακριβής διάρκεια, premium αποτέλεσμα.',
-}: BookingFormProps) {
-  const [shopSettings, setShopSettings] = useState<ShopSettings>({
-    name: shopName,
-    logoUrl: logoUrl ?? null,
-    primaryColor,
-    bookingSubtitle: bookingSubtitle ?? null,
-    workingPeriods: [],
-  })
+export default function BookingForm() {
   const [services, setServices] = useState<Service[]>([])
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [loadingServices, setLoadingServices] = useState(true)
@@ -408,36 +358,13 @@ export default function BookingForm({
   const calendarDays = buildCalendarGrid(calendarMonth)
   const canGoPreviousMonth = calendarMonth > startOfMonth(today)
   const canGoNextMonth = addMonths(calendarMonth, 1) <= startOfMonth(maxBookingDate)
-  const brandColor = shopSettings.primaryColor || primaryColor
-  const brandName = shopSettings.name || shopName
-  const brandLogo = shopSettings.logoUrl || logoUrl || '/logo.webp'
-  const brandSubtitle =
-    shopSettings.bookingSubtitle ||
-    bookingSubtitle ||
-    'Καθαρή επιλογή, ακριβής διάρκεια, premium αποτέλεσμα.'
-  const brandStyle = { '--brand': brandColor } as CSSProperties
-
-  async function loadShopSettings() {
-    try {
-      const res = await fetch(apiPath('/api/shop', shopSlug))
-      if (!res.ok) throw new Error('Request failed')
-      setShopSettings((await res.json()) as ShopSettings)
-    } catch {
-      setShopSettings({
-        name: shopName,
-        logoUrl: logoUrl ?? null,
-        primaryColor,
-        bookingSubtitle: bookingSubtitle ?? null,
-        workingPeriods: [],
-      })
-    }
-  }
+  const brandStyle = { '--brand': SHOP.primaryColor } as CSSProperties
 
   async function loadServices() {
     setLoadingServices(true)
     setServicesError(false)
     try {
-      const res = await fetch(apiPath('/api/services', shopSlug))
+      const res = await fetch('/api/services')
       if (!res.ok) throw new Error('Request failed')
       setServices(await res.json())
     } catch {
@@ -451,7 +378,7 @@ export default function BookingForm({
     setLoadingBarbers(true)
     setBarbersError(false)
     try {
-      const res = await fetch(apiPath('/api/barbers', shopSlug))
+      const res = await fetch('/api/barbers')
       if (!res.ok) throw new Error('Request failed')
       setBarbers(await res.json())
     } catch {
@@ -463,7 +390,7 @@ export default function BookingForm({
 
   async function loadScheduleExceptions() {
     try {
-      const res = await fetch(apiPath('/api/schedule-exceptions', shopSlug))
+      const res = await fetch('/api/schedule-exceptions')
       if (!res.ok) throw new Error('Request failed')
       const data = (await res.json()) as Array<{
         dateKey: string
@@ -496,9 +423,8 @@ export default function BookingForm({
       void loadServices()
       void loadBarbers()
       void loadScheduleExceptions()
-      void loadShopSettings()
     })
-  }, [shopSlug])
+  }, [])
 
   useEffect(() => {
     if (!selectedDate || !selectedBarber || !selectedService) {
@@ -515,7 +441,7 @@ export default function BookingForm({
     })
 
     fetch(
-      `${apiPath('/api/available-slots', shopSlug)}&barberId=${encodeURIComponent(
+      `/api/available-slots?barberId=${encodeURIComponent(
         selectedBarber.id,
       )}&serviceId=${encodeURIComponent(selectedService.id)}&date=${selectedDate}`,
       { signal: controller.signal },
@@ -540,7 +466,7 @@ export default function BookingForm({
       active = false
       controller.abort()
     }
-  }, [selectedDate, selectedBarber, selectedService, shopSlug])
+  }, [selectedDate, selectedBarber, selectedService])
 
   const stepDone: Record<number, boolean> = {
     1: Boolean(selectedService),
@@ -593,7 +519,7 @@ export default function BookingForm({
       setSubmittingBooking(true)
       setBookingError(false)
       try {
-        const res = await fetch(apiPath('/api/bookings', shopSlug), {
+        const res = await fetch('/api/bookings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -709,9 +635,6 @@ export default function BookingForm({
   }
 
   const hasAvailableSlot = slots.some((s) => s.available)
-  const shopUiConfig = getShopUiConfig(shopSlug)
-  const usesCompactMobileServiceList = shopUiConfig.compactMobileServiceList
-  const visitInfo = shopUiConfig.visitInfo
 
   return (
     <div
@@ -722,8 +645,8 @@ export default function BookingForm({
         <header className="text-center">
           <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200 bg-white shadow-sm">
             <Image
-              src={brandLogo}
-              alt={`${brandName} logo`}
+              src={SHOP.logoUrl}
+              alt={`${SHOP.name} logo`}
               fill
               priority
               sizes="64px"
@@ -732,9 +655,9 @@ export default function BookingForm({
           </div>
           <p
             className="mt-3 text-sm font-bold uppercase tracking-[0.28em]"
-            style={{ color: brandColor }}
+            style={{ color: SHOP.primaryColor }}
           >
-            {brandName}
+            {SHOP.name}
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
             Κλείσε το ραντεβού σου
@@ -759,16 +682,12 @@ export default function BookingForm({
               <div>
                 <h2 className={stepHeaderClass}>Επίλεξε υπηρεσία</h2>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  {brandSubtitle}
+                  {SHOP.bookingSubtitle}
                 </p>
               </div>
 
               <div
-                className={
-                  usesCompactMobileServiceList
-                    ? 'divide-y divide-neutral-200 overflow-hidden rounded-2xl border border-neutral-200 bg-white sm:space-y-3 sm:divide-y-0 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent'
-                    : 'space-y-3'
-                }
+                className="space-y-3"
               >
                 {loadingServices ? (
                   Array.from({ length: 4 }).map((_, i) => (
@@ -784,61 +703,27 @@ export default function BookingForm({
                         key={service.id}
                         type="button"
                         onClick={() => handleSelectService(service)}
-                        className={`${
-                          usesCompactMobileServiceList
-                            ? 'group flex min-h-[60px] w-full items-center justify-between gap-3 px-3 py-2 text-left transition-all duration-300 ease-in-out sm:min-h-0 sm:rounded-2xl sm:border sm:p-5 sm:shadow-sm sm:hover:-translate-y-0.5 sm:hover:shadow-md'
-                            : 'group flex w-full items-center justify-between gap-4 rounded-2xl border p-5 text-left shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md'
-                        } ${
+                        className={`group flex w-full items-center justify-between gap-4 rounded-2xl border p-5 text-left shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md ${
                           isSelected
-                            ? usesCompactMobileServiceList
-                              ? 'bg-[var(--brand)]/[0.08] shadow-[inset_3px_0_0_var(--brand)] sm:border-[var(--brand)] sm:bg-[var(--brand)]/[0.06] sm:shadow-sm sm:ring-1 sm:ring-[var(--brand)]'
-                              : 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
-                            : usesCompactMobileServiceList
-                              ? 'bg-white hover:bg-neutral-50 sm:border-[var(--brand)]'
-                              : 'border-[var(--brand)] bg-white hover:bg-neutral-50'
+                            ? 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
+                            : 'border-[var(--brand)] bg-white hover:bg-neutral-50'
                         }`}
                       >
                         <div className="min-w-0">
-                          <h3
-                            className={
-                              usesCompactMobileServiceList
-                                ? 'line-clamp-2 text-[13px] font-bold leading-[1.15rem] text-neutral-900 sm:truncate sm:text-lg sm:leading-normal'
-                                : 'truncate text-base font-bold text-neutral-900 sm:text-lg'
-                            }
-                          >
+                          <h3 className="truncate text-base font-bold text-neutral-900 sm:text-lg">
                             {service.name}
                           </h3>
-                          <div
-                            className={
-                              usesCompactMobileServiceList
-                                ? 'mt-0.5 flex items-center gap-1 text-[11px] text-neutral-500 sm:mt-2 sm:gap-2 sm:text-sm'
-                                : 'mt-2 flex items-center gap-2 text-sm text-neutral-500'
-                            }
-                          >
-                            <ClockIcon
-                              className={
-                                usesCompactMobileServiceList
-                                  ? 'h-3 w-3 text-[var(--brand)] sm:h-4 sm:w-4'
-                                  : 'h-4 w-4 text-[var(--brand)]'
-                              }
-                            />
+                          <div className="mt-2 flex items-center gap-2 text-sm text-neutral-500">
+                            <ClockIcon className="h-4 w-4 text-[var(--brand)]" />
                             <span>{service.duration} λεπτά</span>
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                          <span
-                            className={
-                              usesCompactMobileServiceList
-                                ? 'text-sm font-bold tabular-nums text-neutral-900 sm:text-lg'
-                                : 'text-lg font-bold tabular-nums text-neutral-900'
-                            }
-                          >
+                          <span className="text-lg font-bold tabular-nums text-neutral-900">
                             {formatPrice(service.price)}
                           </span>
                           <span
-                            className={`${
-                              usesCompactMobileServiceList ? 'hidden sm:flex' : 'flex'
-                            } h-7 w-7 items-center justify-center rounded-full border transition-all duration-300 ease-in-out ${
+                            className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-300 ease-in-out ${
                               isSelected
                                 ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
                                 : 'border-neutral-300 text-transparent group-hover:border-[var(--brand)]'
@@ -993,7 +878,6 @@ export default function BookingForm({
                           key,
                           scheduleExceptions,
                           today,
-                          shopSettings.workingPeriods,
                         )
                       const isSelected = selectedDate === key
                       const isToday = key === toDateKey(today)
@@ -1150,29 +1034,27 @@ export default function BookingForm({
                 </label>
               </div>
 
-              {shopUiConfig.showLegalNotice && (
-                <p className="text-xs leading-5 text-neutral-500">
-                  Με την καταχώριση του ραντεβού αποδέχεσαι τους{' '}
-                  <Link
-                    href={`/booking-terms?${new URLSearchParams({ shop: shopSlug }).toString()}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-[var(--brand)] underline underline-offset-4"
-                  >
-                    Όρους Κράτησης
-                  </Link>{' '}
-                  και επιβεβαιώνεις ότι ενημερώθηκες για την{' '}
-                  <Link
-                    href={`/privacy?${new URLSearchParams({ shop: shopSlug }).toString()}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-[var(--brand)] underline underline-offset-4"
-                  >
-                    Πολιτική Απορρήτου
-                  </Link>
-                  .
-                </p>
-              )}
+              <p className="text-xs leading-5 text-neutral-500">
+                Με την καταχώριση του ραντεβού αποδέχεσαι τους{' '}
+                <Link
+                  href="/booking-terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[var(--brand)] underline underline-offset-4"
+                >
+                  Όρους Κράτησης
+                </Link>{' '}
+                και επιβεβαιώνεις ότι ενημερώθηκες για την{' '}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[var(--brand)] underline underline-offset-4"
+                >
+                  Πολιτική Απορρήτου
+                </Link>
+                .
+              </p>
 
               {bookingError && (
                 <div className="rounded-2xl border border-[var(--brand)] bg-[var(--brand)]/5 p-4 text-sm text-[var(--brand)]">
@@ -1183,133 +1065,30 @@ export default function BookingForm({
           )}
         </section>
 
-        {visitInfo && (
-          <>
-            <section
-              aria-labelledby={visitInfo.id}
-              className="mt-12 border-t border-neutral-200 pt-10"
+        <footer className="mt-12 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
+          <p className="font-semibold text-neutral-700">{SHOP.name}</p>
+          <nav
+            aria-label="Νομικές πληροφορίες"
+            className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2"
+          >
+            <Link
+              href="/booking-terms"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-[var(--brand)] underline underline-offset-4"
             >
-              <div className="mb-6">
-                <p className={stepHeaderClass}>{visitInfo.eyebrow}</p>
-                <h2
-                  id={visitInfo.id}
-                  className="mt-2 text-2xl font-bold tracking-tight text-neutral-900"
-                >
-                  {visitInfo.title}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  {visitInfo.description}
-                </p>
-              </div>
-
-              <div className="grid overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm md:grid-cols-[0.9fr_1.1fr]">
-                <div className="p-5 sm:p-7">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/[0.08] text-[var(--brand)]">
-                      <MapPinIcon className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <h3 className="font-bold text-neutral-900">
-                        {visitInfo.locationTitle}
-                      </h3>
-                      <address className="mt-1 not-italic text-sm leading-6 text-neutral-500">
-                        {visitInfo.addressLines.map((line, index) => (
-                          <Fragment key={line}>
-                            {index > 0 && <br />}
-                            {line}
-                          </Fragment>
-                        ))}
-                      </address>
-                    </div>
-                  </div>
-
-                  <a
-                    href={visitInfo.directionsUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 active:translate-y-0"
-                  >
-                    Οδηγίες στο Google Maps
-                    <ArrowIcon className="h-4 w-4" />
-                  </a>
-
-                  <div className="my-6 h-px bg-neutral-200" />
-
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="h-5 w-5 text-[var(--brand)]" />
-                    <h3 className="font-bold text-neutral-900">
-                      {visitInfo.hoursTitle}
-                    </h3>
-                  </div>
-                  <dl className="mt-4 space-y-2.5 text-sm">
-                    {visitInfo.hours.map((item) => (
-                      <div
-                        key={item.day}
-                        className="flex items-start justify-between gap-4"
-                      >
-                        <dt className="text-neutral-500">{item.day}</dt>
-                        <dd className="text-right font-semibold tabular-nums text-neutral-900">
-                          {item.times.map((time, index) => (
-                            <Fragment key={time}>
-                              {index > 0 && <br />}
-                              {time}
-                            </Fragment>
-                          ))}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  <a
-                    href={visitInfo.phone.href}
-                    className="mt-6 inline-flex text-sm font-bold text-[var(--brand)] underline decoration-[var(--brand)]/30 underline-offset-4 transition-colors hover:decoration-[var(--brand)]"
-                  >
-                    {visitInfo.phone.label}
-                  </a>
-                </div>
-
-                <div className="min-h-72 border-t border-neutral-200 bg-neutral-100 md:min-h-full md:border-l md:border-t-0">
-                  <iframe
-                    title={visitInfo.mapTitle}
-                    src={visitInfo.mapEmbedUrl}
-                    className="h-full min-h-72 w-full border-0"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
-            </section>
-
-            <footer className="mt-10 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
-              <p className="font-semibold text-neutral-700">
-                {visitInfo.footerName}
-              </p>
-              <p>{visitInfo.footerAddress}</p>
-            <nav
-              aria-label="Νομικές πληροφορίες"
-              className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2"
+              Όροι Κράτησης
+            </Link>
+            <Link
+              href="/privacy"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-[var(--brand)] underline underline-offset-4"
             >
-              <Link
-                href={`/booking-terms?${new URLSearchParams({ shop: shopSlug }).toString()}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-[var(--brand)] underline underline-offset-4"
-              >
-                Όροι Κράτησης
-              </Link>
-              <Link
-                href={`/privacy?${new URLSearchParams({ shop: shopSlug }).toString()}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-[var(--brand)] underline underline-offset-4"
-              >
-                Πολιτική Απορρήτου
-              </Link>
-            </nav>
-            </footer>
-          </>
-        )}
+              Πολιτική Απορρήτου
+            </Link>
+          </nav>
+        </footer>
       </main>
 
       <div className="fixed inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 backdrop-blur-xl">

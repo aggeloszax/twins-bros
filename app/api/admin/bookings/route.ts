@@ -1,19 +1,15 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
 import { normalizeGreekMobilePhone } from '@/lib/phone'
-import { requireShop } from '@/lib/shops'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
-  const { shop, response } = await requireShop(request)
-  if (response) return response
 
   try {
     const bookings = await prisma.booking.findMany({
-      where: { shopId: shop.id },
       orderBy: { startTime: 'desc' },
       select: {
         id: true,
@@ -31,7 +27,7 @@ export async function GET(request: Request) {
 
     const noShowBookings = await prisma.booking.groupBy({
       by: ['customerPhone'],
-      where: { shopId: shop.id, noShow: true },
+      where: { noShow: true },
       _count: { _all: true },
     })
     const noShowCountsByPhone = new Map<string, number>()

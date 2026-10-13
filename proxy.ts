@@ -18,10 +18,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const loginUrl = new URL('/admin/login', request.url)
-  const shopSlug = request.nextUrl.searchParams.get('shop')
-  if (shopSlug) loginUrl.searchParams.set('shop', shopSlug)
-  return NextResponse.redirect(loginUrl)
+  return NextResponse.redirect(new URL('/admin/login', request.url))
 }
 
 export const config = {

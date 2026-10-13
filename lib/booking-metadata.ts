@@ -1,37 +1,26 @@
 import type { Metadata } from 'next'
-import type { ShopContext } from '@/lib/shops'
+import { SHOP } from '@/lib/shop'
 
-export function createBookingMetadata(
-  shop: Pick<ShopContext, 'slug' | 'name' | 'logoUrl'>,
-): Metadata {
-  const isSalut = shop.slug === 'salut'
-  const title = isSalut
-    ? 'Κλείσε ραντεβού | SALUT'
-    : `Κλείσε ραντεβού | ${shop.name}`
-  const description = isSalut
-    ? 'Κλείσε online το ραντεβού σου στο SALUT στη Σαλαμίνα. Επίλεξε υπηρεσία, barber, ημέρα και ώρα.'
-    : `Κλείσε online το ραντεβού σου στο ${shop.name}. Επίλεξε υπηρεσία, barber, ημέρα και ώρα.`
+const title = `Κλείσε ραντεβού | ${SHOP.name}`
+const description = `Κλείσε online το ραντεβού σου στο ${SHOP.name}. Επίλεξε υπηρεσία, barber, ημέρα και ώρα.`
 
-  return {
+export const bookingMetadata: Metadata = {
+  title,
+  description,
+  applicationName: SHOP.name,
+  icons: {
+    icon: SHOP.logoUrl,
+    apple: SHOP.logoUrl,
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'el_GR',
+    siteName: SHOP.name,
     title,
     description,
-    applicationName: shop.name,
-    icons: shop.logoUrl
-      ? {
-          icon: shop.logoUrl,
-          apple: shop.logoUrl,
-        }
-      : undefined,
-    openGraph: {
-      type: 'website',
-      locale: 'el_GR',
-      siteName: shop.name,
-      title,
-      description,
-    },
-    robots: {
-      index: true,
-      follow: true,
-    },
-  }
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }

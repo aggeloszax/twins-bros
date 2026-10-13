@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma'
-import { requireShop } from '@/lib/shops'
 import {
   buildSlotTimes,
   createBookingDateTime,
@@ -20,9 +19,6 @@ type Slot = { time: string; available: boolean }
 type BookingWindow = { startTime: Date; endTime: Date }
 
 export async function GET(request: Request) {
-  const { shop, response } = await requireShop(request)
-  if (response) return response
-
   const { searchParams } = new URL(request.url)
   const barberId = searchParams.get('barberId')
   const serviceId = searchParams.get('serviceId')
@@ -63,26 +59,25 @@ export async function GET(request: Request) {
 
     const [barber, service, bookings, rawExceptions] = await Promise.all([
       prisma.barber.findFirst({
-        where: { id: barberId, shopId: shop.id },
+        where: { id: barberId },
         select: { name: true },
       }),
       serviceId
         ? prisma.service.findFirst({
-            where: { id: serviceId, shopId: shop.id },
+            where: { id: serviceId },
             select: { duration: true },
           })
         : Promise.resolve(null),
       prisma.booking.findMany({
         where: {
           barberId,
-          shopId: shop.id,
           status: { not: 'CANCELLED' },
           startTime: { gte: dayStart, lt: dayEnd },
         },
         select: { startTime: true, endTime: true },
       }),
       prisma.scheduleException.findMany({
-        where: { shopId: shop.id, date: { gte: dayStart, lt: dayEnd } },
+        where: { date: { gte: dayStart, lt: dayEnd } },
       }),
     ])
 
@@ -101,7 +96,7 @@ export async function GET(request: Request) {
     const forceOpen = isDateForceOpen(exceptions, date)
     if (
       forceClosed ||
-      (isClosedDay(selectedDate, shop.workingPeriods) && !forceOpen)
+      (isClosedDay(selectedDate) && !forceOpen)
     ) {
       return Response.json([])
     }
@@ -110,7 +105,7 @@ export async function GET(request: Request) {
     const slots: Slot[] = []
     const durationMinutes = service?.duration ?? SLOT_MINUTES
 
-    for (const time of buildSlotTimes(date, now, shop.workingPeriods)) {
+    for (const time of buildSlotTimes(date, now)) {
       // Manually blocked slots are removed entirely so they can't be picked.
       if (isSlotBlocked(exceptions, date, time, barberName)) continue
 
@@ -118,12 +113,7 @@ export async function GET(request: Request) {
       if (!slotStart) continue
 
       if (
-        !isSlotTimeWithinWorkingHours(
-          time,
-          durationMinutes,
-          shop.workingPeriods,
-          selectedDate,
-        )
+        !isSlotTimeWithinWorkingHours(time, durationMinutes, selectedDate)
       ) {
         continue
       }

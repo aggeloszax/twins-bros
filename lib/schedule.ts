@@ -25,7 +25,8 @@ export type WorkingPeriod = {
   endTime: string
 }
 
-const DEFAULT_WORKING_PERIODS: WorkingPeriod[] = [2, 3, 4, 5, 6].map(
+// Tuesday to Saturday, 09:00-21:00 (JavaScript dayOfWeek: Sunday=0).
+export const WORKING_PERIODS: WorkingPeriod[] = [2, 3, 4, 5, 6].map(
   (dayOfWeek) => ({
     dayOfWeek,
     startTime: `${String(OPEN_HOUR).padStart(2, '0')}:00`,
@@ -77,16 +78,9 @@ function minutesToTime(totalMinutes: number) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
-export function normalizeWorkingPeriods(periods?: WorkingPeriod[] | null) {
-  return periods?.length ? periods : DEFAULT_WORKING_PERIODS
-}
-
-export function getWorkingPeriodsForDate(
-  date: Date,
-  periods?: WorkingPeriod[] | null,
-) {
+export function getWorkingPeriodsForDate(date: Date) {
   const dayOfWeek = date.getDay()
-  return normalizeWorkingPeriods(periods)
+  return WORKING_PERIODS
     .filter((period) => period.dayOfWeek === dayOfWeek)
     .sort((a, b) => a.startTime.localeCompare(b.startTime))
 }
@@ -161,16 +155,13 @@ export function getDateKeyInBookingTimeZone(date: Date) {
 export function isSlotTimeWithinWorkingHours(
   time: string,
   durationMinutes: number,
-  periods?: WorkingPeriod[] | null,
   date?: Date,
 ) {
   const startMinutes = timeToMinutes(time)
   if (startMinutes === null) return false
   const endMinutes = startMinutes + durationMinutes
 
-  const relevantPeriods = date
-    ? getWorkingPeriodsForDate(date, periods)
-    : normalizeWorkingPeriods(periods)
+  const relevantPeriods = date ? getWorkingPeriodsForDate(date) : WORKING_PERIODS
 
   return relevantPeriods.some((period) => {
     const periodStart = timeToMinutes(period.startTime)
@@ -180,8 +171,8 @@ export function isSlotTimeWithinWorkingHours(
   })
 }
 
-export function isClosedDay(date: Date, periods?: WorkingPeriod[] | null) {
-  return getWorkingPeriodsForDate(date, periods).length === 0
+export function isClosedDay(date: Date) {
+  return getWorkingPeriodsForDate(date).length === 0
 }
 
 export function buildBookingDates(today = new Date()) {
@@ -208,13 +199,12 @@ export function isWithinBookingWindow(date: Date, today = new Date()) {
 export function buildSlotTimes(
   dateKey: string,
   now = new Date(),
-  periods?: WorkingPeriod[] | null,
 ) {
   const slots: string[] = []
   const date = parseDateKey(dateKey)
   if (!date) return slots
 
-  for (const period of getWorkingPeriodsForDate(date, periods)) {
+  for (const period of getWorkingPeriodsForDate(date)) {
     const periodStart = timeToMinutes(period.startTime)
     const periodEnd = timeToMinutes(period.endTime)
     if (periodStart === null || periodEnd === null) continue
@@ -342,12 +332,11 @@ export function isDayBookable(
   dateKey: string,
   exceptions: NormalizedScheduleException[],
   today = new Date(),
-  periods?: WorkingPeriod[] | null,
 ) {
   if (!isWithinBookingWindow(date, today)) return false
   if (isDateForceClosed(exceptions, dateKey)) return false
   if (isDateForceOpen(exceptions, dateKey)) return true
-  return !isClosedDay(date, periods)
+  return !isClosedDay(date)
 }
 
 // A slot is blocked when a BLOCK_SLOT exception matches the date + time and

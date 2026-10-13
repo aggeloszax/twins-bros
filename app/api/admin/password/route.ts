@@ -1,13 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import {
+  ADMIN_CREDENTIAL_ID,
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   computeSessionToken,
-  encodeSessionCookieValue,
   requireAdmin,
 } from '@/lib/admin-auth'
 import { hashPassword } from '@/lib/admin-password'
-import { requireShop } from '@/lib/shops'
 
 const MIN_PASSWORD_LENGTH = 15
 const MAX_PASSWORD_LENGTH = 128
@@ -31,8 +30,6 @@ function sessionCookie(token: string) {
 export async function POST(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
-  const { shop, response } = await requireShop(request)
-  if (response) return response
 
   const body = (await request.json().catch(() => null)) as
     | { password?: unknown }
@@ -53,17 +50,17 @@ export async function POST(request: Request) {
 
   const passwordHash = await hashPassword(password)
   await prisma.adminCredential.upsert({
-    where: { shopId: shop.id },
-    create: { shopId: shop.id, passwordHash },
+    where: { id: ADMIN_CREDENTIAL_ID },
+    create: { id: ADMIN_CREDENTIAL_ID, passwordHash },
     update: { passwordHash },
   })
 
-  const token = await computeSessionToken(passwordHash, shop.slug)
+  const token = await computeSessionToken(passwordHash)
   return Response.json(
     { ok: true },
     {
       headers: {
-        'Set-Cookie': sessionCookie(encodeSessionCookieValue(shop.slug, token)),
+        'Set-Cookie': sessionCookie(token),
       },
     },
   )

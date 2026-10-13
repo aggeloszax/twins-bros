@@ -1,46 +1,23 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { headers } from 'next/headers'
-import { notFound } from 'next/navigation'
 import type { CSSProperties } from 'react'
-import { SHOP_QUERY_PARAM, resolveShop } from '@/lib/shops'
+import { SHOP } from '@/lib/shop'
 
-export const dynamic = 'force-dynamic'
+const LAST_UPDATED = '13 Οκτωβρίου 2026'
 
-const LAST_UPDATED = '15 Ιουλίου 2026'
-
-export default async function PrivacyPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
-}) {
-  const query = await searchParams
-  const headerStore = await headers()
-  const requestedShop = query[SHOP_QUERY_PARAM]
-  const shop = await resolveShop({
-    explicitSlug: typeof requestedShop === 'string' ? requestedShop : null,
-    hostname:
-      headerStore.get('x-forwarded-host') ?? headerStore.get('host'),
-  })
-
-  if (!shop || shop.slug !== 'salut') notFound()
-
-  const bookingUrl = `/?${new URLSearchParams({
-    [SHOP_QUERY_PARAM]: shop.slug,
-  }).toString()}`
-
+export default function PrivacyPage() {
   return (
     <main
       className="min-h-screen bg-neutral-50 px-4 py-8 text-neutral-900 sm:px-6 sm:py-12"
-      style={{ '--brand': shop.primaryColor } as CSSProperties}
+      style={{ '--brand': SHOP.primaryColor } as CSSProperties}
     >
       <article className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
         <header className="border-b border-neutral-200 px-6 py-7 sm:px-10 sm:py-9">
           <div className="flex items-center gap-4">
             <div className="relative h-14 w-14 overflow-hidden rounded-full border border-neutral-200 bg-white">
               <Image
-                src={shop.logoUrl ?? '/logo.webp'}
-                alt={`${shop.name} logo`}
+                src={SHOP.logoUrl}
+                alt={`${SHOP.name} logo`}
                 fill
                 sizes="56px"
                 className="object-cover"
@@ -48,7 +25,7 @@ export default async function PrivacyPage({
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand)]">
-                {shop.name}
+                {SHOP.name}
               </p>
               <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
                 Πολιτική Απορρήτου
@@ -68,17 +45,17 @@ export default async function PrivacyPage({
             <p className="mt-3">
               Υπεύθυνος για την επεξεργασία των προσωπικών δεδομένων που
               συλλέγονται μέσω της υπηρεσίας online κρατήσεων είναι το{' '}
-              <strong>Salut</strong>.
+              <strong>{SHOP.name}</strong>.
             </p>
             <address className="mt-3 not-italic">
-              Ακτή Καραϊσκάκη 49, Σαλαμίνα 189 00
+              {SHOP.address}
               <br />
               Τηλέφωνο:{' '}
               <a
-                href="tel:+302104654063"
+                href={SHOP.phone.href}
                 className="font-bold text-[var(--brand)] underline underline-offset-4"
               >
-                +30 210 465 4063
+                {SHOP.phone.label}
               </a>
             </address>
           </section>
@@ -118,7 +95,7 @@ export default async function PrivacyPage({
               4. Αποδέκτες και τεχνικοί πάροχοι
             </h2>
             <p className="mt-3">
-              Πρόσβαση έχουν μόνο εξουσιοδοτημένα πρόσωπα του Salut και οι
+              Πρόσβαση έχουν μόνο εξουσιοδοτημένα πρόσωπα του {SHOP.name} και οι
               τεχνικοί πάροχοι που είναι απαραίτητοι για τη φιλοξενία της
               εφαρμογής, τη βάση δεδομένων και την αποστολή email, όπως οι
               Vercel, Supabase και Resend. Οι πάροχοι ενεργούν στο πλαίσιο των
@@ -182,7 +159,7 @@ export default async function PrivacyPage({
 
         <footer className="border-t border-neutral-200 bg-neutral-50 px-6 py-6 text-center sm:px-10">
           <Link
-            href={bookingUrl}
+            href="/"
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-bold text-white transition hover:brightness-110"
           >
             Επιστροφή στην κράτηση

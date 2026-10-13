@@ -15,7 +15,6 @@ import {
   parseDateKey,
 } from '@/lib/schedule'
 import { createSecureToken } from '@/lib/tokens'
-import { requireShop } from '@/lib/shops'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -43,17 +42,11 @@ function isValidEmail(value: unknown): value is string {
 }
 
 export async function POST(request: Request) {
-  const { shop, response } = await requireShop(request)
-  if (response) return response
-
-  const isAdminSession = await isValidSessionToken(
-    readSessionCookie(request),
-    shop.slug,
-  )
+  const isAdminSession = await isValidSessionToken(readSessionCookie(request))
 
   if (!isAdminSession) {
     const clientIp = getClientIp(request.headers)
-    const limited = rateLimit(`booking:${shop.slug}:${clientIp}`, {
+    const limited = rateLimit(`booking:${clientIp}`, {
       limit: 8,
       windowMs: 15 * 60_000,
     })
@@ -123,7 +116,7 @@ export async function POST(request: Request) {
 
   try {
     const service = await prisma.service.findFirst({
-      where: { id: serviceId, shopId: shop.id },
+      where: { id: serviceId },
       select: { duration: true },
     })
 
@@ -132,7 +125,7 @@ export async function POST(request: Request) {
     }
 
     const barber = await prisma.barber.findFirst({
-      where: { id: barberId, shopId: shop.id },
+      where: { id: barberId },
       select: { id: true, name: true },
     })
 
@@ -155,7 +148,6 @@ export async function POST(request: Request) {
     // trusted, and the slot feed could be stale.
     const rawExceptions = await prisma.scheduleException.findMany({
       where: {
-        shopId: shop.id,
         date: {
           gte: createBookingDateTime(date, '00:00') ?? undefined,
           lt: new Date(startTime.getTime() + 24 * 60 * 60_000),
@@ -169,13 +161,12 @@ export async function POST(request: Request) {
     if (
       !isAdminManualBooking &&
       (forceClosed ||
-        (isClosedDay(selectedDate, shop.workingPeriods) && !forceOpen) ||
+        (isClosedDay(selectedDate) && !forceOpen) ||
         !isWithinBookingWindow(selectedDate, now) ||
         startTime <= now ||
         !isSlotTimeWithinWorkingHours(
           slotTime,
           service.duration,
-          shop.workingPeriods,
           selectedDate,
         ) ||
         isSlotBlocked(exceptions, date, slotTime, barber.name))
@@ -190,14 +181,13 @@ export async function POST(request: Request) {
       async (tx) => {
         await tx.$queryRaw`
           WITH lock AS MATERIALIZED (
-            SELECT pg_advisory_xact_lock(hashtext(${`${shop.id}:${barberId}`}))
+            SELECT pg_advisory_xact_lock(hashtext(${barberId}))
           )
           SELECT 1 AS locked FROM lock
         `
 
         const overlappingBooking = await tx.booking.findFirst({
           where: {
-            shopId: shop.id,
             barberId,
             status: { not: 'CANCELLED' },
             startTime: { lt: endTime },
@@ -212,7 +202,6 @@ export async function POST(request: Request) {
 
         return tx.booking.create({
           data: {
-            shopId: shop.id,
             serviceId,
             barberId,
             startTime,
@@ -243,14 +232,6 @@ export async function POST(request: Request) {
                 name: true,
                 duration: true,
                 price: true,
-              },
-            },
-            shop: {
-              select: {
-                slug: true,
-                name: true,
-                logoUrl: true,
-                primaryColor: true,
               },
             },
           },

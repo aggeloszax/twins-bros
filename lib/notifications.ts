@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { SHOP } from '@/lib/shop'
 
 const SHOP_EMAIL = 'aggelos2ker@gmail.com'
 const DEFAULT_RESEND_FROM_EMAIL =
@@ -34,12 +35,6 @@ type BookingNotificationDetails = {
   service: {
     name: string
   }
-  shop: {
-    slug: string
-    name: string
-    logoUrl: string | null
-    primaryColor: string
-  }
 }
 
 function escapeHtml(value: string) {
@@ -67,15 +62,10 @@ ${message}
   // })
 }
 
-function getShopSender(shopName: string) {
+function getShopSender() {
   const addressMatch = DEFAULT_RESEND_FROM_EMAIL.match(/<([^<>]+)>\s*$/)
   const address = (addressMatch?.[1] ?? DEFAULT_RESEND_FROM_EMAIL).trim()
-  const safeShopName = shopName.replace(/[\r\n<>"]/g, '').trim() || 'Booking'
-  return `${safeShopName} <${address}>`
-}
-
-function getShopLogoUrl(logoUrl: string | null, shopBaseUrl: string) {
-  return new URL(logoUrl || '/logo.webp', `${shopBaseUrl}/`).toString()
+  return `${SHOP.name} <${address}>`
 }
 
 async function sendEmail(
@@ -154,17 +144,10 @@ export async function sendBookingNotifications(
   const customerPhone = escapeHtml(bookingDetails.customerPhone)
   const bookingDate = emailDate
   const bookingTime = emailTime
-  const shopName = escapeHtml(bookingDetails.shop.name)
-  const shopSender = getShopSender(bookingDetails.shop.name)
-  // Shop domains may be reserved in the database before their DNS is live.
-  // Email actions must always point to the deployed booking application.
-  const shopBaseUrl = APP_BASE_URL
-  const shopLogoUrl = escapeHtml(
-    getShopLogoUrl(bookingDetails.shop.logoUrl, shopBaseUrl),
-  )
-  const brandColor = /^#[0-9a-f]{6}$/i.test(bookingDetails.shop.primaryColor)
-    ? bookingDetails.shop.primaryColor
-    : '#A61E22'
+  const shopName = escapeHtml(SHOP.name)
+  const shopSender = getShopSender()
+  const shopLogoUrl = escapeHtml(new URL(SHOP.logoUrl, `${APP_BASE_URL}/`).toString())
+  const brandColor = SHOP.primaryColor
 
   const smsMessage = `Γεια σου ${customerName}! Το ραντεβού σου για ${serviceName} με τον ${barberName} επιβεβαιώθηκε για ${bookingDate} στις ${bookingTime}. Σε περιμένουμε!`
 
@@ -179,8 +162,8 @@ export async function sendBookingNotifications(
   }
 
   if (bookingDetails.customerEmail) {
-    const subject = `Επιβεβαίωση ραντεβού · ${bookingDetails.shop.name}`
-    const cancelUrl = `${shopBaseUrl}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
+    const subject = `Επιβεβαίωση ραντεβού · ${SHOP.name}`
+    const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
     const html = `
 <section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #09090b; color: #f4f4f5; border: 1px solid #27272a; border-radius: 18px; overflow: hidden;">
   <div style="padding: 28px; border-bottom: 1px solid #27272a;">

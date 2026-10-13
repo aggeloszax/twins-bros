@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
-import { requireShop } from '@/lib/shops'
 import {
   createBookingDateTime,
   getDateKeyInBookingTimeZone,
@@ -12,8 +11,6 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
-  const { shop, response } = await requireShop(request)
-  if (response) return response
 
   try {
     const todayKey = getDateKeyInBookingTimeZone(new Date())
@@ -36,7 +33,6 @@ export async function GET(request: Request) {
     const [todayBookings, weekBookings] = await Promise.all([
       prisma.booking.findMany({
         where: {
-          shopId: shop.id,
           status: { not: 'CANCELLED' },
           startTime: { gte: todayStart, lt: todayEnd },
         },
@@ -44,7 +40,6 @@ export async function GET(request: Request) {
       }),
       prisma.booking.findMany({
         where: {
-          shopId: shop.id,
           status: { not: 'CANCELLED' },
           startTime: { gte: weekStart, lt: weekEnd },
         },

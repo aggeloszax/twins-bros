@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
-import { requireShop } from '@/lib/shops'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,13 +9,9 @@ type CreateServicePayload = {
   price?: unknown
 }
 
-export async function GET(request: Request) {
-  const { shop, response } = await requireShop(request)
-  if (response) return response
-
+export async function GET() {
   try {
     const services = await prisma.service.findMany({
-      where: { shopId: shop.id },
       orderBy: { price: 'asc' },
     })
     return Response.json(services)
@@ -32,8 +27,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
-  const { shop, response } = await requireShop(request)
-  if (response) return response
 
   let payload: CreateServicePayload
   try {
@@ -65,7 +58,6 @@ export async function POST(request: Request) {
   try {
     const service = await prisma.service.create({
       data: {
-        shopId: shop.id,
         name: name.trim(),
         duration: durationNum,
         price: priceNum,
@@ -84,8 +76,6 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const denied = await requireAdmin(request)
   if (denied) return denied
-  const { shop, response } = await requireShop(request)
-  if (response) return response
 
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
@@ -98,7 +88,7 @@ export async function DELETE(request: Request) {
     // Safety: never break historic bookings. Refuse deletion while any
     // booking still references this service.
     const linkedBookings = await prisma.booking.count({
-      where: { shopId: shop.id, serviceId: id },
+      where: { serviceId: id },
     })
     if (linkedBookings > 0) {
       return Response.json(
@@ -109,7 +99,7 @@ export async function DELETE(request: Request) {
       )
     }
 
-    await prisma.service.deleteMany({ where: { id, shopId: shop.id } })
+    await prisma.service.deleteMany({ where: { id } })
     return Response.json({ success: true })
   } catch (error) {
     console.error('Failed to delete service:', error)

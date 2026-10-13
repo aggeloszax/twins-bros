@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
+import { SHOP } from '@/lib/shop'
 import {
   BOOKING_LOCALE,
   BOOKING_TIME_ZONE,
@@ -8,12 +9,6 @@ import {
 import { CancelClient } from './cancel-client'
 
 export const dynamic = 'force-dynamic'
-
-type CancelShop = {
-  name: string
-  logoUrl: string | null
-  primaryColor: string
-}
 
 function formatDate(date: Date) {
   return date.toLocaleDateString(BOOKING_LOCALE, {
@@ -34,18 +29,8 @@ function formatTime(date: Date) {
   })
 }
 
-function Shell({
-  children,
-  shop,
-}: {
-  children: React.ReactNode
-  shop?: CancelShop
-}) {
-  const shopName = shop?.name ?? 'Twins Bros'
-  const logoUrl = shop?.logoUrl ?? '/logo.webp'
-  const brandColor = /^#[0-9a-f]{6}$/i.test(shop?.primaryColor ?? '')
-    ? shop!.primaryColor
-    : '#ff1f2d'
+function Shell({ children }: { children: React.ReactNode }) {
+  const brandColor = SHOP.primaryColor
 
   return (
     <main
@@ -64,8 +49,8 @@ function Shell({
             style={{ borderColor: brandColor }}
           >
             <Image
-              src={logoUrl}
-              alt={`${shopName} logo`}
+              src={SHOP.logoUrl}
+              alt={`${SHOP.name} logo`}
               fill
               sizes="56px"
               className="object-cover"
@@ -75,7 +60,7 @@ function Shell({
             className="mt-3 text-xs font-bold uppercase tracking-[0.28em]"
             style={{ color: brandColor }}
           >
-            {shopName}
+            {SHOP.name}
           </p>
         </div>
         <div className="mt-7">{children}</div>
@@ -105,19 +90,12 @@ export default async function CancelPage({
       customerName: true,
       barber: { select: { name: true } },
       service: { select: { name: true } },
-      shop: {
-        select: {
-          name: true,
-          logoUrl: true,
-          primaryColor: true,
-        },
-      },
     },
   })
 
   if (!booking || !token || booking.cancelToken !== token) {
     return (
-      <Shell shop={booking?.shop}>
+      <Shell>
         <div className="text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
             Το ραντεβού δεν βρέθηκε
@@ -133,7 +111,7 @@ export default async function CancelPage({
 
   if (booking.status === 'CANCELLED') {
     return (
-      <Shell shop={booking.shop}>
+      <Shell>
         <div className="text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-3xl text-emerald-400">
             ✓
@@ -152,11 +130,11 @@ export default async function CancelPage({
 
   if (!canCancelBooking(booking.startTime, new Date())) {
     return (
-      <Shell shop={booking.shop}>
+      <Shell>
         <div className="text-center">
           <div
             className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border bg-white/5 text-2xl"
-            style={{ borderColor: booking.shop.primaryColor }}
+            style={{ borderColor: SHOP.primaryColor }}
           >
             ⏳
           </div>
@@ -175,11 +153,11 @@ export default async function CancelPage({
   }
 
   return (
-    <Shell shop={booking.shop}>
+    <Shell>
       <CancelClient
         id={booking.id}
         token={token}
-        brandColor={booking.shop.primaryColor}
+        brandColor={SHOP.primaryColor}
         details={{
           customerName: booking.customerName,
           service: booking.service.name,

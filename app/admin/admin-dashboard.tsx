@@ -3,7 +3,6 @@
 import Image from 'next/image'
 import {
   type ChangeEvent,
-  type CSSProperties,
   type FormEvent,
   type ReactNode,
   useCallback,
@@ -17,70 +16,8 @@ import {
   getDateKeyInBookingTimeZone,
 } from '@/lib/schedule'
 import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
+import { ADMIN_THEME, SHOP } from '@/lib/shop'
 import { logout } from './login/actions'
-
-const DEFAULT_SHOP_SLUG = 'twins-bros'
-const SHOP_NAME_BY_SLUG: Record<string, string> = {
-  'twins-bros': 'Twins Bros',
-  salut: 'SALUT',
-}
-const SHOP_ADMIN_EMAIL_BY_SLUG: Record<string, string> = {
-  'twins-bros': 'admin@twins-bros.gr',
-  salut: 'admin@salut.gr',
-}
-const SHOP_LOGO_BY_SLUG: Record<string, string> = {
-  'twins-bros': '/logo.webp',
-  salut: '/barbers/salut.logo.png',
-}
-const SHOP_THEME_BY_SLUG: Record<string, CSSProperties> = {
-  'twins-bros': {
-    '--admin-accent': '#ff1f2d',
-    '--admin-accent-hover': '#d80d19',
-    '--admin-accent-soft': '#ff6b75',
-    '--admin-accent-muted': '#ffb3b8',
-    '--admin-deep': '#4b0710',
-    '--admin-bg': '#120306',
-    '--admin-surface': '#3a050c',
-    '--admin-surface-2': '#180307',
-  } as CSSProperties,
-  salut: {
-    '--admin-accent': '#22b8d8',
-    '--admin-accent-hover': '#0ea5c6',
-    '--admin-accent-soft': '#7ddff0',
-    '--admin-accent-muted': '#c7f4fb',
-    '--admin-deep': '#064150',
-    '--admin-bg': '#03151a',
-    '--admin-surface': '#073847',
-    '--admin-surface-2': '#05252e',
-  } as CSSProperties,
-}
-
-
-function apiPath(path: string, shopSlug: string) {
-  const params = new URLSearchParams({ shop: shopSlug })
-  return `${path}?${params.toString()}`
-}
-
-function appendShopParam(path: string, shopSlug: string) {
-  const separator = path.includes('?') ? '&' : '?'
-  return `${path}${separator}shop=${encodeURIComponent(shopSlug)}`
-}
-
-function getShopName(shopSlug: string) {
-  return SHOP_NAME_BY_SLUG[shopSlug] ?? 'Twins Bros'
-}
-
-function getShopAdminEmail(shopSlug: string) {
-  return SHOP_ADMIN_EMAIL_BY_SLUG[shopSlug] ?? 'admin@twins-bros.gr'
-}
-
-function getShopLogo(shopSlug: string) {
-  return SHOP_LOGO_BY_SLUG[shopSlug] ?? '/logo.webp'
-}
-
-function getShopTheme(shopSlug: string) {
-  return SHOP_THEME_BY_SLUG[shopSlug] ?? SHOP_THEME_BY_SLUG['twins-bros']
-}
 
 type Booking = {
   id: string
@@ -317,12 +254,8 @@ function resizeBarberImage(file: File): Promise<string> {
   })
 }
 
-function redirectToAdminLogin(shopSlug = DEFAULT_SHOP_SLUG) {
-  window.location.assign(
-    shopSlug === DEFAULT_SHOP_SLUG
-      ? '/admin/login'
-      : apiPath('/admin/login', shopSlug),
-  )
+function redirectToAdminLogin() {
+  window.location.assign('/admin/login')
 }
 
 function SectionHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
@@ -488,7 +421,6 @@ function InlineDeleteButton({
 function ModalShell({
   title,
   subtitle,
-  shopName,
   onClose,
   onSubmit,
   children,
@@ -497,7 +429,6 @@ function ModalShell({
 }: {
   title: string
   subtitle: string
-  shopName: string
   onClose: () => void
   onSubmit: (event: FormEvent) => void
   children: ReactNode
@@ -523,7 +454,7 @@ function ModalShell({
           <XIcon className="h-4 w-4" />
         </button>
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--admin-accent)]">
-          {shopName}
+          {SHOP.name}
         </p>
         <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">{title}</h2>
         <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>
@@ -547,13 +478,11 @@ function BarbersView({
   onCreated,
   onUpdated,
   onDeleted,
-  shopSlug,
 }: {
   barbers: BarberItem[]
   onCreated: (barber: BarberItem) => void
   onUpdated: (barber: BarberItem) => void
   onDeleted: (id: string) => void
-  shopSlug: string
 }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingBarber, setEditingBarber] = useState<BarberItem | null>(null)
@@ -612,7 +541,7 @@ function BarbersView({
     setSubmitting(true)
     setModalError(null)
     try {
-      const res = await fetch(apiPath('/api/barbers', shopSlug), {
+      const res = await fetch('/api/barbers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), image: imageData }),
@@ -651,7 +580,7 @@ function BarbersView({
     setSubmitting(true)
     setModalError(null)
     try {
-      const res = await fetch(apiPath('/api/barbers', shopSlug), {
+      const res = await fetch('/api/barbers', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: editingBarber.id, image: imageData }),
@@ -681,7 +610,7 @@ function BarbersView({
     setListError(null)
     try {
       const res = await fetch(
-        appendShopParam(`/api/barbers?id=${encodeURIComponent(id)}`, shopSlug),
+        `/api/barbers?id=${encodeURIComponent(id)}`,
         {
         method: 'DELETE',
         },
@@ -784,7 +713,6 @@ function BarbersView({
           }
           submitting={submitting || imageProcessing}
           submitLabel={editingBarber ? 'Αποθήκευση φωτογραφίας' : 'Προσθήκη κουρέα'}
-          shopName={getShopName(shopSlug)}
         >
           {!editingBarber && (
             <label className="block">
@@ -850,12 +778,10 @@ function ServicesView({
   services,
   onCreated,
   onDeleted,
-  shopSlug,
 }: {
   services: ServiceItem[]
   onCreated: (service: ServiceItem) => void
   onDeleted: (id: string) => void
-  shopSlug: string
 }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
@@ -893,7 +819,7 @@ function ServicesView({
     setSubmitting(true)
     setModalError(null)
     try {
-      const res = await fetch(apiPath('/api/services', shopSlug), {
+      const res = await fetch('/api/services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -924,7 +850,7 @@ function ServicesView({
     setListError(null)
     try {
       const res = await fetch(
-        appendShopParam(`/api/services?id=${encodeURIComponent(id)}`, shopSlug),
+        `/api/services?id=${encodeURIComponent(id)}`,
         { method: 'DELETE' },
       )
       if (!res.ok) {
@@ -989,7 +915,6 @@ function ServicesView({
           onSubmit={(event) => void handleCreate(event)}
           submitting={submitting}
           submitLabel="Προσθήκη υπηρεσίας"
-          shopName={getShopName(shopSlug)}
         >
           <label className="block">
             <span className={labelClass}>Όνομα Υπηρεσίας</span>
@@ -1193,10 +1118,8 @@ function RevenueView({
 
 function ScheduleManagerView({
   barbers,
-  shopSlug,
 }: {
   barbers: BarberItem[]
-  shopSlug: string
 }) {
   const [exceptions, setExceptions] = useState<ScheduleException[]>([])
   const [loading, setLoading] = useState(true)
@@ -1223,7 +1146,7 @@ function ScheduleManagerView({
     setLoading(true)
     setError(false)
     try {
-      const res = await fetch(apiPath('/api/admin/schedule-exceptions', shopSlug))
+      const res = await fetch('/api/admin/schedule-exceptions')
       if (!res.ok) throw new Error('Request failed')
       setExceptions((await res.json()) as ScheduleException[])
     } catch {
@@ -1231,7 +1154,7 @@ function ScheduleManagerView({
     } finally {
       setLoading(false)
     }
-  }, [shopSlug])
+  }, [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1245,7 +1168,7 @@ function ScheduleManagerView({
     body: Record<string, unknown>,
     onError: (message: string) => void,
   ) {
-    const res = await fetch(apiPath('/api/admin/schedule-exceptions', shopSlug), {
+    const res = await fetch('/api/admin/schedule-exceptions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -1295,7 +1218,7 @@ function ScheduleManagerView({
   async function handleDelete(id: string) {
     setExceptions((prev) => prev.filter((item) => item.id !== id))
     try {
-      await fetch(apiPath(`/api/admin/schedule-exceptions/${id}`, shopSlug), {
+      await fetch(`/api/admin/schedule-exceptions/${id}`, {
         method: 'DELETE',
       })
     } finally {
@@ -1520,7 +1443,6 @@ function NewBookingModal({
   defaultDate,
   onClose,
   onCreated,
-  shopSlug,
 }: {
   services: ServiceItem[]
   barbers: BarberItem[]
@@ -1528,7 +1450,6 @@ function NewBookingModal({
   defaultDate: string
   onClose: () => void
   onCreated: (booking: Booking) => void
-  shopSlug: string
 }) {
   const initialBarberId =
     barbers.find((barber) => barber.name === defaultBarberName)?.id ??
@@ -1568,7 +1489,7 @@ function NewBookingModal({
     })
 
     fetch(
-      `${apiPath('/api/available-slots', shopSlug)}&barberId=${encodeURIComponent(
+      `/api/available-slots?barberId=${encodeURIComponent(
         barberId,
       )}&serviceId=${encodeURIComponent(serviceId)}&date=${encodeURIComponent(date)}`,
       { signal: controller.signal },
@@ -1598,7 +1519,7 @@ function NewBookingModal({
       active = false
       controller.abort()
     }
-  }, [barberId, date, serviceId, shopSlug])
+  }, [barberId, date, serviceId])
 
   const ready =
     services.length > 0 &&
@@ -1626,7 +1547,7 @@ function NewBookingModal({
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(apiPath('/api/bookings', shopSlug), {
+      const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1636,7 +1557,7 @@ function NewBookingModal({
           slotTime,
           customerName: customerName.trim(),
           customerPhone: normalizedCustomerPhone,
-          customerEmail: customerEmail.trim() || getShopAdminEmail(shopSlug).replace('admin@', 'manual@'),
+          customerEmail: customerEmail.trim() || SHOP.adminEmail.replace('admin@', 'manual@'),
           adminManual: true,
         }),
       })
@@ -1679,7 +1600,7 @@ function NewBookingModal({
         </button>
 
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--admin-accent)]">
-          {getShopName(shopSlug)}
+          {SHOP.name}
         </p>
         <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">
           Νέο ραντεβού
@@ -1725,7 +1646,7 @@ function NewBookingModal({
               type="email"
               value={customerEmail}
               onChange={(event) => setCustomerEmail(event.target.value)}
-              placeholder={getShopAdminEmail(shopSlug).replace('admin@', 'manual@')}
+              placeholder={SHOP.adminEmail.replace('admin@', 'manual@')}
               className={fieldClass}
             />
           </label>
@@ -1834,7 +1755,7 @@ function NewBookingModal({
 
 /* ----------------------------- Settings tab ------------------------------ */
 
-function SecuritySettingsView({ shopSlug }: { shopSlug: string }) {
+function SecuritySettingsView() {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -1847,7 +1768,7 @@ function SecuritySettingsView({ shopSlug }: { shopSlug: string }) {
     setError(null)
 
     try {
-      const res = await fetch(apiPath('/api/admin/password', shopSlug), {
+      const res = await fetch('/api/admin/password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
@@ -1917,18 +1838,9 @@ function SecuritySettingsView({ shopSlug }: { shopSlug: string }) {
 
 /* --------------------------------- Page ---------------------------------- */
 
-export default function AdminDashboard({
-  initialShopSlug,
-}: {
-  initialShopSlug: string
-}) {
+export default function AdminDashboard() {
   // Access is enforced by proxy.ts (redirect) + the API route guards. By the
-  // time this renders, the visitor already holds a valid admin session, and the
-  // active shop is read from that session cookie server-side (see page.tsx) —
-  // never from the URL — so a missing `?shop=` param can no longer silently
-  // fall back to the default shop.
-  const [shopSlug] = useState(initialShopSlug)
-  const shopReady = true
+  // time this renders, the visitor already holds a valid admin session.
   const [activeTab, setActiveTab] = useState<TabKey>('appointments')
 
   const [stats, setStats] = useState<Stats | null>(null)
@@ -1974,9 +1886,9 @@ export default function AdminDashboard({
     setLoading(true)
     setError(false)
 
-    fetch(apiPath('/api/admin/stats', shopSlug), { signal })
+    fetch('/api/admin/stats', { signal })
       .then((res) => {
-        if (res.status === 401) redirectToAdminLogin(shopSlug)
+        if (res.status === 401) redirectToAdminLogin()
         return res.ok ? (res.json() as Promise<Stats>) : null
       })
       .then((statsData) => {
@@ -1989,14 +1901,14 @@ export default function AdminDashboard({
         }
       })
 
-    fetch(apiPath('/api/services', shopSlug), { signal })
+    fetch('/api/services', { signal })
       .then((res) => (res.ok ? (res.json() as Promise<ServiceItem[]>) : []))
       .then((data) => {
         if (!signal?.aborted) setServices(Array.isArray(data) ? data : [])
       })
       .catch(() => {})
 
-    fetch(apiPath('/api/barbers', shopSlug), { signal })
+    fetch('/api/barbers', { signal })
       .then((res) => (res.ok ? (res.json() as Promise<BarberItem[]>) : []))
       .then((data) => {
         if (!signal?.aborted) setBarbers(Array.isArray(data) ? data : [])
@@ -2004,9 +1916,9 @@ export default function AdminDashboard({
       .catch(() => {})
 
     try {
-      const bookingsRes = await fetch(apiPath('/api/admin/bookings', shopSlug), { signal })
+      const bookingsRes = await fetch('/api/admin/bookings', { signal })
       if (bookingsRes.status === 401) {
-        redirectToAdminLogin(shopSlug)
+        redirectToAdminLogin()
         return
       }
       if (!bookingsRes.ok) throw new Error('Bookings request failed')
@@ -2021,22 +1933,20 @@ export default function AdminDashboard({
     } finally {
       if (!signal?.aborted) setLoading(false)
     }
-  }, [shopSlug])
+  }, [])
 
   useEffect(() => {
-    if (!shopReady) return
-
     const controller = new AbortController()
     queueMicrotask(() => {
       if (!controller.signal.aborted) void loadData(controller.signal)
     })
     return () => controller.abort()
-  }, [loadData, shopReady])
+  }, [loadData])
 
   async function handleCancel(id: string) {
     setCancelling(true)
     try {
-      await fetch(apiPath(`/api/admin/bookings/${id}`, shopSlug), {
+      await fetch(`/api/admin/bookings/${id}`, {
         method: 'DELETE',
       })
       setBookings((prev) => prev.filter((booking) => booking.id !== id))
@@ -2056,7 +1966,7 @@ export default function AdminDashboard({
       return
     }
     try {
-      const res = await fetch(apiPath(`/api/admin/bookings/${id}`, shopSlug), {
+      const res = await fetch(`/api/admin/bookings/${id}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Delete failed')
@@ -2073,7 +1983,7 @@ export default function AdminDashboard({
   async function handleNoShowToggle(booking: Booking) {
     setNoShowUpdatingId(booking.id)
     try {
-      const res = await fetch(apiPath(`/api/admin/bookings/${booking.id}`, shopSlug), {
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ noShow: !booking.noShow }),
@@ -2118,7 +2028,7 @@ export default function AdminDashboard({
   }
 
   function handleLogout() {
-    void logout(shopSlug)
+    void logout()
   }
 
   const calendarDays = buildCalendarDays(calendarMonth)
@@ -2137,28 +2047,24 @@ export default function AdminDashboard({
     return status === 'cancelled' ? sum : sum + booking.service.price
   }, 0)
   const todayRevenue = stats?.todayRevenue ?? 0
-  const shopName = getShopName(shopSlug)
-  const shopAdminEmail = getShopAdminEmail(shopSlug)
-  const shopLogo = getShopLogo(shopSlug)
-  const shopTheme = getShopTheme(shopSlug)
 
   return (
     <main
       className="admin-ui min-h-screen bg-[linear-gradient(145deg,var(--admin-surface)_0%,var(--admin-bg)_35%,#050505_100%)] px-4 pb-16 pt-6 text-zinc-100 sm:px-6"
-      style={shopTheme}
+      style={ADMIN_THEME}
     >
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl shadow-black/30 backdrop-blur lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <Image src={shopLogo} alt={shopName} width={58} height={58} className="rounded-full border border-white/15 bg-black object-cover shadow-lg shadow-[var(--admin-accent)]/10" priority />
+            <Image src={SHOP.logoUrl} alt={SHOP.name} width={58} height={58} className="rounded-full border border-white/15 bg-black object-cover shadow-lg shadow-[var(--admin-accent)]/10" priority />
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.26em] text-[var(--admin-accent)]">{shopName}</p>
+              <p className="text-xs font-black uppercase tracking-[0.26em] text-[var(--admin-accent)]">{SHOP.name}</p>
               <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Πίνακας ελέγχου</h1>
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300">
-              <span className="text-zinc-500">Συνδεδεμένος:</span> {shopAdminEmail}
+              <span className="text-zinc-500">Συνδεδεμένος:</span> {SHOP.adminEmail}
             </div>
             <button
               type="button"
@@ -2402,7 +2308,6 @@ export default function AdminDashboard({
             onCreated={handleBarberCreated}
             onUpdated={handleBarberUpdated}
             onDeleted={handleBarberDeleted}
-            shopSlug={shopSlug}
           />
         )}
         {activeTab === 'services' && (
@@ -2410,16 +2315,15 @@ export default function AdminDashboard({
             services={services}
             onCreated={handleServiceCreated}
             onDeleted={handleServiceDeleted}
-            shopSlug={shopSlug}
           />
         )}
         {activeTab === 'schedule' && (
-          <ScheduleManagerView barbers={barbers} shopSlug={shopSlug} />
+          <ScheduleManagerView barbers={barbers} />
         )}
         {activeTab === 'revenue' && (
           <RevenueView bookings={bookings} barbers={barbers} />
         )}
-        {activeTab === 'settings' && <SecuritySettingsView shopSlug={shopSlug} />}
+        {activeTab === 'settings' && <SecuritySettingsView />}
       </div>
 
       {isNewBookingOpen && (
@@ -2432,7 +2336,6 @@ export default function AdminDashboard({
           onCreated={(booking) =>
             setBookings((prev) => [...prev, booking])
           }
-          shopSlug={shopSlug}
         />
       )}
 

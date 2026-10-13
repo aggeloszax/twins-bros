@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
 import { normalizeGreekMobilePhone } from '@/lib/phone'
-import { requireShop } from '@/lib/shops'
 import type { BookingStatus } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -19,8 +18,6 @@ export async function PATCH(
 ) {
   const denied = await requireAdmin(request)
   if (denied) return denied
-  const { shop, response } = await requireShop(request)
-  if (response) return response
 
   let payload: UpdateBookingPayload
 
@@ -51,7 +48,7 @@ export async function PATCH(
   try {
     const { id } = await params
     const existing = await prisma.booking.findFirst({
-      where: { id, shopId: shop.id },
+      where: { id },
       select: { id: true },
     })
 
@@ -74,7 +71,7 @@ export async function PATCH(
     const phoneKey = normalizeGreekMobilePhone(booking.customerPhone)
     const noShowCount = phoneKey
       ? await prisma.booking.count({
-          where: { shopId: shop.id, noShow: true, customerPhone: phoneKey },
+          where: { noShow: true, customerPhone: phoneKey },
         })
       : 0
 
@@ -91,12 +88,10 @@ export async function DELETE(
 ) {
   const denied = await requireAdmin(request)
   if (denied) return denied
-  const { shop, response } = await requireShop(request)
-  if (response) return response
 
   try {
     const { id } = await params
-    await prisma.booking.deleteMany({ where: { id, shopId: shop.id } })
+    await prisma.booking.deleteMany({ where: { id } })
     return Response.json({ success: true })
   } catch (error) {
     console.error('Failed to delete booking:', error)

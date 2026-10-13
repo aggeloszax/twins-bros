@@ -4,58 +4,30 @@
 
 import { prisma } from '@/lib/prisma'
 import { verifyPassword } from '@/lib/admin-password'
-import {
-  DEFAULT_SHOP_SLUG,
-  getShopBySlug,
-  getShopSlugFromUrl,
-  resolveShop,
-  type ShopContext,
-} from '@/lib/shops'
 
 export const ADMIN_SESSION_COOKIE = 'twins_admin_session'
 export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days, in seconds
+export const ADMIN_CREDENTIAL_ID = 'admin'
 
 const MAX_PASSWORD_LENGTH = 128
 
-const TOKEN_SALT = 'twins-bros::admin-session::v1'
+const TOKEN_SALT = 'twins-bros::admin-session::v2'
 
 // The cookie stores an unforgeable token derived from the active password hash.
 // It cannot be fabricated without the database secret, and a leaked cookie does
 // not reveal the password.
-export async function computeSessionToken(
-  tokenSecret: string,
-  shopSlug = DEFAULT_SHOP_SLUG,
-): Promise<string> {
-  const bytes = new TextEncoder().encode(`${TOKEN_SALT}:${shopSlug}:${tokenSecret}`)
+export async function computeSessionToken(tokenSecret: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`${TOKEN_SALT}:${tokenSecret}`)
   const digest = await crypto.subtle.digest('SHA-256', bytes)
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 }
 
-export function encodeSessionCookieValue(shopSlug: string, token: string) {
-  return `${shopSlug}:${token}`
-}
-
-function readSessionParts(token: string | undefined | null): {
-  shopSlug: string
-  token: string
-} | null {
-  if (!token) return null
-  const separator = token.indexOf(':')
-  if (separator === -1) {
-    return { shopSlug: DEFAULT_SHOP_SLUG, token }
-  }
-  return {
-    shopSlug: token.slice(0, separator),
-    token: token.slice(separator + 1),
-  }
-}
-
-async function getStoredPasswordHash(shopId: string): Promise<string | null> {
+async function getStoredPasswordHash(): Promise<string | null> {
   try {
     const credential = await prisma.adminCredential.findUnique({
-      where: { shopId },
+      where: { id: ADMIN_CREDENTIAL_ID },
       select: { passwordHash: true },
     })
     return credential?.passwordHash ?? null
@@ -65,13 +37,13 @@ async function getStoredPasswordHash(shopId: string): Promise<string | null> {
   }
 }
 
-async function getExpectedToken(shop: ShopContext): Promise<string | null> {
-  const storedHash = await getStoredPasswordHash(shop.id)
-  if (storedHash) return computeSessionToken(storedHash, shop.slug)
+async function getExpectedToken(): Promise<string | null> {
+  const storedHash = await getStoredPasswordHash()
+  if (storedHash) return computeSessionToken(storedHash)
 
   const firstRunPassword = process.env.ADMIN_PASSWORD
   if (!firstRunPassword) return null
-  return computeSessionToken(firstRunPassword, shop.slug)
+  return computeSessionToken(firstRunPassword)
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -85,30 +57,23 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 export async function isValidSessionToken(
   token: string | undefined | null,
-  expectedShopSlug = DEFAULT_SHOP_SLUG,
 ): Promise<boolean> {
-  const parts = readSessionParts(token)
-  if (!parts || parts.shopSlug !== expectedShopSlug) return false
-  const shop = await getShopBySlug(expectedShopSlug)
-  if (!shop) return false
-  const expected = await getExpectedToken(shop)
+  if (!token) return false
+  const expected = await getExpectedToken()
   if (!expected) return false
-  return timingSafeEqual(parts.token, expected)
+  return timingSafeEqual(token, expected)
 }
 
-export async function verifyAdminPassword(password: string, shopSlug = DEFAULT_SHOP_SLUG): Promise<{
+export async function verifyAdminPassword(password: string): Promise<{
   valid: boolean
-  shop?: ShopContext
   tokenSecret?: string
 }> {
   if (!password || password.length > MAX_PASSWORD_LENGTH) return { valid: false }
-  const shop = await getShopBySlug(shopSlug)
-  if (!shop) return { valid: false }
 
-  const storedHash = await getStoredPasswordHash(shop.id)
+  const storedHash = await getStoredPasswordHash()
   if (storedHash) {
     const valid = await verifyPassword(password, storedHash)
-    return valid ? { valid, shop, tokenSecret: storedHash } : { valid: false }
+    return valid ? { valid, tokenSecret: storedHash } : { valid: false }
   }
 
   const firstRunPassword = process.env.ADMIN_PASSWORD
@@ -116,7 +81,7 @@ export async function verifyAdminPassword(password: string, shopSlug = DEFAULT_S
     return { valid: false }
   }
 
-  return { valid: true, shop, tokenSecret: firstRunPassword }
+  return { valid: true, tokenSecret: firstRunPassword }
 }
 
 // Reads the admin session cookie straight off the standard Request, so the
@@ -138,20 +103,7 @@ export function readSessionCookie(request: Request): string | undefined {
 //   const denied = await requireAdmin(request)
 //   if (denied) return denied
 export async function requireAdmin(request: Request): Promise<Response | null> {
-  const requestUrl = new URL(request.url)
-  const shop = await resolveShop({
-    explicitSlug: getShopSlugFromUrl(request.url),
-    hostname:
-      request.headers.get('x-forwarded-host') ??
-      request.headers.get('host') ??
-      requestUrl.host,
-  })
-  if (!shop) return Response.json({ error: 'Shop not found' }, { status: 404 })
-
-  const valid = await isValidSessionToken(
-    readSessionCookie(request),
-    shop.slug,
-  )
+  const valid = await isValidSessionToken(readSessionCookie(request))
   if (valid) return null
   return Response.json({ error: 'Access Denied' }, { status: 401 })
 }
