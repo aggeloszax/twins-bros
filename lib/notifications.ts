@@ -231,7 +231,6 @@ export async function sendBookingNotifications(
   let customerName = bookingDetails.customerName
   let serviceName = bookingDetails.service.name
   let barberName = bookingDetails.barber.name
-  const customerPhone = escapeHtml(bookingDetails.customerPhone)
   const bookingDate = emailDate
   const bookingTime = emailTime
   const shopSender = getShopSender()
@@ -268,21 +267,8 @@ export async function sendBookingNotifications(
     )
   }
 
-  bookingDetails.customerPhone = customerPhone
-
-  const shopEmailDelivery = await trySendEmail(
-    SHOP.notificationEmail,
-    `📅 Νέο Ραντεβού — ${customerName}`,
-    `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
-      <strong>${customerName}</strong> · ${bookingDetails.customerPhone}<br/>
-      ${serviceName} με τον ${barberName}<br/>
-      ${emailDate} στις ${emailTime}${
-        bookingDetails.notes ? `<br/><br/>Σχόλιο: ${escapeHtml(bookingDetails.notes)}` : ''
-      }
-    </p>`,
-    shopSender,
-  )
-
+  // The shop is no longer emailed about new bookings; barbers will get a
+  // push notification on their phone instead.
   console.log(`
 ==================== BARBER NOTIFICATION ====================
 [BARBER]: ${barberName}
@@ -292,7 +278,6 @@ export async function sendBookingNotifications(
 
   return {
     customerEmail: customerEmailDelivery.status,
-    shopEmail: shopEmailDelivery.status,
   }
 }
 

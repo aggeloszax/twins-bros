@@ -293,10 +293,8 @@ export async function POST(request: Request) {
 
     let notificationDelivery: {
       customerEmail: 'sent' | 'failed' | 'skipped'
-      shopEmail: 'sent' | 'failed'
     } = {
       customerEmail: bookingWithToken.customerEmail ? 'failed' : 'skipped',
-      shopEmail: 'failed',
     }
 
     try {

@@ -45,7 +45,6 @@ type BookingCreationResponse = {
   calendar?: { google: string; ics: string }
   notificationDelivery?: {
     customerEmail: EmailDeliveryStatus
-    shopEmail: 'sent' | 'failed'
   }
 }
 
@@ -588,6 +587,7 @@ export default function BookingForm() {
             (customerEmail.trim() ? 'failed' : 'skipped'),
         )
         setConfirmed(true)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       } catch {
         setBookingError('failed')
       } finally {
@@ -600,21 +600,28 @@ export default function BookingForm() {
     if (canReach(n)) setStep(n as BookingStep)
   }
 
+  // Starts a fresh booking from the success screen.
+  function resetBooking() {
+    setConfirmed(false)
+    setConfirmedBooking(null)
+    setSelectedTime(null)
+    setSelectedDate(null)
+    setBookingNotes('')
+    setStep(1)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function handleSelectService(service: Service) {
     setSelectedService(service)
   }
 
-  if (
-    confirmed &&
+  const successCard = (confirmed &&
     selectedService &&
     selectedBarber &&
     selectedDate &&
     selectedTime &&
     customerName.trim() &&
-    normalizedCustomerPhone
-  ) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 font-sans text-neutral-900">
+    normalizedCustomerPhone) ? (
         <div className="animate-fade-in w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-7 text-center shadow-md sm:p-8">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_8px_24px_rgba(16,185,129,0.28)]">
             <CheckIcon className="h-8 w-8" />
@@ -698,10 +705,16 @@ export default function BookingForm() {
               </div>
             </div>
           )}
+          <button
+            type="button"
+            onClick={resetBooking}
+            className="mt-6 w-full rounded-full bg-[var(--brand)] px-5 py-3 text-sm font-bold text-white transition hover:brightness-110"
+          >
+            Κλείσε νέο ραντεβού
+          </button>
         </div>
-      </main>
-    )
-  }
+  ) : null
+
 
   const hasAvailableSlot = slots.some((s) => s.available)
 
@@ -733,6 +746,10 @@ export default function BookingForm() {
           </h1>
         </header>
 
+        {successCard ? (
+          <div className="mt-8 flex flex-1 justify-center">{successCard}</div>
+        ) : (
+        <>
         <div className="mt-7 rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
           <Stepper
             step={step}
@@ -1165,6 +1182,8 @@ export default function BookingForm() {
             </div>
           )}
         </section>
+        </>
+        )}
 
         <footer className="mt-12 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
           <p className="font-semibold text-neutral-700">{SHOP.name}</p>
@@ -1192,6 +1211,7 @@ export default function BookingForm() {
         </footer>
       </main>
 
+      {!successCard && (
       <div className="fixed inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-6">
           {step > 1 && (
@@ -1251,6 +1271,7 @@ export default function BookingForm() {
           </button>
         </div>
       </div>
+      )}
     </div>
   )
 }
