@@ -50,11 +50,11 @@ function dayLabel(dateKey: string) {
 function SuccessMessage({ title, text }: { title: string; text: string }) {
   return (
     <div className="animate-fade-in text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.25)]">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-[0_0_40px_rgba(16,185,129,0.25)]">
         <CheckIcon className="h-8 w-8" />
       </div>
-      <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-50">{title}</h1>
-      <p className="mt-3 text-sm leading-6 text-zinc-400">{text}</p>
+      <h1 className="mt-6 text-2xl font-semibold tracking-tight text-neutral-900">{title}</h1>
+      <p className="mt-3 text-sm leading-6 text-neutral-500">{text}</p>
     </div>
   )
 }
@@ -176,14 +176,14 @@ export function CancelClient({
   const primaryButton =
     'mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 ease-in-out hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50'
   const secondaryButton =
-    'flex min-h-12 w-full items-center justify-center rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/5'
+    'flex min-h-12 w-full items-center justify-center rounded-full border border-[var(--page-border)] px-6 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50'
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
+      <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
         {mode === 'reschedule' ? 'Αλλαγή ώρας' : mode === 'cancel' ? 'Ακύρωση ραντεβού' : 'Το ραντεβού σας'}
       </h1>
-      <p className="mt-2 text-sm leading-6 text-zinc-400">
+      <p className="mt-2 text-sm leading-6 text-neutral-500">
         {mode === 'reschedule'
           ? `Διαλέξτε νέα ημέρα και ώρα με τον ${details.barber}.`
           : mode === 'cancel'
@@ -192,11 +192,11 @@ export function CancelClient({
       </p>
 
       {mode !== 'reschedule' && (
-        <dl className="mt-6 space-y-3 rounded-3xl border border-white/10 bg-black/45 p-4 text-left text-sm">
+        <dl className="mt-6 space-y-3 rounded-3xl border border-[var(--page-border)] bg-[var(--page-bg)] p-4 text-left text-sm">
           {detailRows.map((row) => (
             <div key={row.key} className="flex items-center justify-between gap-3">
-              <dt className="text-zinc-400">{row.label}</dt>
-              <dd className="text-right font-medium text-zinc-50">{details[row.key]}</dd>
+              <dt className="text-neutral-500">{row.label}</dt>
+              <dd className="text-right font-medium text-neutral-900">{details[row.key]}</dd>
             </div>
           ))}
         </dl>
@@ -204,11 +204,11 @@ export function CancelClient({
 
       {mode === 'reschedule' && (
         <div className="mt-6">
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-neutral-500">
             Τρέχον ραντεβού: {details.date}, {details.time}
           </p>
           {bookableDays.length === 0 ? (
-            <p className="mt-4 text-sm text-zinc-300">Δεν υπάρχουν διαθέσιμες ημέρες αυτή τη στιγμή.</p>
+            <p className="mt-4 text-sm text-neutral-600">Δεν υπάρχουν διαθέσιμες ημέρες αυτή τη στιγμή.</p>
           ) : (
             <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-2">
               {bookableDays.map((key) => {
@@ -221,7 +221,7 @@ export function CancelClient({
                     onClick={() => setDay(key)}
                     aria-pressed={selected}
                     className={`flex w-14 shrink-0 flex-col items-center rounded-2xl border py-2 text-xs transition ${
-                      selected ? 'border-transparent text-white' : 'border-white/10 text-zinc-300 hover:bg-white/5'
+                      selected ? 'border-transparent text-white' : 'border-[var(--page-border)] text-neutral-600 hover:bg-neutral-50'
                     }`}
                     style={selected ? { backgroundColor: brandColor } : undefined}
                   >
@@ -236,9 +236,9 @@ export function CancelClient({
 
           <div className="mt-4 min-h-24">
             {loadingSlots ? (
-              <p className="text-sm text-zinc-400">Φόρτωση ωρών…</p>
+              <p className="text-sm text-neutral-500">Φόρτωση ωρών…</p>
             ) : day && freeSlots.length === 0 ? (
-              <p className="text-sm text-zinc-400">Δεν υπάρχουν ελεύθερες ώρες αυτή την ημέρα.</p>
+              <p className="text-sm text-neutral-500">Δεν υπάρχουν ελεύθερες ώρες αυτή την ημέρα.</p>
             ) : (
               <div className="grid grid-cols-4 gap-2">
                 {freeSlots.map((slot) => {
@@ -250,7 +250,7 @@ export function CancelClient({
                       onClick={() => setTime(slot.time)}
                       aria-pressed={selected}
                       className={`rounded-xl border py-2.5 text-sm font-semibold tabular-nums transition ${
-                        selected ? 'border-transparent text-white' : 'border-white/10 text-zinc-100 hover:bg-white/5'
+                        selected ? 'border-transparent text-white' : 'border-[var(--page-border)] text-neutral-900 hover:bg-neutral-50'
                       }`}
                       style={selected ? { backgroundColor: brandColor } : undefined}
                     >
@@ -265,7 +265,7 @@ export function CancelClient({
       )}
 
       {error && (
-        <div className="mt-5 rounded-3xl border border-[#ff1f2d]/50 bg-[#ff1f2d]/10 p-4 text-sm text-red-100">
+        <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           {error}
         </div>
       )}
@@ -335,7 +335,7 @@ export function CancelClient({
           >
             Πίσω
           </button>
-          <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
+          <p className="mt-4 text-center text-xs leading-5 text-neutral-9000">
             Η ενέργεια αυτή είναι οριστική και δεν μπορεί να αναιρεθεί.
           </p>
         </>

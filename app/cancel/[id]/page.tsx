@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
-import { SHOP } from '@/lib/shop'
+import { SHOP, SITE_THEME } from '@/lib/shop'
 import { BARBER_SCHEDULE_SELECT, loadScheduleRules, toScheduleSource } from '@/lib/availability'
 import {
   BOOKING_LOCALE,
@@ -41,18 +41,13 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="flex min-h-screen flex-col items-center justify-center px-5 py-10 font-sans text-zinc-50"
-      style={{
-        background: `radial-gradient(circle at top, ${brandColor} 0%, #050505 58%, #050505 100%)`,
-      }}
+      className="flex min-h-screen flex-col items-center justify-center bg-[var(--page-bg)] px-5 py-10 font-sans text-neutral-900"
+      style={SITE_THEME}
     >
-      <div
-        className="animate-fade-in w-full max-w-md rounded-3xl border border-white/10 bg-black/55 p-7 shadow-2xl backdrop-blur sm:p-8"
-        style={{ boxShadow: `0 25px 60px -20px ${brandColor}` }}
-      >
+      <div className="animate-fade-in w-full max-w-md rounded-3xl border border-[var(--page-border)] bg-white p-7 shadow-sm sm:p-8">
         <div className="flex flex-col items-center text-center">
           <div
-            className="relative h-14 w-14 overflow-hidden rounded-full border bg-black/40"
+            className="relative h-14 w-14 overflow-hidden rounded-full border bg-white"
             style={{ borderColor: brandColor }}
           >
             <Image
@@ -104,10 +99,10 @@ export default async function CancelPage({
     return (
       <Shell>
         <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             Το ραντεβού δεν βρέθηκε
           </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-400">
+          <p className="mt-3 text-sm leading-6 text-neutral-500">
             Ο σύνδεσμος δεν είναι έγκυρος ή το ραντεβού έχει ήδη ακυρωθεί. Αν
             χρειάζεστε βοήθεια, επικοινωνήστε με το μαγαζί.
           </p>
@@ -120,13 +115,13 @@ export default async function CancelPage({
     return (
       <Shell>
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-3xl text-emerald-400">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-3xl text-emerald-600">
             ✓
           </div>
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-50">
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight text-neutral-900">
             Το ραντεβού έχει ήδη ακυρωθεί
           </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-400">
+          <p className="mt-3 text-sm leading-6 text-neutral-500">
             Δεν χρειάζεται να κάνετε κάποια άλλη ενέργεια. Η συγκεκριμένη ώρα
             είναι ξανά διαθέσιμη για κράτηση.
           </p>
@@ -140,15 +135,15 @@ export default async function CancelPage({
       <Shell>
         <div className="text-center">
           <div
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border bg-white/5 text-2xl"
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border bg-white text-2xl"
             style={{ borderColor: SHOP.primaryColor }}
           >
             ⏳
           </div>
-          <h1 className="mt-5 text-xl font-semibold tracking-tight text-zinc-50">
+          <h1 className="mt-5 text-xl font-semibold tracking-tight text-neutral-900">
             Δεν είναι δυνατή η ακύρωση online
           </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-300">
+          <p className="mt-4 text-sm leading-7 text-neutral-600">
             Πολιτική κρατήσεων: Μπορείτε να ακυρώσετε ή να επαναπρογραμματίσετε
             το ραντεβού σας έως και 2,5 ώρες πριν από την ώρα του ραντεβού. Για
             αλλαγές τελευταίας στιγμής, παρακαλώ επικοινωνήστε απευθείας με το
