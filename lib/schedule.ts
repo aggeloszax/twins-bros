@@ -25,7 +25,8 @@ export type WorkingPeriod = {
   endTime: string
 }
 
-// Tuesday to Saturday, 09:00-21:00 (JavaScript dayOfWeek: Sunday=0).
+// Default weekly hours for barbers without their own schedule: Tuesday to
+// Saturday, 09:00-21:00 (JavaScript dayOfWeek: Sunday=0).
 export const WORKING_PERIODS: WorkingPeriod[] = [2, 3, 4, 5, 6].map(
   (dayOfWeek) => ({
     dayOfWeek,
@@ -67,22 +68,15 @@ function parseTimeParts(time: string) {
   return { hour, minute }
 }
 
-function timeToMinutes(time: string) {
+export function timeToMinutes(time: string) {
   const parts = parseTimeParts(time)
   return parts ? parts.hour * 60 + parts.minute : null
 }
 
-function minutesToTime(totalMinutes: number) {
+export function minutesToTime(totalMinutes: number) {
   const hour = Math.floor(totalMinutes / 60)
   const minute = totalMinutes % 60
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-}
-
-export function getWorkingPeriodsForDate(date: Date) {
-  const dayOfWeek = date.getDay()
-  return WORKING_PERIODS
-    .filter((period) => period.dayOfWeek === dayOfWeek)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime))
 }
 
 function getTimeZoneOffsetMs(date: Date, timeZone = BOOKING_TIME_ZONE) {
@@ -152,38 +146,22 @@ export function getDateKeyInBookingTimeZone(date: Date) {
   return `${values.year}-${values.month}-${values.day}`
 }
 
-export function isSlotTimeWithinWorkingHours(
+// True when [time, time + duration) fits inside one of the periods.
+export function isSlotTimeWithinPeriods(
   time: string,
   durationMinutes: number,
-  date?: Date,
+  periods: WorkingPeriod[],
 ) {
   const startMinutes = timeToMinutes(time)
   if (startMinutes === null) return false
   const endMinutes = startMinutes + durationMinutes
 
-  const relevantPeriods = date ? getWorkingPeriodsForDate(date) : WORKING_PERIODS
-
-  return relevantPeriods.some((period) => {
+  return periods.some((period) => {
     const periodStart = timeToMinutes(period.startTime)
     const periodEnd = timeToMinutes(period.endTime)
     if (periodStart === null || periodEnd === null) return false
     return startMinutes >= periodStart && endMinutes <= periodEnd
   })
-}
-
-export function isClosedDay(date: Date) {
-  return getWorkingPeriodsForDate(date).length === 0
-}
-
-export function buildBookingDates(today = new Date()) {
-  const base = new Date(today)
-  base.setHours(0, 0, 0, 0)
-
-  return Array.from({ length: BOOKING_WINDOW_DAYS + 1 }, (_, i) => {
-    const date = new Date(base)
-    date.setDate(base.getDate() + i)
-    return date
-  }).filter((date) => !isClosedDay(date))
 }
 
 export function isWithinBookingWindow(date: Date, today = new Date()) {
@@ -196,15 +174,17 @@ export function isWithinBookingWindow(date: Date, today = new Date()) {
   return date >= windowStart && date < windowEnd
 }
 
+// Start times every SLOT_MINUTES inside the periods, skipping times already
+// in the past.
 export function buildSlotTimes(
   dateKey: string,
+  periods: WorkingPeriod[],
   now = new Date(),
 ) {
   const slots: string[] = []
-  const date = parseDateKey(dateKey)
-  if (!date) return slots
+  if (!parseDateKey(dateKey)) return slots
 
-  for (const period of getWorkingPeriodsForDate(date)) {
+  for (const period of periods) {
     const periodStart = timeToMinutes(period.startTime)
     const periodEnd = timeToMinutes(period.endTime)
     if (periodStart === null || periodEnd === null) continue
@@ -224,18 +204,6 @@ export function buildSlotTimes(
   }
 
   return slots
-}
-
-export function isSlotWithinWorkingHours(startTime: Date, durationMinutes: number) {
-  const dayStart = new Date(startTime)
-  dayStart.setHours(OPEN_HOUR, 0, 0, 0)
-
-  const dayEnd = new Date(startTime)
-  dayEnd.setHours(CLOSE_HOUR, 0, 0, 0)
-
-  const endTime = new Date(startTime.getTime() + durationMinutes * 60_000)
-
-  return startTime >= dayStart && endTime <= dayEnd
 }
 
 /* -------------------------------------------------------------------------- */
@@ -324,19 +292,69 @@ export function isDateForceOpen(
   )
 }
 
-// Resolve whether a calendar day accepts bookings, accounting for manual
-// overrides. FORCE_CLOSE always wins; FORCE_OPEN re-opens an otherwise closed
-// weekday (e.g. a Monday).
-export function isDayBookable(
-  date: Date,
+/* -------------------------------------------------------------------------- */
+/*  Per-barber working hours                                                  */
+/* -------------------------------------------------------------------------- */
+
+// A day range (inclusive, YYYY-MM-DD) when a barber, or the whole shop when
+// barberId is null, does not work.
+export type TimeOffRange = {
+  barberId: string | null
+  startDate: string
+  endDate: string
+}
+
+// A barber's weekly schedule; null means the default WORKING_PERIODS.
+export type BarberScheduleSource = {
+  id: string
+  schedule: WorkingPeriod[] | null
+}
+
+// Hours used on a FORCE_OPEN day for a barber who normally does not work then.
+const FORCE_OPEN_START = `${String(OPEN_HOUR).padStart(2, '0')}:00`
+const FORCE_OPEN_END = `${String(CLOSE_HOUR).padStart(2, '0')}:00`
+
+export function isOnTimeOff(barberId: string, dateKey: string, timeOff: TimeOffRange[]) {
+  return timeOff.some(
+    (range) =>
+      (range.barberId === null || range.barberId === barberId) &&
+      dateKey >= range.startDate &&
+      dateKey <= range.endDate,
+  )
+}
+
+// The single source of truth for when a barber works on a given day:
+// FORCE_CLOSE and time off close the day, the barber's weekly schedule sets
+// the hours, and FORCE_OPEN opens a day the barber normally has off.
+export function getBarberPeriodsForDate(
+  barber: BarberScheduleSource,
   dateKey: string,
   exceptions: NormalizedScheduleException[],
+  timeOff: TimeOffRange[],
+): WorkingPeriod[] {
+  const date = parseDateKey(dateKey)
+  if (!date) return []
+  if (isDateForceClosed(exceptions, dateKey)) return []
+  if (isOnTimeOff(barber.id, dateKey, timeOff)) return []
+
+  const dayOfWeek = date.getDay()
+  const weekly = (barber.schedule ?? WORKING_PERIODS)
+    .filter((period) => period.dayOfWeek === dayOfWeek)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+
+  if (weekly.length === 0 && isDateForceOpen(exceptions, dateKey)) {
+    return [{ dayOfWeek, startTime: FORCE_OPEN_START, endTime: FORCE_OPEN_END }]
+  }
+  return weekly
+}
+
+// Whether customers can pick this day for the barber in the booking form.
+export function isDayBookable(
+  date: Date,
+  periods: WorkingPeriod[],
   today = new Date(),
 ) {
-  if (!isWithinBookingWindow(date, today)) return false
-  if (isDateForceClosed(exceptions, dateKey)) return false
-  if (isDateForceOpen(exceptions, dateKey)) return true
-  return !isClosedDay(date)
+  return isWithinBookingWindow(date, today) && periods.length > 0
 }
 
 // A slot is blocked when a BLOCK_SLOT exception matches the date + time and

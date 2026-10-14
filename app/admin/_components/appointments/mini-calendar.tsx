@@ -25,7 +25,7 @@ export function MiniCalendar({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-[15px] font-semibold capitalize text-[var(--admin-text)]">
+        <h2 className="text-[15px] font-semibold text-[var(--admin-text)]">
           {monthTitle(monthKey)}
         </h2>
         <div className="flex items-center">

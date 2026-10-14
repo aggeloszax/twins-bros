@@ -11,8 +11,11 @@ import {
   errorMessage,
   formatPrice,
   isBillable,
+  summarizeSchedule,
   todayKey,
 } from '../_lib/admin-data'
+import { WORKING_PERIODS } from '@/lib/schedule'
+import { BarberScheduleModal } from './barber-schedule-modal'
 import {
   Avatar,
   Button,
@@ -56,7 +59,10 @@ function resizeImage(file: File): Promise<string> {
   })
 }
 
-type Editing = { mode: 'create' } | { mode: 'photo'; barber: Barber }
+type Editing =
+  | { mode: 'create' }
+  | { mode: 'photo'; barber: Barber }
+  | { mode: 'schedule'; barber: Barber }
 
 export function BarbersPage() {
   const [barbers, setBarbers] = useState<Barber[]>([])
@@ -155,7 +161,15 @@ export function BarbersPage() {
                     <p className="text-[13px] text-[var(--admin-muted)]">Κουρέας</p>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-[var(--admin-surface-2)] px-4 py-3">
+                <div className="mt-4 rounded-xl border border-[var(--admin-border)] px-4 py-3">
+                  <p className="text-xs text-[var(--admin-muted)]">
+                    Ωράριο{barber.schedule ? '' : ' (του μαγαζιού)'}
+                  </p>
+                  <p className="mt-0.5 text-[13px] font-medium leading-5">
+                    {summarizeSchedule(barber.schedule ?? WORKING_PERIODS)}
+                  </p>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl bg-[var(--admin-surface-2)] px-4 py-3">
                   <div>
                     <p className="text-xs text-[var(--admin-muted)]">Ραντεβού μήνα</p>
                     <p className="text-lg font-semibold tabular-nums">{stats.count}</p>
@@ -165,10 +179,15 @@ export function BarbersPage() {
                     <p className="text-lg font-semibold tabular-nums">{formatPrice(stats.revenue)}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <Button size="sm" onClick={() => setEditing({ mode: 'photo', barber })}>
-                    Αλλαγή φωτογραφίας
-                  </Button>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => setEditing({ mode: 'schedule', barber })}>
+                      Ωράριο
+                    </Button>
+                    <Button size="sm" onClick={() => setEditing({ mode: 'photo', barber })}>
+                      Φωτογραφία
+                    </Button>
+                  </div>
                   <ConfirmButton
                     label="Διαγραφή"
                     confirmLabel="Σίγουρα;"
@@ -182,15 +201,28 @@ export function BarbersPage() {
         </div>
       )}
 
-      {editing && (
+      {editing?.mode === 'schedule' && (
+        <BarberScheduleModal
+          barber={editing.barber}
+          onClose={() => setEditing(null)}
+          onSaved={(schedule) => {
+            setBarbers((current) =>
+              current.map((item) => (item.id === editing.barber.id ? { ...item, schedule } : item)),
+            )
+            setEditing(null)
+          }}
+        />
+      )}
+
+      {editing && editing.mode !== 'schedule' && (
         <BarberModal
           editing={editing}
           onClose={() => setEditing(null)}
           onSaved={(saved) => {
             setBarbers((current) =>
               editing.mode === 'create'
-                ? [...current, saved].sort((a, b) => a.name.localeCompare(b.name, 'el'))
-                : current.map((item) => (item.id === saved.id ? saved : item)),
+                ? [...current, { ...saved, schedule: null }].sort((a, b) => a.name.localeCompare(b.name, 'el'))
+                : current.map((item) => (item.id === saved.id ? { ...item, ...saved } : item)),
             )
             setEditing(null)
           }}
@@ -205,9 +237,9 @@ function BarberModal({
   onClose,
   onSaved,
 }: {
-  editing: Editing
+  editing: Exclude<Editing, { mode: 'schedule' }>
   onClose: () => void
-  onSaved: (barber: Barber) => void
+  onSaved: (barber: Omit<Barber, 'schedule'>) => void
 }) {
   const current = editing.mode === 'photo' ? editing.barber : null
   const [name, setName] = useState('')
@@ -240,7 +272,7 @@ function BarberModal({
     setSubmitting(true)
     setError(null)
     try {
-      const saved = await adminFetch<Barber>('/api/barbers', {
+      const saved = await adminFetch<Omit<Barber, 'schedule'>>('/api/barbers', {
         method: current ? 'PATCH' : 'POST',
         body: JSON.stringify(current ? { id: current.id, image } : { name: name.trim(), image }),
       })

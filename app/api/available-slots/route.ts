@@ -1,14 +1,12 @@
 import { prisma } from '@/lib/prisma'
+import { BARBER_SCHEDULE_SELECT, loadScheduleRules, toScheduleSource } from '@/lib/availability'
 import {
   buildSlotTimes,
   createBookingDateTime,
-  isClosedDay,
-  isDateForceClosed,
-  isDateForceOpen,
+  getBarberPeriodsForDate,
   isSlotBlocked,
-  isSlotTimeWithinWorkingHours,
+  isSlotTimeWithinPeriods,
   isWithinBookingWindow,
-  normalizeScheduleExceptions,
   parseDateKey,
   SLOT_MINUTES,
 } from '@/lib/schedule'
@@ -57,10 +55,10 @@ export async function GET(request: Request) {
 
     dayEnd.setMinutes(dayEnd.getMinutes() + 1)
 
-    const [barber, service, bookings, rawExceptions] = await Promise.all([
-      prisma.barber.findFirst({
+    const [barber, service, bookings, rules] = await Promise.all([
+      prisma.barber.findUnique({
         where: { id: barberId },
-        select: { name: true },
+        select: { id: true, name: true, ...BARBER_SCHEDULE_SELECT },
       }),
       serviceId
         ? prisma.service.findFirst({
@@ -76,9 +74,7 @@ export async function GET(request: Request) {
         },
         select: { startTime: true, endTime: true },
       }),
-      prisma.scheduleException.findMany({
-        where: { date: { gte: dayStart, lt: dayEnd } },
-      }),
+      loadScheduleRules(date, date),
     ])
 
     if (!barber) {
@@ -88,32 +84,23 @@ export async function GET(request: Request) {
       return Response.json([], { status: 404 })
     }
 
-    const exceptions = normalizeScheduleExceptions(rawExceptions)
-    const barberName = barber?.name ?? null
-
-    // FORCE_CLOSE always wins; an otherwise-closed weekday needs FORCE_OPEN.
-    const forceClosed = isDateForceClosed(exceptions, date)
-    const forceOpen = isDateForceOpen(exceptions, date)
-    if (
-      forceClosed ||
-      (isClosedDay(selectedDate) && !forceOpen)
-    ) {
-      return Response.json([])
-    }
+    const { exceptions, timeOff } = rules
+    const periods = getBarberPeriodsForDate(toScheduleSource(barber), date, exceptions, timeOff)
+    if (periods.length === 0) return Response.json([])
 
     const now = new Date()
     const slots: Slot[] = []
     const durationMinutes = service?.duration ?? SLOT_MINUTES
 
-    for (const time of buildSlotTimes(date, now)) {
+    for (const time of buildSlotTimes(date, periods, now)) {
       // Manually blocked slots are removed entirely so they can't be picked.
-      if (isSlotBlocked(exceptions, date, time, barberName)) continue
+      if (isSlotBlocked(exceptions, date, time, barber.name)) continue
 
       const slotStart = createBookingDateTime(date, time)
       if (!slotStart) continue
 
       if (
-        !isSlotTimeWithinWorkingHours(time, durationMinutes, selectedDate)
+        !isSlotTimeWithinPeriods(time, durationMinutes, periods)
       ) {
         continue
       }

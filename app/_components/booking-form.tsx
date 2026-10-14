@@ -5,9 +5,12 @@ import Link from 'next/link'
 import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import {
   BOOKING_WINDOW_DAYS,
+  getBarberPeriodsForDate,
   isDayBookable,
   isScheduleExceptionType,
   type NormalizedScheduleException,
+  type TimeOffRange,
+  type WorkingPeriod,
   toDateKey,
 } from '@/lib/schedule'
 import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
@@ -24,6 +27,8 @@ type Barber = {
   id: string
   name: string
   image: string | null
+  // null: the barber follows the default weekly hours.
+  schedule: WorkingPeriod[] | null
 }
 
 type Slot = {
@@ -352,6 +357,7 @@ export default function BookingForm() {
   const [scheduleExceptions, setScheduleExceptions] = useState<
     NormalizedScheduleException[]
   >([])
+  const [timeOff, setTimeOff] = useState<TimeOffRange[]>([])
 
   const today = startOfDay(new Date())
   const maxBookingDate = getMaxBookingDate(today)
@@ -392,14 +398,18 @@ export default function BookingForm() {
     try {
       const res = await fetch('/api/schedule-exceptions')
       if (!res.ok) throw new Error('Request failed')
-      const data = (await res.json()) as Array<{
-        dateKey: string
-        barberName: string | null
-        type: string
-        slotTime: string | null
-      }>
+      const data = (await res.json()) as {
+        exceptions: Array<{
+          dateKey: string
+          barberName: string | null
+          type: string
+          slotTime: string | null
+        }>
+        timeOff: TimeOffRange[]
+      }
+      setTimeOff(data.timeOff)
       setScheduleExceptions(
-        data.flatMap((item) =>
+        data.exceptions.flatMap((item) =>
           isScheduleExceptionType(item.type)
             ? [
                 {
@@ -415,6 +425,7 @@ export default function BookingForm() {
     } catch {
       // Calendar still works without overrides; default rules apply.
       setScheduleExceptions([])
+      setTimeOff([])
     }
   }
 
@@ -873,10 +884,15 @@ export default function BookingForm() {
                       const isDisabled =
                         !isCurrentMonth ||
                         isPast ||
+                        !selectedBarber ||
                         !isDayBookable(
                           day,
-                          key,
-                          scheduleExceptions,
+                          getBarberPeriodsForDate(
+                            selectedBarber,
+                            key,
+                            scheduleExceptions,
+                            timeOff,
+                          ),
                           today,
                         )
                       const isSelected = selectedDate === key

@@ -317,7 +317,7 @@ export function CustomersPage() {
             {openCustomer.bookings.map((booking) => (
               <li key={booking.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium capitalize">
+                  <p className="truncate text-sm font-medium">
                     {formatDateKeyLong(bookingDateKey(booking))}, {formatTime(booking.startTime)}
                   </p>
                   <p className="truncate text-xs text-[var(--admin-muted)]">

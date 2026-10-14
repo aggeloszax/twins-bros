@@ -3,15 +3,13 @@ import { isValidSessionToken, readSessionCookie } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
 import { normalizeGreekMobilePhone } from '@/lib/phone'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
+import { BARBER_SCHEDULE_SELECT, loadScheduleRules, toScheduleSource } from '@/lib/availability'
 import {
   createBookingDateTime,
-  isClosedDay,
-  isDateForceClosed,
-  isDateForceOpen,
+  getBarberPeriodsForDate,
   isSlotBlocked,
-  isSlotTimeWithinWorkingHours,
+  isSlotTimeWithinPeriods,
   isWithinBookingWindow,
-  normalizeScheduleExceptions,
   parseDateKey,
 } from '@/lib/schedule'
 import { createSecureToken } from '@/lib/tokens'
@@ -125,9 +123,9 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Service not found' }, { status: 404 })
     }
 
-    const barber = await prisma.barber.findFirst({
+    const barber = await prisma.barber.findUnique({
       where: { id: barberId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, ...BARBER_SCHEDULE_SELECT },
     })
 
     if (!barber) {
@@ -145,31 +143,17 @@ export async function POST(request: Request) {
     const endTime = new Date(startTime.getTime() + service.duration * 60_000)
     const now = new Date()
 
-    // Re-enforce manual schedule overrides server-side — the client cannot be
-    // trusted, and the slot feed could be stale.
-    const rawExceptions = await prisma.scheduleException.findMany({
-      where: {
-        date: {
-          gte: createBookingDateTime(date, '00:00') ?? undefined,
-          lt: new Date(startTime.getTime() + 24 * 60 * 60_000),
-        },
-      },
-    })
-    const exceptions = normalizeScheduleExceptions(rawExceptions)
-    const forceClosed = isDateForceClosed(exceptions, date)
-    const forceOpen = isDateForceOpen(exceptions, date)
+    // Re-check the barber's hours and the manual overrides server-side: the
+    // client cannot be trusted, and the slot feed could be stale. The admin
+    // may book outside working hours.
+    const { exceptions, timeOff } = await loadScheduleRules(date, date)
+    const periods = getBarberPeriodsForDate(toScheduleSource(barber), date, exceptions, timeOff)
 
     if (
       !isAdminManualBooking &&
-      (forceClosed ||
-        (isClosedDay(selectedDate) && !forceOpen) ||
-        !isWithinBookingWindow(selectedDate, now) ||
+      (!isWithinBookingWindow(selectedDate, now) ||
         startTime <= now ||
-        !isSlotTimeWithinWorkingHours(
-          slotTime,
-          service.duration,
-          selectedDate,
-        ) ||
+        !isSlotTimeWithinPeriods(slotTime, service.duration, periods) ||
         isSlotBlocked(exceptions, date, slotTime, barber.name))
     ) {
       return Response.json(

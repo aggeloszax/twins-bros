@@ -7,6 +7,7 @@ import {
   type Booking,
   type ScheduleException,
   type Service,
+  type TimeOff,
   addDaysToKey,
   adminFetch,
   bookingDateKey,
@@ -38,6 +39,13 @@ import { BookingDrawer } from './booking-drawer'
 import { DaySchedule } from './day-schedule'
 import { MiniCalendar } from './mini-calendar'
 import { type NewBookingPrefill, NewBookingModal } from './new-booking-modal'
+import { RescheduleModal } from './reschedule-modal'
+
+const NOTIFICATION_NOTICES = {
+  sent: 'Το ραντεβού μετακινήθηκε και ο πελάτης ενημερώθηκε με email.',
+  failed: 'Το ραντεβού μετακινήθηκε, αλλά το email στον πελάτη δεν στάλθηκε.',
+  skipped: 'Το ραντεβού μετακινήθηκε.',
+} as const
 
 type View = 'schedule' | 'list'
 
@@ -51,12 +59,21 @@ export function AppointmentsPage() {
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [exceptions, setExceptions] = useState<ScheduleException[]>([])
+  const [timeOff, setTimeOff] = useState<TimeOff[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [openBookingId, setOpenBookingId] = useState<string | null>(null)
   const [newBooking, setNewBooking] = useState<NewBookingPrefill | null>(null)
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
 
   const grid = useMemo(() => buildMonthGrid(monthKey), [monthKey])
   const rangeFrom = grid[0]
@@ -67,6 +84,7 @@ export function AppointmentsPage() {
       adminFetch<Barber[]>('/api/barbers').then(setBarbers),
       adminFetch<Service[]>('/api/services').then(setServices),
       adminFetch<ScheduleException[]>('/api/admin/schedule-exceptions').then(setExceptions),
+      adminFetch<TimeOff[]>('/api/admin/time-off').then(setTimeOff),
     ]).catch((loadError) => setError(errorMessage(loadError)))
   }, [])
 
@@ -123,6 +141,7 @@ export function AppointmentsPage() {
       (showCancelled || booking.status !== 'CANCELLED'),
   )
   const openBooking = bookings.find((booking) => booking.id === openBookingId) ?? null
+  const rescheduleBooking = bookings.find((booking) => booking.id === rescheduleId) ?? null
 
   function handleUpdated(updated: Booking) {
     const phone = normalizeGreekMobilePhone(updated.customerPhone)
@@ -214,7 +233,7 @@ export function AppointmentsPage() {
             <IconButton label="Επόμενη ημέρα" onClick={() => selectDate(addDaysToKey(selectedDate, 1))}>
               <ChevronRightIcon className="h-4 w-4" />
             </IconButton>
-            <h1 className="ml-1 text-base font-semibold capitalize tracking-tight sm:text-xl">
+            <h1 className="ml-1 text-base font-semibold tracking-tight sm:text-xl">
               {formatDateKeyLong(selectedDate)}
             </h1>
           </div>
@@ -266,6 +285,14 @@ export function AppointmentsPage() {
             <ErrorNotice message={error} onRetry={() => void loadBookings()} />
           </div>
         )}
+        {notice && (
+          <div
+            role="status"
+            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          >
+            {notice}
+          </div>
+        )}
 
         <Card className="overflow-hidden">
           {loading && bookings.length === 0 ? (
@@ -280,6 +307,7 @@ export function AppointmentsPage() {
               barbers={visibleBarbers}
               bookings={scheduleBookings}
               exceptions={exceptions}
+              timeOff={timeOff}
               onSlotClick={(barber, time) =>
                 setNewBooking({ date: selectedDate, barberId: barber.id, time })
               }
@@ -332,6 +360,10 @@ export function AppointmentsPage() {
             setBookings((current) => current.filter((booking) => booking.id !== id))
             setOpenBookingId(null)
           }}
+          onReschedule={(booking) => {
+            setOpenBookingId(null)
+            setRescheduleId(booking.id)
+          }}
           onBookAgain={(booking) => {
             setOpenBookingId(null)
             setNewBooking({
@@ -341,6 +373,22 @@ export function AppointmentsPage() {
               customerPhone: booking.customerPhone,
               customerEmail: booking.customerEmail,
             })
+          }}
+        />
+      )}
+
+      {rescheduleBooking && (
+        <RescheduleModal
+          booking={rescheduleBooking}
+          barbers={barbers}
+          services={services}
+          knownBookings={bookings}
+          onClose={() => setRescheduleId(null)}
+          onSaved={(saved, notification) => {
+            handleUpdated(saved)
+            setRescheduleId(null)
+            setNotice(NOTIFICATION_NOTICES[notification])
+            selectDate(bookingDateKey(saved))
           }}
         />
       )}

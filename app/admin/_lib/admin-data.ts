@@ -1,6 +1,7 @@
 import {
   BOOKING_LOCALE,
   BOOKING_TIME_ZONE,
+  type WorkingPeriod,
   getDateKeyInBookingTimeZone,
 } from '@/lib/schedule'
 
@@ -20,7 +21,21 @@ export type Booking = {
   noShowCount: number
 }
 
-export type Barber = { id: string; name: string; image: string | null }
+// schedule is null for barbers on the default weekly hours.
+export type Barber = {
+  id: string
+  name: string
+  image: string | null
+  schedule: WorkingPeriod[] | null
+}
+
+export type TimeOff = {
+  id: string
+  barberId: string | null
+  startDate: string
+  endDate: string
+  reason: string | null
+}
 export type Service = { id: string; name: string; price: number; duration: number }
 
 export type ExceptionType = 'BLOCK_SLOT' | 'FORCE_OPEN' | 'FORCE_CLOSE'
@@ -80,13 +95,19 @@ export function formatTime(iso: string) {
   })
 }
 
+function capitalizeFirst(text: string) {
+  return text.charAt(0).toLocaleUpperCase(BOOKING_LOCALE) + text.slice(1)
+}
+
 export function formatDateKeyLong(dateKey: string) {
-  return new Date(`${dateKey}T12:00:00`).toLocaleDateString(BOOKING_LOCALE, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  return capitalizeFirst(
+    new Date(`${dateKey}T12:00:00`).toLocaleDateString(BOOKING_LOCALE, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }),
+  )
 }
 
 export function formatDateShort(iso: string) {
@@ -157,9 +178,11 @@ export function buildMonthGrid(monthKey: string) {
 }
 
 export function monthTitle(monthKey: string) {
-  return new Date(`${monthKey.slice(0, 7)}-01T12:00:00`).toLocaleDateString(
-    BOOKING_LOCALE,
-    { month: 'long', year: 'numeric' },
+  return capitalizeFirst(
+    new Date(`${monthKey.slice(0, 7)}-01T12:00:00`).toLocaleDateString(BOOKING_LOCALE, {
+      month: 'long',
+      year: 'numeric',
+    }),
   )
 }
 
@@ -201,4 +224,52 @@ export async function adminFetch<T>(input: string, init?: RequestInit): Promise<
 
 export function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.'
+}
+
+/* -------------------------------- Schedules ------------------------------- */
+
+// Monday first, using JavaScript day numbers (Sunday = 0).
+export const WEEK_DAYS = [
+  { day: 1, short: 'Δε', long: 'Δευτέρα' },
+  { day: 2, short: 'Τρ', long: 'Τρίτη' },
+  { day: 3, short: 'Τε', long: 'Τετάρτη' },
+  { day: 4, short: 'Πε', long: 'Πέμπτη' },
+  { day: 5, short: 'Πα', long: 'Παρασκευή' },
+  { day: 6, short: 'Σα', long: 'Σάββατο' },
+  { day: 0, short: 'Κυ', long: 'Κυριακή' },
+] as const
+
+export function periodsOfDay(periods: WorkingPeriod[], day: number) {
+  return periods
+    .filter((period) => period.dayOfWeek === day)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+}
+
+// "Τρ–Σα 09:00–21:00 · Κυ 10:00–14:00": consecutive days with the same hours
+// are grouped.
+export function summarizeSchedule(periods: WorkingPeriod[]) {
+  const parts: string[] = []
+  let group: { from: string; to: string; hours: string } | null = null
+
+  const flush = () => {
+    if (group) parts.push(`${group.from === group.to ? group.from : `${group.from}–${group.to}`} ${group.hours}`)
+    group = null
+  }
+
+  for (const { day, short } of WEEK_DAYS) {
+    const hours = periodsOfDay(periods, day)
+      .map((p) => `${p.startTime}–${p.endTime}`)
+      .join(', ')
+    if (!hours) {
+      flush()
+      continue
+    }
+    if (group && group.hours === hours) group.to = short
+    else {
+      flush()
+      group = { from: short, to: short, hours }
+    }
+  }
+  flush()
+  return parts.length ? parts.join(' · ') : 'Δεν δουλεύει καμία μέρα'
 }

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
+import { BARBER_SCHEDULE_SELECT, toScheduleSource } from '@/lib/availability'
 import {
   barberImageUrl,
   parseBarberImage,
@@ -38,10 +39,18 @@ function imageData(input: BarberImageInput, barberId: string) {
 export async function GET() {
   try {
     const barbers = await prisma.barber.findMany({
-      select: PUBLIC_BARBER_SELECT,
+      select: { ...PUBLIC_BARBER_SELECT, ...BARBER_SCHEDULE_SELECT },
       orderBy: { name: 'asc' },
     })
-    return Response.json(barbers)
+    // schedule is null for barbers on the default weekly hours.
+    return Response.json(
+      barbers.map((barber) => ({
+        id: barber.id,
+        name: barber.name,
+        image: barber.image,
+        schedule: toScheduleSource(barber).schedule,
+      })),
+    )
   } catch (error) {
     console.error('Failed to fetch barbers:', error)
     return Response.json(

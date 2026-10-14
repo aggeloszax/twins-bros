@@ -6,9 +6,8 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-// Public, read-only feed of upcoming overrides so the customer calendar can
-// reflect FORCE_OPEN / FORCE_CLOSE days. BLOCK_SLOT is additionally enforced
-// server-side when computing available slots.
+// Public, read-only feed of upcoming overrides and time off so the customer
+// calendar can grey out closed days. Slots are also enforced server-side.
 export async function GET() {
   try {
     const now = new Date()
@@ -17,21 +16,29 @@ export async function GET() {
     const windowEnd = new Date(windowStart)
     windowEnd.setDate(windowStart.getDate() + BOOKING_WINDOW_DAYS + 1)
 
-    const exceptions = await prisma.scheduleException.findMany({
-      where: { date: { gte: windowStart, lt: windowEnd } },
-      orderBy: { date: 'asc' },
-    })
+    const fromKey = getDateKeyInBookingTimeZone(windowStart)
+    const [exceptions, timeOff] = await Promise.all([
+      prisma.scheduleException.findMany({
+        where: { date: { gte: windowStart, lt: windowEnd } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.timeOff.findMany({
+        where: { endDate: { gte: fromKey } },
+        select: { barberId: true, startDate: true, endDate: true },
+      }),
+    ])
 
-    return Response.json(
-      exceptions.map((exception) => ({
+    return Response.json({
+      exceptions: exceptions.map((exception) => ({
         dateKey: getDateKeyInBookingTimeZone(exception.date),
         barberName: exception.barberName,
         type: exception.type,
         slotTime: exception.slotTime,
       })),
-    )
+      timeOff,
+    })
   } catch (error) {
     console.error('Failed to fetch public schedule exceptions:', error)
-    return Response.json([], { status: 200 })
+    return Response.json({ exceptions: [], timeOff: [] })
   }
 }

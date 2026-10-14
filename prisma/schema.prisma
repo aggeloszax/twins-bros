@@ -17,7 +17,37 @@ model Barber {
   image       String?   // Public URL: a static /barbers/... file or /api/barbers/{id}/image
   imageData   Bytes?    // Uploaded photo bytes, served by /api/barbers/{id}/image
   imageType   String?   // MIME type of imageData, e.g. image/jpeg
+  // false: the barber follows the default WORKING_PERIODS (lib/schedule.ts).
+  // true: workingPeriods is the barber's own week (empty = never works).
+  customSchedule Boolean @default(false)
   bookings    Booking[]
+  workingPeriods BarberWorkingPeriod[]
+  timeOff     TimeOff[]
+}
+
+// One working interval of a barber's week; several per day model breaks.
+model BarberWorkingPeriod {
+  id        String @id @default(cuid())
+  barberId  String
+  dayOfWeek Int    // JavaScript day: Sunday = 0
+  startTime String // "HH:MM"
+  endTime   String // "HH:MM"
+  barber    Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+}
+
+// Days off for one barber, or the whole shop when barberId is null.
+model TimeOff {
+  id        String   @id @default(cuid())
+  barberId  String?
+  startDate String   // YYYY-MM-DD, inclusive
+  endDate   String   // YYYY-MM-DD, inclusive
+  reason    String?
+  createdAt DateTime @default(now())
+  barber    Barber?  @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([endDate])
 }
 
 model Service {

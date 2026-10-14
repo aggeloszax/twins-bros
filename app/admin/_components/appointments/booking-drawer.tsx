@@ -37,6 +37,7 @@ export function BookingDrawer({
   onUpdated,
   onDeleted,
   onBookAgain,
+  onReschedule,
 }: {
   booking: Booking
   allBookings: Booking[]
@@ -44,6 +45,7 @@ export function BookingDrawer({
   onUpdated: (booking: Booking) => void
   onDeleted: (id: string) => void
   onBookAgain: (booking: Booking) => void
+  onReschedule: (booking: Booking) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -167,7 +169,7 @@ export function BookingDrawer({
           <div key={row.detail} className="flex items-start gap-3 px-3.5 py-3">
             <span className="mt-0.5 text-[var(--admin-muted)]">{row.icon}</span>
             <div>
-              <dt className="text-sm font-medium capitalize">{row.label}</dt>
+              <dt className="text-sm font-medium">{row.label}</dt>
               <dd className="text-[13px] text-[var(--admin-muted)]">{row.detail}</dd>
             </div>
           </div>
@@ -189,6 +191,11 @@ export function BookingDrawer({
                 onConfirm={() => void update({ status: 'CANCELLED' })}
               />
             </>
+          )}
+          {state !== 'cancelled' && (
+            <Button size="sm" disabled={busy} onClick={() => onReschedule(booking)}>
+              Μετακίνηση
+            </Button>
           )}
           {(state === 'upcoming' || state === 'completed') && (
             <Button size="sm" disabled={busy} onClick={() => void update({ noShow: true })}>

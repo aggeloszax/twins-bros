@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getWorkingPeriodsForDate } from '@/lib/schedule'
+import { getBarberPeriodsForDate, isOnTimeOff } from '@/lib/schedule'
 import {
   type Barber,
   type Booking,
   type BookingState,
   type ScheduleException,
-  dateFromKey,
+  type TimeOff,
   formatTime,
   getBookingState,
   minutesOfDay,
@@ -88,6 +88,7 @@ export function DaySchedule({
   barbers,
   bookings,
   exceptions,
+  timeOff,
   onSlotClick,
   onBookingClick,
 }: {
@@ -95,6 +96,7 @@ export function DaySchedule({
   barbers: Barber[]
   bookings: Booking[]
   exceptions: ScheduleException[]
+  timeOff: TimeOff[]
   onSlotClick: (barber: Barber, time: string) => void
   onBookingClick: (booking: Booking) => void
 }) {
@@ -104,21 +106,25 @@ export function DaySchedule({
 
   const dayExceptions = exceptions.filter((item) => item.dateKey === dateKey)
   const forceClosed = dayExceptions.some((item) => item.type === 'FORCE_CLOSE')
-  const forceOpen = dayExceptions.some((item) => item.type === 'FORCE_OPEN')
-  const periods = getWorkingPeriodsForDate(dateFromKey(dateKey))
-  const regularlyClosed = periods.length === 0 && !forceOpen
-  const closed = forceClosed || regularlyClosed
+  const shopTimeOff = timeOff.find(
+    (range) => range.barberId === null && dateKey >= range.startDate && dateKey <= range.endDate,
+  )
 
-  // Opening hours as minute ranges; a forced-open day uses the default hours.
-  const openRanges = periods.length
-    ? periods.map((p) => [timeToMinutes(p.startTime), timeToMinutes(p.endTime)])
-    : forceOpen
-      ? [[DEFAULT_OPEN, DEFAULT_CLOSE]]
-      : []
+  // Each barber's working hours that day, as minute ranges.
+  const openRangesByBarber = new Map(
+    barbers.map((barber) => [
+      barber.id,
+      getBarberPeriodsForDate(barber, dateKey, dayExceptions, timeOff).map(
+        (p) => [timeToMinutes(p.startTime), timeToMinutes(p.endTime)] as const,
+      ),
+    ]),
+  )
+  const allRanges = [...openRangesByBarber.values()].flat()
+  const closed = allRanges.length === 0
 
-  // Visible hours: opening hours, widened to fit any booking outside them.
-  let firstMinute = openRanges.length ? Math.min(...openRanges.map((r) => r[0])) : DEFAULT_OPEN
-  let lastMinute = openRanges.length ? Math.max(...openRanges.map((r) => r[1])) : DEFAULT_CLOSE
+  // Visible hours: everyone's working hours, widened to fit any booking.
+  let firstMinute = allRanges.length ? Math.min(...allRanges.map((r) => r[0])) : DEFAULT_OPEN
+  let lastMinute = allRanges.length ? Math.max(...allRanges.map((r) => r[1])) : DEFAULT_CLOSE
   for (const booking of bookings) {
     const bookingStart = minutesOfDay(booking.startTime)
     firstMinute = Math.min(firstMinute, bookingStart)
@@ -133,8 +139,8 @@ export function DaySchedule({
     return times
   }, [rangeStart, rangeEnd])
 
-  const isOpenAt = (minute: number) =>
-    !forceClosed && openRanges.some(([start, end]) => minute >= start && minute < end)
+  const isOpenAt = (barberId: string, minute: number) =>
+    (openRangesByBarber.get(barberId) ?? []).some(([start, end]) => minute >= start && minute < end)
 
   const blockedFor = (barber: Barber) =>
     dayExceptions.filter(
@@ -149,7 +155,7 @@ export function DaySchedule({
 
   // Bring the current time (or the opening hour) into view on each new day.
   useEffect(() => {
-    const target = isToday ? nowMinutes - 60 : (openRanges[0]?.[0] ?? rangeStart)
+    const target = isToday ? nowMinutes - 60 : firstMinute
     scrollRef.current?.scrollTo({ top: Math.max(0, (target - rangeStart) * PX_PER_MINUTE) })
     // Only on day change; ignore minute ticks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,7 +175,9 @@ export function DaySchedule({
         <div className="border-b border-[var(--admin-border)] bg-[#f3ede4] px-4 py-2 text-center text-[13px] text-[var(--admin-muted)]">
           {forceClosed
             ? 'Το μαγαζί είναι κλειστό αυτή την ημέρα (εξαίρεση ωραρίου).'
-            : 'Κανονικά κλειστά αυτή την ημέρα. Μπορείς να καταχωρήσεις ραντεβού χειροκίνητα.'}
+            : shopTimeOff
+              ? `Το μαγαζί είναι κλειστό${shopTimeOff.reason ? `: ${shopTimeOff.reason}` : '.'}`
+              : 'Κανείς δεν δουλεύει αυτή την ημέρα. Μπορείς να καταχωρήσεις ραντεβού χειροκίνητα.'}
         </div>
       )}
 
@@ -186,6 +194,8 @@ export function DaySchedule({
             const count = bookings.filter(
               (b) => b.barber.id === barber.id && b.status !== 'CANCELLED',
             ).length
+            const off = (openRangesByBarber.get(barber.id) ?? []).length === 0
+            const onLeave = isOnTimeOff(barber.id, dateKey, timeOff)
             return (
               <div
                 key={barber.id}
@@ -195,6 +205,7 @@ export function DaySchedule({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{barber.name}</p>
                   <p className="text-xs text-[var(--admin-muted)]">
+                    {off && !closed ? (onLeave ? 'Άδεια · ' : 'Ρεπό · ') : ''}
                     {count === 1 ? '1 ραντεβού' : `${count} ραντεβού`}
                   </p>
                 </div>
@@ -229,7 +240,7 @@ export function DaySchedule({
                 style={{ height }}
               >
                 {cellTimes.map((minute) => {
-                  const open = isOpenAt(minute)
+                  const open = isOpenAt(barber.id, minute)
                   return (
                     <button
                       key={minute}

@@ -8,17 +8,11 @@ import {
   type Service,
   ApiError,
   adminFetch,
-  bookingDateKey,
   errorMessage,
   formatPrice,
-  minutesOfDay,
-  minutesToTime,
 } from '../../_lib/admin-data'
 import { Field, FormError, Modal, SelectInput, TextInput } from '../ui'
-
-const TIME_STEP = 15
-const FIRST_TIME = 7 * 60
-const LAST_TIME = 22 * 60
+import { ADMIN_TIME_OPTIONS, takenTimes } from './time-options'
 
 export type NewBookingPrefill = {
   barberId?: string
@@ -61,33 +55,10 @@ export function NewBookingModal({
   const service = services.find((item) => item.id === serviceId)
   const duration = service?.duration ?? 30
 
-  // Times that would overlap an existing booking for this barber and day.
-  const takenTimes = useMemo(() => {
-    const busy = knownBookings
-      .filter(
-        (b) =>
-          b.barber.id === barberId &&
-          b.status !== 'CANCELLED' &&
-          bookingDateKey(b) === date,
-      )
-      .map((b) => {
-        const start = minutesOfDay(b.startTime)
-        return [start, start + b.service.duration] as const
-      })
-    const taken = new Set<string>()
-    for (let m = FIRST_TIME; m < LAST_TIME; m += TIME_STEP) {
-      if (busy.some(([start, end]) => m < end && m + duration > start)) {
-        taken.add(minutesToTime(m))
-      }
-    }
-    return taken
-  }, [knownBookings, barberId, date, duration])
-
-  const timeOptions = useMemo(() => {
-    const options: string[] = []
-    for (let m = FIRST_TIME; m < LAST_TIME; m += TIME_STEP) options.push(minutesToTime(m))
-    return options
-  }, [])
+  const taken = useMemo(
+    () => takenTimes(knownBookings, barberId, date, duration),
+    [knownBookings, barberId, date, duration],
+  )
 
   // Fill a returning customer's name and email from their phone number.
   function handlePhoneChange(value: string) {
@@ -154,7 +125,7 @@ export function NewBookingModal({
       onSubmit={(event) => void handleSubmit(event)}
       submitLabel="Καταχώρηση"
       submitting={submitting}
-      submitDisabled={services.length === 0 || barbers.length === 0 || takenTimes.has(time)}
+      submitDisabled={services.length === 0 || barbers.length === 0 || taken.has(time)}
       wide
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -210,17 +181,17 @@ export function NewBookingModal({
           </Field>
           <Field label="Ώρα">
             <SelectInput value={time} onChange={(event) => setTime(event.target.value)}>
-              {timeOptions.map((option) => (
-                <option key={option} value={option} disabled={takenTimes.has(option)}>
+              {ADMIN_TIME_OPTIONS.map((option) => (
+                <option key={option} value={option} disabled={taken.has(option)}>
                   {option}
-                  {takenTimes.has(option) ? ' · κλεισμένη' : ''}
+                  {taken.has(option) ? ' · κλεισμένη' : ''}
                 </option>
               ))}
             </SelectInput>
           </Field>
         </div>
       </div>
-      {takenTimes.has(time) && (
+      {taken.has(time) && (
         <p className="text-sm text-amber-800">
           Η ώρα αυτή συμπίπτει με άλλο ραντεβού του κουρέα. Διάλεξε άλλη ώρα.
         </p>
