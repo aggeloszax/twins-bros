@@ -1,10 +1,17 @@
 import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
 import { SHOP } from '@/lib/shop'
+import { BARBER_SCHEDULE_SELECT, loadScheduleRules, toScheduleSource } from '@/lib/availability'
 import {
   BOOKING_LOCALE,
   BOOKING_TIME_ZONE,
+  BOOKING_WINDOW_DAYS,
   canCancelBooking,
+  createBookingDateTime,
+  getBarberPeriodsForDate,
+  getDateKeyInBookingTimeZone,
+  isDayBookable,
+  parseDateKey,
 } from '@/lib/schedule'
 import { CancelClient } from './cancel-client'
 
@@ -88,8 +95,8 @@ export default async function CancelPage({
       startTime: true,
       status: true,
       customerName: true,
-      barber: { select: { name: true } },
-      service: { select: { name: true } },
+      barber: { select: { id: true, name: true, ...BARBER_SCHEDULE_SELECT } },
+      service: { select: { id: true, name: true } },
     },
   })
 
@@ -152,9 +159,32 @@ export default async function CancelPage({
     )
   }
 
+  // Days the barber works within the booking window, for "change time".
+  const now = new Date()
+  const todayKey = getDateKeyInBookingTimeZone(now)
+  const dayKeys = Array.from({ length: BOOKING_WINDOW_DAYS + 1 }, (_, index) =>
+    getDateKeyInBookingTimeZone(
+      new Date((createBookingDateTime(todayKey, '12:00') as Date).getTime() + index * 24 * 60 * 60_000),
+    ),
+  )
+  const rules = await loadScheduleRules(dayKeys[0], dayKeys[dayKeys.length - 1])
+  const barberSource = toScheduleSource(booking.barber)
+  const bookableDays = dayKeys.filter((key) => {
+    const day = parseDateKey(key)
+    return (
+      day !== null &&
+      isDayBookable(day, getBarberPeriodsForDate(barberSource, key, rules.exceptions, rules.timeOff), now)
+    )
+  })
+
   return (
     <Shell>
       <CancelClient
+        barberId={booking.barber.id}
+        serviceId={booking.service.id}
+        bookableDays={bookableDays}
+        currentDateKey={getDateKeyInBookingTimeZone(booking.startTime)}
+        currentTime={formatTime(booking.startTime)}
         id={booking.id}
         token={token}
         brandColor={SHOP.primaryColor}

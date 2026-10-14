@@ -21,6 +21,10 @@ export async function GET(request: Request) {
   const barberId = searchParams.get('barberId')
   const serviceId = searchParams.get('serviceId')
   const date = searchParams.get('date')
+  // A customer moving their own booking: its current time counts as free.
+  // The cancel token proves the booking is theirs.
+  const excludeId = searchParams.get('exclude')
+  const excludeToken = searchParams.get('token')
 
   if (!barberId || !date) {
     return Response.json(
@@ -58,6 +62,14 @@ export async function GET(request: Request) {
     // least one barber is free for the whole service.
     const anyBarber = barberId === ANY_BARBER
 
+    const excluded =
+      excludeId && excludeToken
+        ? await prisma.booking.findFirst({
+            where: { id: excludeId, cancelToken: excludeToken },
+            select: { id: true },
+          })
+        : null
+
     const [barbers, service, bookings, rules] = await Promise.all([
       prisma.barber.findMany({
         where: anyBarber ? undefined : { id: barberId },
@@ -72,6 +84,7 @@ export async function GET(request: Request) {
       prisma.booking.findMany({
         where: {
           ...(anyBarber ? {} : { barberId }),
+          ...(excluded ? { id: { not: excluded.id } } : {}),
           status: { not: 'CANCELLED' },
           startTime: { gte: dayStart, lt: dayEnd },
         },
