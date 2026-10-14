@@ -25,14 +25,16 @@ export const SHOP = {
   emailFrom: 'onboarding@resend.dev',
 } as const
 
-// CSS custom properties for the dark admin UI (login and dashboard).
+// CSS custom properties for the admin UI (login and dashboard): a light beige
+// workspace with the shop's brand colour as the accent.
 export const ADMIN_THEME = {
-  '--admin-accent': '#ff1f2d',
-  '--admin-accent-hover': '#d80d19',
-  '--admin-accent-soft': '#ff6b75',
-  '--admin-accent-muted': '#ffb3b8',
-  '--admin-deep': '#4b0710',
-  '--admin-bg': '#120306',
-  '--admin-surface': '#3a050c',
-  '--admin-surface-2': '#180307',
+  '--admin-bg': '#f5efe6',
+  '--admin-surface': '#ffffff',
+  '--admin-surface-2': '#fbf8f3',
+  '--admin-border': '#e6dccd',
+  '--admin-text': '#1f1a17',
+  '--admin-muted': '#7a6f64',
+  '--admin-accent': SHOP.primaryColor,
+  '--admin-accent-hover': `color-mix(in srgb, ${SHOP.primaryColor} 82%, black)`,
+  '--admin-accent-soft': `color-mix(in srgb, ${SHOP.primaryColor} 9%, white)`,
 } as CSSProperties

@@ -89,7 +89,8 @@ export async function POST(request: Request) {
     !isNonEmptyString(slotTime) ||
     !isNonEmptyString(customerName) ||
     !isNonEmptyString(customerPhone) ||
-    !isValidEmail(customerEmail)
+    // Walk-in or phone bookings entered by the admin may have no email.
+    !(isValidEmail(customerEmail) || (isAdminManualBooking && !isNonEmptyString(customerEmail)))
   ) {
     return Response.json(
       { error: 'Required booking fields are missing' },
@@ -209,7 +210,7 @@ export async function POST(request: Request) {
             cancelToken: createSecureToken(),
             customerName: customerName.trim(),
             customerPhone: normalizedCustomerPhone,
-            customerEmail: customerEmail.trim(),
+            customerEmail: isValidEmail(customerEmail) ? customerEmail.trim() : null,
           },
           select: {
             id: true,
