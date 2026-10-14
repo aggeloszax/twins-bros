@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { SHOP } from '@/lib/shop'
+import { googleCalendarUrl } from '@/lib/calendar'
 
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? SHOP.emailFrom
 
@@ -22,6 +23,7 @@ type BookingNotificationDetails = {
   id: string
   cancelToken: string
   startTime: Date | string
+  endTime?: Date | string
   customerName: string
   customerPhone: string
   customerEmail: string | null
@@ -31,6 +33,27 @@ type BookingNotificationDetails = {
   }
   service: {
     name: string
+    duration?: number
+  }
+}
+
+// Cancel and add-to-calendar links for a customer email.
+function bookingLinks(details: BookingNotificationDetails) {
+  const token = encodeURIComponent(details.cancelToken)
+  const start = new Date(details.startTime)
+  const end = details.endTime
+    ? new Date(details.endTime)
+    : new Date(start.getTime() + (details.service.duration ?? 30) * 60_000)
+  return {
+    cancelUrl: `${APP_BASE_URL}/cancel/${details.id}?token=${token}`,
+    googleCalendarUrl: googleCalendarUrl({
+      uid: details.id,
+      start,
+      end,
+      serviceName: details.service.name,
+      barberName: details.barber.name,
+    }),
+    icsUrl: `${APP_BASE_URL}/api/bookings/${details.id}/calendar?token=${token}`,
   }
 }
 
@@ -147,6 +170,8 @@ function customerBookingEmailHtml({
   emailDate,
   emailTime,
   cancelUrl,
+  googleCalendarUrl,
+  icsUrl,
 }: {
   heading: string
   intro: string
@@ -155,6 +180,8 @@ function customerBookingEmailHtml({
   emailDate: string
   emailTime: string
   cancelUrl: string
+  googleCalendarUrl: string
+  icsUrl: string
 }) {
   const shopName = escapeHtml(SHOP.name)
   const logoUrl = escapeHtml(new URL(SHOP.logoUrl, `${APP_BASE_URL}/`).toString())
@@ -181,7 +208,14 @@ function customerBookingEmailHtml({
       <div><dt style="color: #a1a1aa; font-size: 13px;">Barber</dt><dd style="margin: 4px 0 0; font-weight: 700;">${barberName}</dd></div>
       <div><dt style="color: #a1a1aa; font-size: 13px;">Ημερομηνία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailDate}</dd></div>
       <div><dt style="color: #a1a1aa; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailTime}</dd></div>
+      <div><dt style="color: #a1a1aa; font-size: 13px;">Διεύθυνση</dt><dd style="margin: 4px 0 0; font-weight: 700;">${escapeHtml(SHOP.address)}</dd></div>
     </dl>
+    <p style="margin: 22px 0 0; font-size: 13px; color: #a1a1aa;">
+      Προσθήκη στο ημερολόγιο:
+      <a href="${escapeHtml(googleCalendarUrl)}" style="color: #f4f4f5; font-weight: 700;">Google</a>
+      &nbsp;·&nbsp;
+      <a href="${escapeHtml(icsUrl)}" style="color: #f4f4f5; font-weight: 700;">iPhone / Outlook</a>
+    </p>
   </div>
   <div style="padding: 24px 28px; border-top: 1px solid #27272a; text-align: center;">
     <p style="margin: 0 0 14px; color: #a1a1aa; font-size: 13px; line-height: 1.6;">Δεν μπορείτε να έρθετε; Μπορείτε να ακυρώσετε έως και 2,5 ώρες πριν το ραντεβού.</p>
@@ -216,7 +250,6 @@ export async function sendBookingNotifications(
 
   if (bookingDetails.customerEmail) {
     const subject = `Επιβεβαίωση ραντεβού · ${SHOP.name}`
-    const cancelUrl = `${APP_BASE_URL}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`
     const html = customerBookingEmailHtml({
       heading: 'Το ραντεβού σου επιβεβαιώθηκε',
       intro: `Γεια σου ${customerName}, σε περιμένουμε για το ραντεβού σου.`,
@@ -224,7 +257,7 @@ export async function sendBookingNotifications(
       barberName,
       emailDate,
       emailTime,
-      cancelUrl,
+      ...bookingLinks(bookingDetails),
     })
 
     customerEmailDelivery = await trySendEmail(
@@ -278,12 +311,39 @@ export async function sendBookingRescheduledEmail(
     barberName: escapeHtml(bookingDetails.barber.name),
     emailDate,
     emailTime,
-    cancelUrl: `${APP_BASE_URL}/cancel/${bookingDetails.id}?token=${encodeURIComponent(bookingDetails.cancelToken)}`,
+    ...bookingLinks(bookingDetails),
   })
 
   const result = await trySendEmail(
     bookingDetails.customerEmail,
     `Αλλαγή ραντεβού · ${SHOP.name}`,
+    html,
+    getShopSender(),
+  )
+  return result.status
+}
+
+// Day-before reminder, sent by the daily cron job (app/api/cron/reminders).
+export async function sendBookingReminderEmail(
+  bookingDetails: BookingNotificationDetails,
+): Promise<'sent' | 'failed' | 'skipped'> {
+  if (!bookingDetails.customerEmail) return 'skipped'
+
+  const { emailDate, emailTime } = formatEmailDateTime(bookingDetails.startTime)
+  const customerName = escapeHtml(bookingDetails.customerName)
+  const html = customerBookingEmailHtml({
+    heading: `Αύριο στις ${emailTime} σε περιμένουμε`,
+    intro: `Γεια σου ${customerName}, σου θυμίζουμε το αυριανό σου ραντεβού. Αν δεν μπορείς να έρθεις, ακύρωσέ το για να δοθεί η ώρα σε κάποιον άλλο.`,
+    serviceName: escapeHtml(bookingDetails.service.name),
+    barberName: escapeHtml(bookingDetails.barber.name),
+    emailDate,
+    emailTime,
+    ...bookingLinks(bookingDetails),
+  })
+
+  const result = await trySendEmail(
+    bookingDetails.customerEmail,
+    `Υπενθύμιση ραντεβού αύριο στις ${emailTime} · ${SHOP.name}`,
     html,
     getShopSender(),
   )

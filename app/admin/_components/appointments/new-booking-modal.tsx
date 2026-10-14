@@ -90,7 +90,7 @@ export function NewBookingModal({
     setSubmitting(true)
     setError(null)
     try {
-      const created = await adminFetch<Omit<Booking, 'noShow' | 'noShowCount' | 'customer'>>(
+      const created = await adminFetch<Omit<Booking, 'noShow' | 'noShowCount' | 'customer' | 'reminderSentAt'>>(
         '/api/bookings',
         {
           method: 'POST',
@@ -111,6 +111,7 @@ export function NewBookingModal({
       onCreated({
         ...created,
         noShow: false,
+        reminderSentAt: null,
         noShowCount: previous?.noShowCount ?? 0,
         customer: previous?.customer ?? null,
       })

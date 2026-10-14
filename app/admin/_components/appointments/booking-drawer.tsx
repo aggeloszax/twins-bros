@@ -10,6 +10,7 @@ import {
   bookingDateKey,
   errorMessage,
   formatDateKeyLong,
+  formatDateShort,
   formatPhone,
   formatPrice,
   formatTime,
@@ -123,6 +124,17 @@ export function BookingDrawer({
       label: booking.barber.name,
       detail: 'Κουρέας',
     },
+    ...(booking.customerEmail && state === 'upcoming'
+      ? [
+          {
+            icon: <MailIcon className="h-4 w-4" />,
+            label: booking.reminderSentAt ? 'Η υπενθύμιση στάλθηκε' : 'Υπενθύμιση με email',
+            detail: booking.reminderSentAt
+              ? `${formatDateShort(booking.reminderSentAt)}, ${formatTime(booking.reminderSentAt)}`
+              : 'Θα σταλεί αυτόματα το απόγευμα της προηγούμενης μέρας',
+          },
+        ]
+      : []),
   ]
 
   return (

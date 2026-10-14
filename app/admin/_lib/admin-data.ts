@@ -20,6 +20,7 @@ export type Booking = {
   noShow: boolean
   noShowCount: number
   notes: string | null
+  reminderSentAt: string | null
   customer: CustomerProfile | null
 }
 

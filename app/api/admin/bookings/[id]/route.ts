@@ -34,6 +34,7 @@ const BOOKING_SELECT = {
   customerEmail: true,
   noShow: true,
   notes: true,
+  reminderSentAt: true,
   barber: { select: { id: true, name: true } },
   service: { select: { id: true, name: true, price: true, duration: true } },
 } satisfies Prisma.BookingSelect
@@ -160,7 +161,8 @@ export async function PATCH(
             ...(hasStatus ? { status: nextStatus } : {}),
             ...(hasNoShow ? { noShow: payload.noShow as boolean } : {}),
             ...(hasNotes ? { notes } : {}),
-            ...(move ? { barberId, serviceId, startTime, endTime } : {}),
+            // A moved booking gets a fresh reminder for its new day.
+            ...(move ? { barberId, serviceId, startTime, endTime, reminderSentAt: null } : {}),
           },
           select: BOOKING_SELECT,
         })

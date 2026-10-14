@@ -97,6 +97,7 @@ model Booking {
   customerEmail String?
   noShow       Boolean @default(false)
   notes        String?  // Optional comment the customer leaves when booking
+  reminderSentAt DateTime? // Day-before reminder email; cleared when the booking moves
 
   // Σχέσεις
   barberId    String

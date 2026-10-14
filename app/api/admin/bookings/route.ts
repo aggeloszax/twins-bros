@@ -39,6 +39,7 @@ export async function GET(request: Request) {
         customerEmail: true,
         noShow: true,
         notes: true,
+        reminderSentAt: true,
         barber: { select: { id: true, name: true } },
         service: { select: { id: true, name: true, price: true, duration: true } },
       },
