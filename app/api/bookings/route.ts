@@ -1,5 +1,6 @@
 import { googleCalendarUrl } from '@/lib/calendar'
 import { sendBookingNotifications } from '@/lib/notifications'
+import { notifyNewBooking } from '@/lib/push'
 import { isValidSessionToken, readSessionCookie } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
 import { normalizeGreekMobilePhone } from '@/lib/phone'
@@ -302,6 +303,9 @@ export async function POST(request: Request) {
     } catch (notificationError) {
       console.error('Failed to send booking notifications:', notificationError)
     }
+
+    // Bookings the shop enters itself need no alert on the shop's phones.
+    if (!isAdminManualBooking) await notifyNewBooking(bookingWithToken)
 
     const booking = { ...bookingWithToken }
     delete (booking as { cancelToken?: string }).cancelToken

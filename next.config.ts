@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, max-age=0" }],
+      },
+      {
         source: "/admin/:path*",
         headers: [
           { key: "Cache-Control", value: "no-store, max-age=0" },

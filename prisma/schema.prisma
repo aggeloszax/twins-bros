@@ -23,6 +23,7 @@ model Barber {
   bookings    Booking[]
   workingPeriods BarberWorkingPeriod[]
   timeOff     TimeOff[]
+  pushSubscriptions PushSubscription[]
 }
 
 // One working interval of a barber's week; several per day model breaks.
@@ -125,4 +126,23 @@ model RateLimit {
   key     String   @id
   count   Int
   resetAt DateTime
+}
+
+// A phone or computer that receives push notifications about bookings.
+// barberId null: every barber's bookings; otherwise only that barber's.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  label     String?  // Device description, e.g. "iPhone"
+  barberId  String?
+  barber    Barber?  @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// Small app-wide values generated at runtime, e.g. the web push keys.
+model AppSetting {
+  key   String @id
+  value String
 }

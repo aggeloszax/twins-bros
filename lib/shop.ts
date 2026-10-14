@@ -17,8 +17,6 @@ export const SHOP = {
   // Public URL of the deployed app, used for links in emails.
   // NEXT_PUBLIC_APP_URL overrides it (e.g. for local testing).
   appUrl: 'https://barber-booking-gr.vercel.app',
-  // Inbox that receives a notification for every new booking.
-  notificationEmail: 'aggelos2ker@gmail.com',
   // Sender address for emails. It must be on a domain verified in Resend;
   // onboarding@resend.dev only delivers to the Resend account owner.
   // RESEND_FROM_EMAIL overrides it.

@@ -334,25 +334,3 @@ export async function sendBookingReminderEmail(
   )
   return result.status
 }
-
-// Tells the shop that a customer moved their own booking from the email link.
-export async function sendShopBookingMovedEmail(
-  bookingDetails: BookingNotificationDetails,
-  previousStart: Date,
-): Promise<'sent' | 'failed'> {
-  const before = formatEmailDateTime(previousStart)
-  const after = formatEmailDateTime(bookingDetails.startTime)
-  const customerName = escapeHtml(bookingDetails.customerName)
-  const result = await trySendEmail(
-    SHOP.notificationEmail,
-    `🔁 Αλλαγή ώρας — ${customerName}`,
-    `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
-      <strong>${customerName}</strong> · ${escapeHtml(bookingDetails.customerPhone)}<br/>
-      ${escapeHtml(bookingDetails.service.name)} με τον ${escapeHtml(bookingDetails.barber.name)}<br/><br/>
-      Από: ${before.emailDate} στις ${before.emailTime}<br/>
-      <strong>Σε: ${after.emailDate} στις ${after.emailTime}</strong>
-    </p>`,
-    getShopSender(),
-  )
-  return result.status
-}

@@ -89,6 +89,20 @@ export function AppointmentsPage() {
     return () => window.clearTimeout(timer)
   }, [notice])
 
+  // A tapped phone notification opens /admin?date=YYYY-MM-DD&booking=id.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const date = params.get('date')
+    const bookingId = params.get('booking')
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return
+    queueMicrotask(() => {
+      setSelectedDate(date)
+      setMonthKey(date)
+      if (bookingId) setOpenBookingId(bookingId)
+    })
+    window.history.replaceState(null, '', '/admin')
+  }, [])
+
   const grid = useMemo(() => buildMonthGrid(monthKey), [monthKey])
   const rangeFrom = grid[0]
   const rangeTo = grid[grid.length - 1]

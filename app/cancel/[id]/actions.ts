@@ -2,7 +2,8 @@
 
 import { Prisma } from '@prisma/client'
 import { BARBER_SCHEDULE_SELECT, computeBarberSlots, loadScheduleRules, toScheduleSource } from '@/lib/availability'
-import { sendBookingRescheduledEmail, sendShopBookingMovedEmail } from '@/lib/notifications'
+import { sendBookingRescheduledEmail } from '@/lib/notifications'
+import { notifyBookingCancelled, notifyBookingMoved } from '@/lib/push'
 import { prisma } from '@/lib/prisma'
 import {
   canCancelBooking,
@@ -34,7 +35,15 @@ export async function cancelBooking(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, cancelToken: true, startTime: true, status: true },
+      select: {
+        id: true,
+        cancelToken: true,
+        startTime: true,
+        status: true,
+        customerName: true,
+        barber: { select: { id: true, name: true } },
+        service: { select: { name: true } },
+      },
     })
 
     if (!booking || booking.cancelToken !== token) {
@@ -63,6 +72,8 @@ export async function cancelBooking(
     if (result.count === 0) {
       return { ok: false, reason: 'already-cancelled' }
     }
+
+    await notifyBookingCancelled(booking)
 
     return { ok: true }
   } catch (error) {
@@ -184,7 +195,7 @@ export async function rescheduleBooking(
             customerName: true,
             customerPhone: true,
             customerEmail: true,
-            barber: { select: { name: true } },
+            barber: { select: { id: true, name: true } },
             service: { select: { name: true, duration: true } },
           },
         })
@@ -196,7 +207,7 @@ export async function rescheduleBooking(
 
     await Promise.allSettled([
       sendBookingRescheduledEmail(updated),
-      sendShopBookingMovedEmail(updated, booking.startTime),
+      notifyBookingMoved(updated, booking.startTime),
     ])
 
     return { ok: true, date, time: slotTime }
