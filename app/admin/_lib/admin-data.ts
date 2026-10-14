@@ -37,6 +37,7 @@ export type Barber = {
   id: string
   name: string
   image: string | null
+  bio: string | null
   schedule: WorkingPeriod[] | null
 }
 
@@ -47,7 +48,14 @@ export type TimeOff = {
   endDate: string
   reason: string | null
 }
-export type Service = { id: string; name: string; price: number; duration: number }
+export type Service = {
+  id: string
+  name: string
+  price: number
+  duration: number
+  description: string | null
+  category: string | null
+}
 
 export type ExceptionType = 'BLOCK_SLOT' | 'FORCE_OPEN' | 'FORCE_CLOSE'
 export type ScheduleException = {

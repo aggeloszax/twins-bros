@@ -15,19 +15,24 @@ import {
   toDateKey,
 } from '@/lib/schedule'
 import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
+import { groupByCategory } from '@/lib/catalog'
 import { SHOP } from '@/lib/shop'
+import { ShopInfo } from './shop-info'
 
 type Service = {
   id: string
   name: string
   price: number
   duration: number
+  description: string | null
+  category: string | null
 }
 
 type Barber = {
   id: string
   name: string
   image: string | null
+  bio: string | null
   // null: the barber follows the default weekly hours.
   schedule: WorkingPeriod[] | null
 }
@@ -53,6 +58,7 @@ const ANY_BARBER_CHOICE: Barber = {
   id: ANY_BARBER,
   name: 'Οποιοσδήποτε',
   image: null,
+  bio: null,
   schedule: null,
 }
 
@@ -782,7 +788,12 @@ export default function BookingForm() {
                 ) : servicesError ? (
                   <ErrorState onRetry={loadServices} />
                 ) : (
-                  services.map((service) => {
+                  groupByCategory(services).map(([category, items]) => (
+                  <div key={category || 'none'} className="space-y-3">
+                    {category && (
+                      <h3 className="pt-2 text-sm font-bold text-neutral-900">{category}</h3>
+                    )}
+                  {items.map((service) => {
                     const isSelected = selectedService?.id === service.id
                     return (
                       <button
@@ -803,6 +814,11 @@ export default function BookingForm() {
                             <ClockIcon className="h-4 w-4 text-[var(--brand)]" />
                             <span>{service.duration} λεπτά</span>
                           </div>
+                          {service.description && (
+                            <p className="mt-2 text-sm leading-6 text-neutral-500">
+                              {service.description}
+                            </p>
+                          )}
                         </div>
                         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                           <span className="text-lg font-bold tabular-nums text-neutral-900">
@@ -820,7 +836,9 @@ export default function BookingForm() {
                         </div>
                       </button>
                     )
-                  })
+                  })}
+                  </div>
+                  ))
                 )}
               </div>
             </div>
@@ -898,6 +916,11 @@ export default function BookingForm() {
                           <span className="block truncate text-sm font-bold text-neutral-900 sm:text-base">
                             {barber.name}
                           </span>
+                          {barber.bio && (
+                            <span className="mt-1 line-clamp-2 block text-xs leading-5 text-neutral-500">
+                              {barber.bio}
+                            </span>
+                          )}
                         </div>
                       </button>
                     )
@@ -1184,6 +1207,8 @@ export default function BookingForm() {
         </section>
         </>
         )}
+
+        <ShopInfo schedules={barbers.map((barber) => barber.schedule)} />
 
         <footer className="mt-12 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
           <p className="font-semibold text-neutral-700">{SHOP.name}</p>

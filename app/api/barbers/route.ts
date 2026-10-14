@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
 import { BARBER_SCHEDULE_SELECT, toScheduleSource } from '@/lib/availability'
@@ -13,12 +14,17 @@ export const dynamic = 'force-dynamic'
 type CreateBarberPayload = {
   name?: unknown
   image?: unknown
+  bio?: unknown
 }
 
 type UpdateBarberPayload = {
   id?: unknown
+  name?: unknown
   image?: unknown
+  bio?: unknown
 }
+
+const MAX_BIO_LENGTH = 200
 
 // Prisma data for a barber's photo columns, given the parsed upload.
 function imageData(input: BarberImageInput, barberId: string) {
@@ -48,6 +54,7 @@ export async function GET() {
         id: barber.id,
         name: barber.name,
         image: barber.image,
+        bio: barber.bio,
         schedule: toScheduleSource(barber).schedule,
       })),
     )
@@ -76,6 +83,7 @@ export async function POST(request: Request) {
   if (typeof name !== 'string' || name.trim().length === 0) {
     return Response.json({ error: 'Το όνομα είναι υποχρεωτικό.' }, { status: 400 })
   }
+  const bio = typeof payload.bio === 'string' ? payload.bio.trim().slice(0, MAX_BIO_LENGTH) || null : null
 
   try {
     const parsedImage = parseBarberImage(image)
@@ -91,6 +99,7 @@ export async function POST(request: Request) {
       data: {
         id,
         name: name.trim(),
+        bio,
         ...imageData(parsedImage, id),
       },
       select: PUBLIC_BARBER_SELECT,
@@ -121,12 +130,19 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id is required' }, { status: 400 })
   }
 
+  // Each field is optional: only what is sent changes.
   const parsedImage = parseBarberImage(image)
-  if (parsedImage.kind === 'none' || parsedImage.kind === 'invalid') {
+  if (parsedImage.kind === 'invalid') {
     return Response.json(
       { error: 'Η νέα φωτογραφία δεν είναι έγκυρη ή είναι πολύ μεγάλη.' },
       { status: 400 },
     )
+  }
+  if (payload.name !== undefined && (typeof payload.name !== 'string' || !payload.name.trim())) {
+    return Response.json({ error: 'Το όνομα είναι υποχρεωτικό.' }, { status: 400 })
+  }
+  if (payload.bio !== undefined && payload.bio !== null && typeof payload.bio !== 'string') {
+    return Response.json({ error: 'Μη έγκυρο κείμενο.' }, { status: 400 })
   }
 
   try {
@@ -141,12 +157,21 @@ export async function PATCH(request: Request) {
 
     const barber = await prisma.barber.update({
       where: { id: existingBarber.id },
-      data: imageData(parsedImage, existingBarber.id),
+      data: {
+        ...(parsedImage.kind !== 'none' ? imageData(parsedImage, existingBarber.id) : {}),
+        ...(typeof payload.name === 'string' ? { name: payload.name.trim() } : {}),
+        ...(payload.bio !== undefined
+          ? { bio: typeof payload.bio === 'string' ? payload.bio.trim().slice(0, MAX_BIO_LENGTH) || null : null }
+          : {}),
+      },
       select: PUBLIC_BARBER_SELECT,
     })
 
     return Response.json(barber)
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return Response.json({ error: 'Υπάρχει ήδη κουρέας με αυτό το όνομα.' }, { status: 409 })
+    }
     console.error('Failed to update barber:', error)
     return Response.json(
       { error: 'Failed to update barber' },

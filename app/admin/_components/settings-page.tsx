@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from 'react'
 import { SHOP } from '@/lib/shop'
 import { adminFetch, errorMessage } from '../_lib/admin-data'
+import { GallerySettings } from './gallery-settings'
 import { PushSettings } from './push-settings'
 import { Button, Card, CardHeader, Field, FormError, LockIcon, PageHeader, TextInput } from './ui'
 
@@ -52,6 +53,8 @@ export function SettingsPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PushSettings />
+
+        <GallerySettings />
 
         <Card className="self-start">
           <CardHeader

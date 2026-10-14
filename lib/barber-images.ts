@@ -34,4 +34,4 @@ export function barberImageUrl(barberId: string) {
   return `/api/barbers/${barberId}/image?v=${Date.now()}`
 }
 
-export const PUBLIC_BARBER_SELECT = { id: true, name: true, image: true } as const
+export const PUBLIC_BARBER_SELECT = { id: true, name: true, image: true, bio: true } as const

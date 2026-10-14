@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useEffect, useState } from 'react'
+import { groupByCategory } from '@/lib/catalog'
 import { type Service, adminFetch, errorMessage, formatPrice } from '../_lib/admin-data'
 import {
   Button,
@@ -16,6 +17,7 @@ import {
   PencilIcon,
   PlusIcon,
   Skeleton,
+  TextArea,
   TextInput,
 } from './ui'
 
@@ -88,12 +90,23 @@ export function ServicesPage() {
             <EmptyState title="Δεν υπάρχουν υπηρεσίες ακόμα." />
           </div>
         ) : (
+          <div>
+            {groupByCategory(services).map(([category, items]) => (
+              <div key={category || 'none'}>
+                {(category || services.some((item) => item.category)) && (
+                  <p className="border-b border-[var(--admin-border)] bg-[var(--admin-surface-2)] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
+                    {category || 'Χωρίς κατηγορία'}
+                  </p>
+                )}
           <ul className="divide-y divide-[var(--admin-border)]">
-            {services.map((service) => (
+            {items.map((service) => (
               <li key={service.id} className="flex items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{service.name}</p>
                   <p className="text-[13px] text-[var(--admin-muted)]">{service.duration} λεπτά</p>
+                  {service.description && (
+                    <p className="mt-0.5 line-clamp-2 text-[13px] text-[var(--admin-muted)]">{service.description}</p>
+                  )}
                 </div>
                 <p className="text-base font-semibold tabular-nums">{formatPrice(service.price)}</p>
                 <div className="flex items-center gap-1">
@@ -110,6 +123,9 @@ export function ServicesPage() {
               </li>
             ))}
           </ul>
+              </div>
+            ))}
+          </div>
         )}
       </Card>
       <p className="mt-3 text-xs text-[var(--admin-muted)]">
@@ -120,6 +136,7 @@ export function ServicesPage() {
       {editing && (
         <ServiceModal
           service={editing.service}
+          categories={Array.from(new Set(services.flatMap((item) => (item.category ? [item.category] : []))))}
           onClose={() => setEditing(null)}
           onSaved={(saved) => {
             setServices((current) =>
@@ -138,16 +155,20 @@ export function ServicesPage() {
 
 function ServiceModal({
   service,
+  categories,
   onClose,
   onSaved,
 }: {
   service: Service | null
+  categories: string[]
   onClose: () => void
   onSaved: (service: Service) => void
 }) {
   const [name, setName] = useState(service?.name ?? '')
   const [duration, setDuration] = useState(String(service?.duration ?? 30))
   const [price, setPrice] = useState(String(service?.price ?? 15))
+  const [category, setCategory] = useState(service?.category ?? '')
+  const [description, setDescription] = useState(service?.description ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -163,6 +184,8 @@ function ServiceModal({
           name: name.trim(),
           duration: Number(duration),
           price: Number(price.replace(',', '.')),
+          category: category.trim() || null,
+          description: description.trim() || null,
         }),
       })
       onSaved(saved)
@@ -192,6 +215,22 @@ function ServiceModal({
           <TextInput inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} />
         </Field>
       </div>
+      <Field label="Κατηγορία" hint="Προαιρετικό. Οι υπηρεσίες με ίδια κατηγορία εμφανίζονται μαζί, π.χ. «Μαλλιά», «Γένια».">
+        <TextInput
+          list="service-categories"
+          maxLength={40}
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+        />
+        <datalist id="service-categories">
+          {categories.map((item) => (
+            <option key={item} value={item} />
+          ))}
+        </datalist>
+      </Field>
+      <Field label="Περιγραφή" hint="Προαιρετικό. Τι περιλαμβάνει, όπως το βλέπει ο πελάτης.">
+        <TextArea rows={2} maxLength={300} value={description} onChange={(event) => setDescription(event.target.value)} />
+      </Field>
       <FormError message={error} />
     </Modal>
   )

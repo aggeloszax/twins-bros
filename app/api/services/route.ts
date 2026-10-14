@@ -9,10 +9,27 @@ type ServicePayload = {
   name?: unknown
   duration?: unknown
   price?: unknown
+  description?: unknown
+  category?: unknown
+}
+
+type ServiceData = {
+  name: string
+  duration: number
+  price: number
+  description: string | null
+  category: string | null
+}
+
+// Optional text field: empty means none.
+function optionalText(value: unknown, max: number): string | null | false {
+  if (value === undefined || value === null) return null
+  if (typeof value !== 'string' || value.trim().length > max) return false
+  return value.trim() || null
 }
 
 function parseService(payload: ServicePayload):
-  | { ok: true; data: { name: string; duration: number; price: number } }
+  | { ok: true; data: ServiceData }
   | { ok: false; error: string } {
   const durationNum = Number(payload.duration)
   const priceNum = Number(payload.price)
@@ -26,7 +43,18 @@ function parseService(payload: ServicePayload):
   if (!Number.isFinite(priceNum) || priceNum < 0) {
     return { ok: false, error: 'Το κόστος πρέπει να είναι μη αρνητικός αριθμός.' }
   }
-  return { ok: true, data: { name: payload.name.trim(), duration: durationNum, price: priceNum } }
+  const description = optionalText(payload.description, 300)
+  if (description === false) {
+    return { ok: false, error: 'Η περιγραφή μπορεί να έχει έως 300 χαρακτήρες.' }
+  }
+  const category = optionalText(payload.category, 40)
+  if (category === false) {
+    return { ok: false, error: 'Η κατηγορία μπορεί να έχει έως 40 χαρακτήρες.' }
+  }
+  return {
+    ok: true,
+    data: { name: payload.name.trim(), duration: durationNum, price: priceNum, description, category },
+  }
 }
 
 function isDuplicateName(error: unknown) {

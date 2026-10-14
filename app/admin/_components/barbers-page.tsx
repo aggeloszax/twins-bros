@@ -15,6 +15,7 @@ import {
   todayKey,
 } from '../_lib/admin-data'
 import { WORKING_PERIODS } from '@/lib/schedule'
+import { MAX_UPLOAD_BYTES, resizeImage } from '../_lib/resize-image'
 import { BarberScheduleModal } from './barber-schedule-modal'
 import {
   Avatar,
@@ -29,39 +30,13 @@ import {
   PageHeader,
   PlusIcon,
   Skeleton,
+  TextArea,
   TextInput,
 } from './ui'
 
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024
-const MAX_DIMENSION = 900
-
-// Downscales the photo in the browser so uploads stay small.
-function resizeImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file)
-    const img = new window.Image()
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl)
-      const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.max(1, Math.round(img.width * scale))
-      canvas.height = Math.max(1, Math.round(img.height * scale))
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return reject(new Error('Canvas is not available'))
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      resolve(canvas.toDataURL('image/jpeg', 0.84))
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('Image could not be loaded'))
-    }
-    img.src = objectUrl
-  })
-}
-
 type Editing =
   | { mode: 'create' }
-  | { mode: 'photo'; barber: Barber }
+  | { mode: 'edit'; barber: Barber }
   | { mode: 'schedule'; barber: Barber }
 
 export function BarbersPage() {
@@ -158,7 +133,9 @@ export function BarbersPage() {
                   <Avatar name={barber.name} image={barber.image} size={64} />
                   <div className="min-w-0">
                     <p className="truncate text-base font-semibold">{barber.name}</p>
-                    <p className="text-[13px] text-[var(--admin-muted)]">Κουρέας</p>
+                    <p className="line-clamp-2 text-[13px] text-[var(--admin-muted)]">
+                      {barber.bio ?? 'Κουρέας'}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 rounded-xl border border-[var(--admin-border)] px-4 py-3">
@@ -184,8 +161,8 @@ export function BarbersPage() {
                     <Button size="sm" onClick={() => setEditing({ mode: 'schedule', barber })}>
                       Ωράριο
                     </Button>
-                    <Button size="sm" onClick={() => setEditing({ mode: 'photo', barber })}>
-                      Φωτογραφία
+                    <Button size="sm" onClick={() => setEditing({ mode: 'edit', barber })}>
+                      Στοιχεία
                     </Button>
                   </div>
                   <ConfirmButton
@@ -241,8 +218,9 @@ function BarberModal({
   onClose: () => void
   onSaved: (barber: Omit<Barber, 'schedule'>) => void
 }) {
-  const current = editing.mode === 'photo' ? editing.barber : null
-  const [name, setName] = useState('')
+  const current = editing.mode === 'edit' ? editing.barber : null
+  const [name, setName] = useState(current?.name ?? '')
+  const [bio, setBio] = useState(current?.bio ?? '')
   const [image, setImage] = useState<string | null>(null)
   const [processing, setProcessing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -267,14 +245,19 @@ function BarberModal({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!current && !name.trim()) return setError('Συμπλήρωσε το όνομα.')
-    if (current && !image) return setError('Επίλεξε νέα φωτογραφία.')
+    if (!name.trim()) return setError('Συμπλήρωσε το όνομα.')
     setSubmitting(true)
     setError(null)
     try {
       const saved = await adminFetch<Omit<Barber, 'schedule'>>('/api/barbers', {
         method: current ? 'PATCH' : 'POST',
-        body: JSON.stringify(current ? { id: current.id, image } : { name: name.trim(), image }),
+        body: JSON.stringify({
+          ...(current ? { id: current.id } : {}),
+          name: name.trim(),
+          bio: bio.trim() || null,
+          // Unchanged photo: send nothing so the stored one stays.
+          ...(image ? { image } : {}),
+        }),
       })
       onSaved(saved)
     } catch (saveError) {
@@ -286,17 +269,18 @@ function BarberModal({
 
   return (
     <Modal
-      title={current ? `Φωτογραφία: ${current.name}` : 'Νέος κουρέας'}
+      title={current ? current.name : 'Νέος κουρέας'}
       onClose={onClose}
       onSubmit={(event) => void handleSubmit(event)}
       submitLabel={current ? 'Αποθήκευση' : 'Προσθήκη'}
       submitting={submitting || processing}
     >
-      {!current && (
-        <Field label="Όνομα">
-          <TextInput value={name} onChange={(event) => setName(event.target.value)} placeholder="π.χ. Νίκος" autoFocus />
-        </Field>
-      )}
+      <Field label="Όνομα">
+        <TextInput value={name} onChange={(event) => setName(event.target.value)} placeholder="π.χ. Νίκος" autoFocus={!current} />
+      </Field>
+      <Field label="Λίγα λόγια" hint="Προαιρετικό. Φαίνεται κάτω από το όνομα στην κράτηση, π.χ. «Fades και σχέδια, 8 χρόνια εμπειρία».">
+        <TextArea rows={2} maxLength={200} value={bio} onChange={(event) => setBio(event.target.value)} />
+      </Field>
       <div className="flex items-center gap-4">
         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[#ece2d4]">
           {preview && <Image src={preview} alt="" fill unoptimized sizes="80px" className="object-cover" />}

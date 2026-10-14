@@ -17,6 +17,7 @@ model Barber {
   image       String?   // Public URL: a static /barbers/... file or /api/barbers/{id}/image
   imageData   Bytes?    // Uploaded photo bytes, served by /api/barbers/{id}/image
   imageType   String?   // MIME type of imageData, e.g. image/jpeg
+  bio         String?   // Short intro shown on the booking page
   // false: the barber follows the default WORKING_PERIODS (lib/schedule.ts).
   // true: workingPeriods is the barber's own week (empty = never works).
   customSchedule Boolean @default(false)
@@ -56,6 +57,8 @@ model Service {
   name        String    @unique // π.χ. "Κούρεμα"
   duration    Int       // Διάρκεια σε λεπτά (π.χ. 30)
   price       Float     // Τιμή
+  description String?   // What the service includes, shown when booking
+  category    String?   // Groups services on the booking page, e.g. "Μαλλιά"
   bookings    Booking[]
 }
 
@@ -145,4 +148,15 @@ model PushSubscription {
 model AppSetting {
   key   String @id
   value String
+}
+
+// Photos of the shop shown on the booking page, served by
+// /api/gallery/{id}/image.
+model GalleryPhoto {
+  id        String   @id @default(cuid())
+  data      Bytes
+  type      String   // MIME type, e.g. image/jpeg
+  caption   String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
 }
