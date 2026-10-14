@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   if (!isAdminSession) {
     const clientIp = getClientIp(request.headers)
-    const limited = rateLimit(`booking:${clientIp}`, {
+    const limited = await rateLimit(`booking:${clientIp}`, {
       limit: 8,
       windowMs: 15 * 60_000,
     })

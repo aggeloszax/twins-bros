@@ -19,7 +19,7 @@ export async function login(
   const password = String(formData.get('password') ?? '')
   const headerStore = await headers()
   const clientIp = getClientIp(headerStore)
-  const limited = rateLimit(`admin-login:${clientIp}`, {
+  const limited = await rateLimit(`admin-login:${clientIp}`, {
     limit: 5,
     windowMs: 15 * 60_000,
   })

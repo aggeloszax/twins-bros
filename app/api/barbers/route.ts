@@ -1,5 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
+import {
+  barberImageUrl,
+  parseBarberImage,
+  PUBLIC_BARBER_SELECT,
+  type BarberImageInput,
+} from '@/lib/barber-images'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,25 +19,26 @@ type UpdateBarberPayload = {
   image?: unknown
 }
 
-const MAX_IMAGE_DATA_URL_LENGTH = 1_500_000
-
-function normalizeImage(image: unknown) {
-  if (typeof image !== 'string') return null
-
-  const value = image.trim()
-  if (!value) return null
-
-  const isStoredPath = value.startsWith('/barbers/')
-  const isUploadedDataUrl = /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value)
-  if (!isStoredPath && !isUploadedDataUrl) return undefined
-  if (value.length > MAX_IMAGE_DATA_URL_LENGTH) return undefined
-
-  return value
+// Prisma data for a barber's photo columns, given the parsed upload.
+function imageData(input: BarberImageInput, barberId: string) {
+  switch (input.kind) {
+    case 'upload':
+      return {
+        image: barberImageUrl(barberId),
+        imageData: input.bytes,
+        imageType: input.type,
+      }
+    case 'path':
+      return { image: input.path, imageData: null, imageType: null }
+    default:
+      return { image: null, imageData: null, imageType: null }
+  }
 }
 
 export async function GET() {
   try {
     const barbers = await prisma.barber.findMany({
+      select: PUBLIC_BARBER_SELECT,
       orderBy: { name: 'asc' },
     })
     return Response.json(barbers)
@@ -62,19 +69,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    const normalizedImage = normalizeImage(image)
-    if (normalizedImage === undefined) {
+    const parsedImage = parseBarberImage(image)
+    if (parsedImage.kind === 'invalid') {
       return Response.json(
         { error: 'Η φωτογραφία δεν είναι έγκυρη ή είναι πολύ μεγάλη.' },
         { status: 400 },
       )
     }
 
+    const id = crypto.randomUUID()
     const barber = await prisma.barber.create({
       data: {
+        id,
         name: name.trim(),
-        image: normalizedImage,
+        ...imageData(parsedImage, id),
       },
+      select: PUBLIC_BARBER_SELECT,
     })
     return Response.json(barber, { status: 201 })
   } catch (error) {
@@ -102,8 +112,8 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id is required' }, { status: 400 })
   }
 
-  const normalizedImage = normalizeImage(image)
-  if (!normalizedImage) {
+  const parsedImage = parseBarberImage(image)
+  if (parsedImage.kind === 'none' || parsedImage.kind === 'invalid') {
     return Response.json(
       { error: 'Η νέα φωτογραφία δεν είναι έγκυρη ή είναι πολύ μεγάλη.' },
       { status: 400 },
@@ -122,7 +132,8 @@ export async function PATCH(request: Request) {
 
     const barber = await prisma.barber.update({
       where: { id: existingBarber.id },
-      data: { image: normalizedImage },
+      data: imageData(parsedImage, existingBarber.id),
+      select: PUBLIC_BARBER_SELECT,
     })
 
     return Response.json(barber)

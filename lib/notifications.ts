@@ -1,9 +1,7 @@
 import { Resend } from 'resend'
 import { SHOP } from '@/lib/shop'
 
-const SHOP_EMAIL = 'aggelos2ker@gmail.com'
-const DEFAULT_RESEND_FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL ?? 'Twins Bros <onboarding@resend.dev>'
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? SHOP.emailFrom
 
 // Lazy init: the Resend constructor throws when no API key is set, which
 // would crash `next build` during page-data collection. Construct it only
@@ -18,10 +16,8 @@ function getResend() {
   return resendClient
 }
 
-// Default to the production URL; override locally via NEXT_PUBLIC_APP_URL.
-const APP_BASE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL ?? 'https://barber-booking-gr.vercel.app'
-).replace(/\/$/, '')
+const APP_BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? SHOP.appUrl).replace(/\/$/, '')
+
 type BookingNotificationDetails = {
   id: string
   cancelToken: string
@@ -63,8 +59,8 @@ ${message}
 }
 
 function getShopSender() {
-  const addressMatch = DEFAULT_RESEND_FROM_EMAIL.match(/<([^<>]+)>\s*$/)
-  const address = (addressMatch?.[1] ?? DEFAULT_RESEND_FROM_EMAIL).trim()
+  const addressMatch = RESEND_FROM_EMAIL.match(/<([^<>]+)>\s*$/)
+  const address = (addressMatch?.[1] ?? RESEND_FROM_EMAIL).trim()
   return `${SHOP.name} <${address}>`
 }
 
@@ -205,7 +201,7 @@ export async function sendBookingNotifications(
   bookingDetails.customerPhone = customerPhone
 
   const shopEmailDelivery = await trySendEmail(
-    SHOP_EMAIL,
+    SHOP.notificationEmail,
     `📅 Νέο Ραντεβού — ${customerName}`,
     `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
       <strong>${customerName}</strong> · ${bookingDetails.customerPhone}<br/>

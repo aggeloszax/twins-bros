@@ -14,7 +14,9 @@ datasource db {
 model Barber {
   id          String    @id @default(cuid())
   name        String    @unique
-  image       String?
+  image       String?   // Public URL: a static /barbers/... file or /api/barbers/{id}/image
+  imageData   Bytes?    // Uploaded photo bytes, served by /api/barbers/{id}/image
+  imageType   String?   // MIME type of imageData, e.g. image/jpeg
   bookings    Booking[]
 }
 
@@ -73,4 +75,11 @@ model Booking {
 
   @@index([startTime])
   @@index([barberId, startTime])
+}
+
+// Fixed-window request counters shared by every serverless instance.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
 }
