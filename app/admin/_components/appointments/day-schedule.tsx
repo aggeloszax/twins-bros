@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { getBarberPeriodsForDate, isOnTimeOff } from '@/lib/schedule'
 import {
   type Barber,
@@ -34,8 +34,22 @@ const BLOCK_STYLES: Record<BookingState, string> = {
 
 type PositionedBooking = { booking: Booking; lane: number; lanes: number }
 
+// A booking being dragged with the mouse to another time or barber.
+type DragState = {
+  booking: Booking
+  pointerId: number
+  startX: number
+  startY: number
+  grabOffset: number // minutes between the booking start and the grab point
+  moving: boolean
+  barberId: string
+  minute: number
+}
+
+const DRAG_THRESHOLD_PX = 5
+
 // Splits overlapping bookings of one barber into side-by-side lanes.
-function layoutColumn(bookings: Booking[]): PositionedBooking[] {
+export function layoutColumn(bookings: Booking[]): PositionedBooking[] {
   const sorted = [...bookings].sort(
     (a, b) => minutesOfDay(a.startTime) - minutesOfDay(b.startTime),
   )
@@ -91,6 +105,7 @@ export function DaySchedule({
   timeOff,
   onSlotClick,
   onBookingClick,
+  onBookingDrop,
 }: {
   dateKey: string
   barbers: Barber[]
@@ -99,8 +114,12 @@ export function DaySchedule({
   timeOff: TimeOff[]
   onSlotClick: (barber: Barber, time: string) => void
   onBookingClick: (booking: Booking) => void
+  onBookingDrop?: (booking: Booking, barber: Barber, time: string) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [drag, setDrag] = useState<DragState | null>(null)
+  // The click that ends a drag must not open the booking.
+  const suppressClickRef = useRef(false)
   const nowMinutes = useNowMinutes()
   const isToday = dateKey === todayKey()
 
@@ -160,6 +179,57 @@ export function DaySchedule({
     // Only on day change; ignore minute ticks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateKey])
+
+  function dropTarget(clientX: number, clientY: number, grabOffset: number) {
+    const column = document
+      .elementsFromPoint(clientX, clientY)
+      .find((element) => element instanceof HTMLElement && element.dataset.barberColumn) as
+      | HTMLElement
+      | undefined
+    if (!column) return null
+    const rect = column.getBoundingClientRect()
+    const raw = rangeStart + (clientY - rect.top) / PX_PER_MINUTE - grabOffset
+    const snapped = Math.round(raw / CELL_MINUTES) * CELL_MINUTES
+    return {
+      barberId: column.dataset.barberColumn as string,
+      minute: Math.min(Math.max(snapped, rangeStart), rangeEnd - CELL_MINUTES),
+    }
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLButtonElement>, booking: Booking) {
+    if (!onBookingDrop || event.pointerType === 'touch' || event.button !== 0) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setDrag({
+      booking,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      grabOffset: (event.clientY - rect.top) / PX_PER_MINUTE,
+      moving: false,
+      barberId: booking.barber.id,
+      minute: minutesOfDay(booking.startTime),
+    })
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!drag || event.pointerId !== drag.pointerId) return
+    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY)
+    if (!drag.moving && distance < DRAG_THRESHOLD_PX) return
+    const target = dropTarget(event.clientX, event.clientY, drag.grabOffset)
+    setDrag({ ...drag, moving: true, ...(target ?? {}) })
+  }
+
+  function handlePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!drag || event.pointerId !== drag.pointerId) return
+    setDrag(null)
+    if (!drag.moving) return
+    suppressClickRef.current = true
+    const barber = barbers.find((item) => item.id === drag.barberId)
+    const unchanged =
+      drag.barberId === drag.booking.barber.id && drag.minute === minutesOfDay(drag.booking.startTime)
+    if (barber && !unchanged) onBookingDrop?.(drag.booking, barber, minutesToTime(drag.minute))
+  }
 
   if (barbers.length === 0) {
     return (
@@ -236,6 +306,7 @@ export function DaySchedule({
             return (
               <div
                 key={barber.id}
+                data-barber-column={barber.id}
                 className="relative border-l border-[var(--admin-border)]"
                 style={{ height }}
               >
@@ -288,12 +359,25 @@ export function DaySchedule({
                   const state = getBookingState(booking)
                   const compact = blockHeight < 44
                   const warn = state === 'upcoming' && booking.noShowCount > 0
+                  const draggable = Boolean(onBookingDrop) && state === 'upcoming'
+                  const dragging = drag?.moving && drag.booking.id === booking.id
                   return (
                     <button
                       key={booking.id}
                       type="button"
-                      onClick={() => onBookingClick(booking)}
-                      className={`absolute overflow-hidden rounded-lg border border-l-[3px] border-black/[0.04] px-2 py-1 text-left shadow-[0_1px_2px_rgba(60,40,20,0.08)] transition ${BLOCK_STYLES[state]}`}
+                      onClick={() => {
+                        if (suppressClickRef.current) {
+                          suppressClickRef.current = false
+                          return
+                        }
+                        onBookingClick(booking)
+                      }}
+                      onPointerDown={draggable ? (event) => handlePointerDown(event, booking) : undefined}
+                      onPointerMove={draggable ? handlePointerMove : undefined}
+                      onPointerUp={draggable ? handlePointerUp : undefined}
+                      onPointerCancel={() => setDrag(null)}
+                      title={draggable ? 'Σύρε για μετακίνηση' : undefined}
+                      className={`absolute overflow-hidden rounded-lg border border-l-[3px] border-black/[0.04] px-2 py-1 text-left shadow-[0_1px_2px_rgba(60,40,20,0.08)] transition ${BLOCK_STYLES[state]} ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging ? 'opacity-40' : ''}`}
                       style={{
                         top: (start - rangeStart) * PX_PER_MINUTE + 1,
                         height: blockHeight,
@@ -324,6 +408,18 @@ export function DaySchedule({
                     </button>
                   )
                 })}
+
+                {drag?.moving && drag.barberId === barber.id && (
+                  <div
+                    className="pointer-events-none absolute inset-x-1 z-20 rounded-lg border-2 border-dashed border-[var(--admin-accent)] bg-[var(--admin-accent-soft)]/80 px-2 py-1 text-[12px] font-semibold text-[var(--admin-accent)]"
+                    style={{
+                      top: (drag.minute - rangeStart) * PX_PER_MINUTE + 1,
+                      height: Math.max(drag.booking.service.duration * PX_PER_MINUTE - 2, 22),
+                    }}
+                  >
+                    {minutesToTime(drag.minute)}–{minutesToTime(drag.minute + drag.booking.service.duration)}
+                  </div>
+                )}
 
                 {showNowLine && (
                   <div

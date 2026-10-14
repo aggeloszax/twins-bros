@@ -22,20 +22,23 @@ export function RescheduleModal({
   barbers,
   services,
   knownBookings,
+  target,
   onClose,
   onSaved,
 }: {
   booking: Booking
+  // Where the booking was dropped in the schedule, if it was dragged.
+  target?: { barberId: string; date: string; time: string }
   barbers: Barber[]
   services: Service[]
   knownBookings: Booking[]
   onClose: () => void
   onSaved: (booking: Booking, notification: RescheduleResult['customerNotification']) => void
 }) {
-  const [barberId, setBarberId] = useState(booking.barber.id)
+  const [barberId, setBarberId] = useState(target?.barberId ?? booking.barber.id)
   const [serviceId, setServiceId] = useState(booking.service.id)
-  const [date, setDate] = useState(bookingDateKey(booking))
-  const [time, setTime] = useState(formatTime(booking.startTime))
+  const [date, setDate] = useState(target?.date ?? bookingDateKey(booking))
+  const [time, setTime] = useState(target?.time ?? formatTime(booking.startTime))
   const [notify, setNotify] = useState(Boolean(booking.customerEmail))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)

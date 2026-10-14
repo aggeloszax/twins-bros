@@ -13,6 +13,7 @@ import {
   bookingDateKey,
   buildMonthGrid,
   errorMessage,
+  dateFromKey,
   formatDateKeyLong,
   formatPhone,
   formatPrice,
@@ -40,6 +41,7 @@ import { DaySchedule } from './day-schedule'
 import { MiniCalendar } from './mini-calendar'
 import { type NewBookingPrefill, NewBookingModal } from './new-booking-modal'
 import { RescheduleModal } from './reschedule-modal'
+import { WeekSchedule, weekStartKey } from './week-schedule'
 
 const NOTIFICATION_NOTICES = {
   sent: 'Το ραντεβού μετακινήθηκε και ο πελάτης ενημερώθηκε με email.',
@@ -47,7 +49,16 @@ const NOTIFICATION_NOTICES = {
   skipped: 'Το ραντεβού μετακινήθηκε.',
 } as const
 
-type View = 'schedule' | 'list'
+type View = 'schedule' | 'week' | 'list'
+
+function weekTitle(dateKey: string) {
+  const start = dateFromKey(weekStartKey(dateKey))
+  const end = dateFromKey(addDaysToKey(weekStartKey(dateKey), 6))
+  const sameMonth = start.getMonth() === end.getMonth()
+  const startText = start.toLocaleDateString('el-GR', sameMonth ? { day: 'numeric' } : { day: 'numeric', month: 'short' })
+  const endText = end.toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return `${startText} – ${endText}`
+}
 
 export function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(todayKey)
@@ -67,6 +78,9 @@ export function AppointmentsPage() {
   const [openBookingId, setOpenBookingId] = useState<string | null>(null)
   const [newBooking, setNewBooking] = useState<NewBookingPrefill | null>(null)
   const [rescheduleId, setRescheduleId] = useState<string | null>(null)
+  const [rescheduleTarget, setRescheduleTarget] = useState<
+    { barberId: string; date: string; time: string } | undefined
+  >(undefined)
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
@@ -140,6 +154,18 @@ export function AppointmentsPage() {
       !hiddenBarbers.has(booking.barber.id) &&
       (showCancelled || booking.status !== 'CANCELLED'),
   )
+  const weekStart = weekStartKey(selectedDate)
+  const weekEnd = addDaysToKey(weekStart, 6)
+  const weekBookings = bookings.filter((booking) => {
+    const key = bookingDateKey(booking)
+    return (
+      key >= weekStart &&
+      key <= weekEnd &&
+      !hiddenBarbers.has(booking.barber.id) &&
+      (showCancelled || booking.status !== 'CANCELLED')
+    )
+  })
+  const stepDays = view === 'week' ? 7 : 1
   const openBooking = bookings.find((booking) => booking.id === openBookingId) ?? null
   const rescheduleBooking = bookings.find((booking) => booking.id === rescheduleId) ?? null
 
@@ -228,14 +254,20 @@ export function AppointmentsPage() {
             <Button size="sm" onClick={() => selectDate(todayKey())}>
               Σήμερα
             </Button>
-            <IconButton label="Προηγούμενη ημέρα" onClick={() => selectDate(addDaysToKey(selectedDate, -1))}>
+            <IconButton
+              label={view === 'week' ? 'Προηγούμενη εβδομάδα' : 'Προηγούμενη ημέρα'}
+              onClick={() => selectDate(addDaysToKey(selectedDate, -stepDays))}
+            >
               <ChevronLeftIcon className="h-4 w-4" />
             </IconButton>
-            <IconButton label="Επόμενη ημέρα" onClick={() => selectDate(addDaysToKey(selectedDate, 1))}>
+            <IconButton
+              label={view === 'week' ? 'Επόμενη εβδομάδα' : 'Επόμενη ημέρα'}
+              onClick={() => selectDate(addDaysToKey(selectedDate, stepDays))}
+            >
               <ChevronRightIcon className="h-4 w-4" />
             </IconButton>
             <h1 className="ml-1 text-base font-semibold tracking-tight sm:text-xl">
-              {formatDateKeyLong(selectedDate)}
+              {view === 'week' ? weekTitle(selectedDate) : formatDateKeyLong(selectedDate)}
             </h1>
           </div>
 
@@ -243,7 +275,8 @@ export function AppointmentsPage() {
             <div className="inline-flex rounded-xl border border-[var(--admin-border)] bg-white p-0.5">
               {(
                 [
-                  ['schedule', 'Πρόγραμμα'],
+                  ['schedule', 'Ημέρα'],
+                  ['week', 'Εβδομάδα'],
                   ['list', 'Λίστα'],
                 ] as const
               ).map(([key, label]) => (
@@ -313,6 +346,26 @@ export function AppointmentsPage() {
                 setNewBooking({ date: selectedDate, barberId: barber.id, time })
               }
               onBookingClick={(booking) => setOpenBookingId(booking.id)}
+              onBookingDrop={(booking, barber, time) => {
+                setRescheduleTarget({ barberId: barber.id, date: selectedDate, time })
+                setRescheduleId(booking.id)
+              }}
+            />
+          ) : view === 'week' ? (
+            <WeekSchedule
+              dateKey={selectedDate}
+              barbers={visibleBarbers}
+              bookings={weekBookings}
+              exceptions={exceptions}
+              timeOff={timeOff}
+              onDayClick={(day) => {
+                selectDate(day)
+                setView('schedule')
+              }}
+              onSlotClick={(day, time) =>
+                setNewBooking({ date: day, barberId: visibleBarbers[0]?.id, time })
+              }
+              onBookingClick={(booking) => setOpenBookingId(booking.id)}
             />
           ) : scheduleBookings.length === 0 ? (
             <div className="p-5">
@@ -363,6 +416,7 @@ export function AppointmentsPage() {
           }}
           onReschedule={(booking) => {
             setOpenBookingId(null)
+            setRescheduleTarget(undefined)
             setRescheduleId(booking.id)
           }}
           onBookAgain={(booking) => {
@@ -384,10 +438,15 @@ export function AppointmentsPage() {
           barbers={barbers}
           services={services}
           knownBookings={bookings}
-          onClose={() => setRescheduleId(null)}
+          target={rescheduleTarget}
+          onClose={() => {
+            setRescheduleId(null)
+            setRescheduleTarget(undefined)
+          }}
           onSaved={(saved, notification) => {
             handleUpdated(saved)
             setRescheduleId(null)
+            setRescheduleTarget(undefined)
             setNotice(NOTIFICATION_NOTICES[notification])
             selectDate(bookingDateKey(saved))
           }}
