@@ -740,7 +740,7 @@ export default function BookingForm() {
       className="min-h-screen bg-white font-sans text-neutral-900"
       style={brandStyle}
     >
-      <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 pb-36 pt-5 sm:px-6 sm:pb-40 sm:pt-8">
+      <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col lg:max-w-6xl px-4 pb-36 pt-5 sm:px-6 sm:pb-40 sm:pt-8">
         <header className="text-center">
           <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200 bg-white shadow-sm">
             <Image
@@ -800,9 +800,9 @@ export default function BookingForm() {
                   <ErrorState onRetry={loadServices} />
                 ) : (
                   groupByCategory(services).map(([category, items]) => (
-                  <div key={category || 'none'} className="space-y-3">
+                  <div key={category || 'none'} className="grid gap-3 lg:grid-cols-2 lg:items-start lg:gap-4">
                     {category && (
-                      <h3 className="pt-2 text-sm font-bold text-neutral-900">{category}</h3>
+                      <h3 className="pt-2 text-sm font-bold text-neutral-900 lg:col-span-2">{category}</h3>
                     )}
                   {items.map((service) => {
                     const isSelected = selectedService?.id === service.id
@@ -887,7 +887,7 @@ export default function BookingForm() {
                 <h2 className={stepHeaderClass}>Διάλεξε barber</h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {loadingBarbers ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <AvatarSkeleton key={i} />
@@ -1120,7 +1120,7 @@ export default function BookingForm() {
           )}
 
           {step === 4 && (
-            <div className="space-y-5">
+            <div className="mx-auto max-w-2xl space-y-5">
               <div>
                 <h2 className={stepHeaderClass}>Στοιχεία Πελάτη</h2>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
@@ -1275,7 +1275,7 @@ export default function BookingForm() {
 
       {!successCard && (
       <div className="fixed inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-6">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4 lg:max-w-6xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-6">
           {step > 1 && (
             <button
               type="button"

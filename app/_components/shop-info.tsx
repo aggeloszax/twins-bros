@@ -120,8 +120,7 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
             <p className="text-sm font-bold text-neutral-900">Ωράριο</p>
             <dl className="mt-3 space-y-1.5 text-sm">
               {hours.map((row) => (
@@ -134,12 +133,13 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
                 </div>
               ))}
             </dl>
-          </div>
+        </div>
+      </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 flex flex-wrap justify-center gap-3">
             <a
               href={SHOP.phone.href}
-              className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:border-[var(--brand)]"
+              className="flex items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 py-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:border-[var(--brand)]"
             >
               <PhoneIcon className="h-5 w-5 text-[var(--brand)]" />
               {SHOP.phone.label}
@@ -149,14 +149,12 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
                 href={`https://www.instagram.com/${SHOP.instagram}/`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:border-[var(--brand)]"
+                className="flex items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 py-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:border-[var(--brand)]"
               >
                 <InstagramIcon className="h-5 w-5 text-[var(--brand)]" />@{SHOP.instagram}
               </a>
             )}
           </div>
-        </div>
-      </div>
     </section>
   )
 }
