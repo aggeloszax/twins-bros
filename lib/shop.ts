@@ -16,7 +16,7 @@ export const SHOP = {
   // Social usernames without @, or null to hide the icon (top left of the
   // booking page).
   instagram: 'twins_br0s' as string | null,
-  tiktok: 'twins_br0s' as string | null,
+  tiktok: '_twins_bros_' as string | null,
   adminEmail: 'admin@twins-bros.gr',
   // Public URL of the deployed app, used for links in emails.
   // NEXT_PUBLIC_APP_URL overrides it (e.g. for local testing).
