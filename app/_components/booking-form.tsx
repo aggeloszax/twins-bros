@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import {
+  ANY_BARBER,
   BOOKING_WINDOW_DAYS,
   getBarberPeriodsForDate,
   isDayBookable,
@@ -40,10 +41,20 @@ type BookingStep = 1 | 2 | 3 | 4
 type EmailDeliveryStatus = 'sent' | 'failed' | 'skipped'
 
 type BookingCreationResponse = {
+  barber?: { id: string; name: string }
+  calendar?: { google: string; ics: string }
   notificationDelivery?: {
     customerEmail: EmailDeliveryStatus
     shopEmail: 'sent' | 'failed'
   }
+}
+
+// "No preference": the server assigns whichever barber is free.
+const ANY_BARBER_CHOICE: Barber = {
+  id: ANY_BARBER,
+  name: 'Οποιοσδήποτε',
+  image: null,
+  schedule: null,
 }
 
 const GR_DAYS = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ']
@@ -163,6 +174,22 @@ function ArrowIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="2.2"
+      />
+    </svg>
+  )
+}
+
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="16.5" cy="9" r="2.8" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M2.5 19.5c.7-3.6 3-5.5 6.5-5.5s5.8 1.9 6.5 5.5M15 14.2c.5-.1 1-.2 1.5-.2 2.8 0 4.6 1.6 5 4.8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
       />
     </svg>
   )
@@ -345,6 +372,7 @@ export default function BookingForm() {
   const [submittingBooking, setSubmittingBooking] = useState(false)
   const [bookingError, setBookingError] = useState<'failed' | 'blocked' | null>(null)
   const [confirmed, setConfirmed] = useState(false)
+  const [confirmedBooking, setConfirmedBooking] = useState<BookingCreationResponse | null>(null)
   const [customerEmailDelivery, setCustomerEmailDelivery] =
     useState<EmailDeliveryStatus | null>(null)
   const [failedBarberImages, setFailedBarberImages] = useState<
@@ -554,6 +582,7 @@ export default function BookingForm() {
         }
         if (!res.ok) throw new Error('Booking failed')
         const result = (await res.json()) as BookingCreationResponse
+        setConfirmedBooking(result)
         setCustomerEmailDelivery(
           result.notificationDelivery?.customerEmail ??
             (customerEmail.trim() ? 'failed' : 'skipped'),
@@ -620,7 +649,7 @@ export default function BookingForm() {
             <div className="flex items-center justify-between gap-3">
               <span className="text-neutral-500">Barber</span>
               <span className="font-bold text-neutral-900">
-                {selectedBarber.name}
+                {confirmedBooking?.barber?.name ?? selectedBarber.name}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -646,6 +675,29 @@ export default function BookingForm() {
               </span>
             </div>
           </div>
+          {confirmedBooking?.calendar && (
+            <div className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                Προσθήκη στο ημερολόγιο
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <a
+                  href={confirmedBooking.calendar.google}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-neutral-200 px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                >
+                  Google
+                </a>
+                <a
+                  href={confirmedBooking.calendar.ics}
+                  className="rounded-full border border-neutral-200 px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                >
+                  iPhone / Outlook
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     )
@@ -773,8 +825,9 @@ export default function BookingForm() {
                     <ErrorState onRetry={loadBarbers} />
                   </div>
                 ) : (
-                  barbers.map((barber) => {
+                  [...(barbers.length > 1 ? [ANY_BARBER_CHOICE] : []), ...barbers].map((barber) => {
                     const isSelected = selectedBarber?.id === barber.id
+                    const isAny = barber.id === ANY_BARBER
                     const showImage =
                       Boolean(barber.image) && !failedBarberImages[barber.id]
                     const barberImageSrc = barber.image
@@ -792,7 +845,12 @@ export default function BookingForm() {
                         }`}
                       >
                         <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 transition-all duration-300 ease-in-out group-hover:border-[var(--brand)]">
-                          {showImage && barberImageSrc ? (
+                          {isAny ? (
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-neutral-50 px-3 text-center text-neutral-500">
+                              <UsersIcon className="h-12 w-12 text-[var(--brand)]" />
+                              <span className="text-xs leading-5">Πρώτη διαθέσιμη ώρα με όποιον είναι ελεύθερος</span>
+                            </div>
+                          ) : showImage && barberImageSrc ? (
                             <Image
                               src={barberImageSrc}
                               alt={barber.name}
@@ -891,15 +949,13 @@ export default function BookingForm() {
                         !isCurrentMonth ||
                         isPast ||
                         !selectedBarber ||
-                        !isDayBookable(
-                          day,
-                          getBarberPeriodsForDate(
-                            selectedBarber,
-                            key,
-                            scheduleExceptions,
-                            timeOff,
-                          ),
-                          today,
+                        !(selectedBarber.id === ANY_BARBER ? barbers : [selectedBarber]).some(
+                          (barber) =>
+                            isDayBookable(
+                              day,
+                              getBarberPeriodsForDate(barber, key, scheduleExceptions, timeOff),
+                              today,
+                            ),
                         )
                       const isSelected = selectedDate === key
                       const isToday = key === toDateKey(today)

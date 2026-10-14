@@ -1,20 +1,20 @@
 import { prisma } from '@/lib/prisma'
-import { BARBER_SCHEDULE_SELECT, loadScheduleRules, toScheduleSource } from '@/lib/availability'
 import {
-  buildSlotTimes,
+  BARBER_SCHEDULE_SELECT,
+  type Slot,
+  computeBarberSlots,
+  loadScheduleRules,
+  toScheduleSource,
+} from '@/lib/availability'
+import {
+  ANY_BARBER,
   createBookingDateTime,
-  getBarberPeriodsForDate,
-  isSlotBlocked,
-  isSlotTimeWithinPeriods,
   isWithinBookingWindow,
   parseDateKey,
   SLOT_MINUTES,
 } from '@/lib/schedule'
 
 export const dynamic = 'force-dynamic'
-
-type Slot = { time: string; available: boolean }
-type BookingWindow = { startTime: Date; endTime: Date }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -54,10 +54,13 @@ export async function GET(request: Request) {
     }
 
     dayEnd.setMinutes(dayEnd.getMinutes() + 1)
+    // "Any barber" merges every barber's slots: a time is available when at
+    // least one barber is free for the whole service.
+    const anyBarber = barberId === ANY_BARBER
 
-    const [barber, service, bookings, rules] = await Promise.all([
-      prisma.barber.findUnique({
-        where: { id: barberId },
+    const [barbers, service, bookings, rules] = await Promise.all([
+      prisma.barber.findMany({
+        where: anyBarber ? undefined : { id: barberId },
         select: { id: true, name: true, ...BARBER_SCHEDULE_SELECT },
       }),
       serviceId
@@ -68,55 +71,44 @@ export async function GET(request: Request) {
         : Promise.resolve(null),
       prisma.booking.findMany({
         where: {
-          barberId,
+          ...(anyBarber ? {} : { barberId }),
           status: { not: 'CANCELLED' },
           startTime: { gte: dayStart, lt: dayEnd },
         },
-        select: { startTime: true, endTime: true },
+        select: { barberId: true, startTime: true, endTime: true },
       }),
       loadScheduleRules(date, date),
     ])
 
-    if (!barber) {
+    if (barbers.length === 0) {
       return Response.json([], { status: 404 })
     }
     if (serviceId && !service) {
       return Response.json([], { status: 404 })
     }
 
-    const { exceptions, timeOff } = rules
-    const periods = getBarberPeriodsForDate(toScheduleSource(barber), date, exceptions, timeOff)
-    if (periods.length === 0) return Response.json([])
-
     const now = new Date()
-    const slots: Slot[] = []
     const durationMinutes = service?.duration ?? SLOT_MINUTES
+    const merged = new Map<string, boolean>()
 
-    for (const time of buildSlotTimes(date, periods, now)) {
-      // Manually blocked slots are removed entirely so they can't be picked.
-      if (isSlotBlocked(exceptions, date, time, barber.name)) continue
-
-      const slotStart = createBookingDateTime(date, time)
-      if (!slotStart) continue
-
-      if (
-        !isSlotTimeWithinPeriods(time, durationMinutes, periods)
-      ) {
-        continue
+    for (const barber of barbers) {
+      const slots = computeBarberSlots({
+        barber: { ...toScheduleSource(barber), name: barber.name },
+        dateKey: date,
+        durationMinutes,
+        bookings: bookings.filter((booking) => booking.barberId === barber.id),
+        exceptions: rules.exceptions,
+        timeOff: rules.timeOff,
+        now,
+      })
+      for (const slot of slots) {
+        merged.set(slot.time, (merged.get(slot.time) ?? false) || slot.available)
       }
-
-      const slotEnd = new Date(
-        slotStart.getTime() + durationMinutes * 60_000,
-      )
-
-      const overlapsBooking = bookings.some(
-        (booking: BookingWindow) =>
-          slotStart < booking.endTime && slotEnd > booking.startTime,
-      )
-
-      slots.push({ time, available: !overlapsBooking })
     }
 
+    const slots: Slot[] = Array.from(merged, ([time, available]) => ({ time, available })).sort(
+      (a, b) => a.time.localeCompare(b.time),
+    )
     return Response.json(slots)
   } catch (error) {
     console.error('Failed to fetch available slots:', error)

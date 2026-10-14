@@ -1,6 +1,10 @@
 export const OPEN_HOUR = 9
 export const CLOSE_HOUR = 21
 export const SLOT_MINUTES = 30
+
+// Booking with no preferred barber: the server assigns a free one.
+export const ANY_BARBER = 'any'
+
 export const BOOKING_WINDOW_DAYS = 28
 export const BOOKING_TIME_ZONE = 'Europe/Athens'
 export const BOOKING_LOCALE = 'el-GR'

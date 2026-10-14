@@ -1,3 +1,4 @@
+import { googleCalendarUrl } from '@/lib/calendar'
 import { sendBookingNotifications } from '@/lib/notifications'
 import { isValidSessionToken, readSessionCookie } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
@@ -5,6 +6,7 @@ import { normalizeGreekMobilePhone } from '@/lib/phone'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
 import { BARBER_SCHEDULE_SELECT, loadScheduleRules, toScheduleSource } from '@/lib/availability'
 import {
+  ANY_BARBER,
   createBookingDateTime,
   getBarberPeriodsForDate,
   isSlotBlocked,
@@ -144,15 +146,6 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Service not found' }, { status: 404 })
     }
 
-    const barber = await prisma.barber.findUnique({
-      where: { id: barberId },
-      select: { id: true, name: true, ...BARBER_SCHEDULE_SELECT },
-    })
-
-    if (!barber) {
-      return Response.json({ error: 'Barber not found' }, { status: 404 })
-    }
-
     const startTime = createBookingDateTime(date, slotTime)
     if (!startTime) {
       return Response.json(
@@ -163,90 +156,133 @@ export async function POST(request: Request) {
 
     const endTime = new Date(startTime.getTime() + service.duration * 60_000)
     const now = new Date()
+    const anyBarber = barberId === ANY_BARBER && !isAdminManualBooking
 
-    // Re-check the barber's hours and the manual overrides server-side: the
-    // client cannot be trusted, and the slot feed could be stale. The admin
-    // may book outside working hours.
-    const { exceptions, timeOff } = await loadScheduleRules(date, date)
-    const periods = getBarberPeriodsForDate(toScheduleSource(barber), date, exceptions, timeOff)
+    const barbers = await prisma.barber.findMany({
+      where: anyBarber ? undefined : { id: barberId },
+      select: { id: true, name: true, ...BARBER_SCHEDULE_SELECT },
+    })
 
-    if (
-      !isAdminManualBooking &&
-      (!isWithinBookingWindow(selectedDate, now) ||
-        startTime <= now ||
-        !isSlotTimeWithinPeriods(slotTime, service.duration, periods) ||
-        isSlotBlocked(exceptions, date, slotTime, barber.name))
-    ) {
+    if (barbers.length === 0) {
+      return Response.json({ error: 'Barber not found' }, { status: 404 })
+    }
+
+    if (!isAdminManualBooking && (!isWithinBookingWindow(selectedDate, now) || startTime <= now)) {
       return Response.json(
         { error: 'This time slot is not available' },
         { status: 400 },
       )
     }
 
-    const bookingWithToken = await prisma.$transaction(
-      async (tx) => {
-        await tx.$queryRaw`
-          WITH lock AS MATERIALIZED (
-            SELECT pg_advisory_xact_lock(hashtext(${barberId}))
-          )
-          SELECT 1 AS locked FROM lock
-        `
+    // Re-check the barber's hours and the manual overrides server-side: the
+    // client cannot be trusted, and the slot feed could be stale. The admin
+    // may book outside working hours.
+    const { exceptions, timeOff } = await loadScheduleRules(date, date)
+    let candidates = barbers.filter((barber) => {
+      if (isAdminManualBooking) return true
+      const periods = getBarberPeriodsForDate(toScheduleSource(barber), date, exceptions, timeOff)
+      return (
+        isSlotTimeWithinPeriods(slotTime, service.duration, periods) &&
+        !isSlotBlocked(exceptions, date, slotTime, barber.name)
+      )
+    })
 
-        const overlappingBooking = await tx.booking.findFirst({
-          where: {
-            barberId,
-            status: { not: 'CANCELLED' },
-            startTime: { lt: endTime },
-            endTime: { gt: startTime },
-          },
-          select: { id: true },
-        })
+    if (candidates.length === 0) {
+      return Response.json(
+        { error: 'This time slot is not available' },
+        { status: 400 },
+      )
+    }
 
-        if (overlappingBooking) {
-          return null
-        }
+    // With no preferred barber, try the least busy barber of the day first.
+    if (anyBarber && candidates.length > 1) {
+      const dayStart = createBookingDateTime(date, '00:00') as Date
+      const counts = await prisma.booking.groupBy({
+        by: ['barberId'],
+        where: {
+          status: { not: 'CANCELLED' },
+          startTime: { gte: dayStart, lt: new Date(dayStart.getTime() + 24 * 60 * 60_000) },
+        },
+        _count: { _all: true },
+      })
+      const load = new Map(counts.map((row) => [row.barberId, row._count._all]))
+      candidates = candidates
+        .map((barber) => ({ barber, order: (load.get(barber.id) ?? 0) + Math.random() / 2 }))
+        .sort((a, b) => a.order - b.order)
+        .map(({ barber }) => barber)
+    }
 
-        return tx.booking.create({
-          data: {
-            serviceId,
-            barberId,
-            startTime,
-            endTime,
-            cancelToken: createSecureToken(),
-            customerName: customerName.trim(),
-            customerPhone: normalizedCustomerPhone,
-            customerEmail: isValidEmail(customerEmail) ? customerEmail.trim() : null,
-            notes: bookingNotes,
-          },
-          select: {
-            id: true,
-            cancelToken: true,
-            startTime: true,
-            endTime: true,
-            status: true,
-            customerName: true,
-            customerPhone: true,
-            customerEmail: true,
-            notes: true,
-            barber: {
-              select: {
-                id: true,
-                name: true,
+    const createFor = (chosenBarberId: string) =>
+      prisma.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`
+            WITH lock AS MATERIALIZED (
+              SELECT pg_advisory_xact_lock(hashtext(${chosenBarberId}))
+            )
+            SELECT 1 AS locked FROM lock
+          `
+
+          const overlappingBooking = await tx.booking.findFirst({
+            where: {
+              barberId: chosenBarberId,
+              status: { not: 'CANCELLED' },
+              startTime: { lt: endTime },
+              endTime: { gt: startTime },
+            },
+            select: { id: true },
+          })
+
+          if (overlappingBooking) {
+            return null
+          }
+
+          return tx.booking.create({
+            data: {
+              serviceId,
+              barberId: chosenBarberId,
+              startTime,
+              endTime,
+              cancelToken: createSecureToken(),
+              customerName: customerName.trim(),
+              customerPhone: normalizedCustomerPhone,
+              customerEmail: isValidEmail(customerEmail) ? customerEmail.trim() : null,
+              notes: bookingNotes,
+            },
+            select: {
+              id: true,
+              cancelToken: true,
+              startTime: true,
+              endTime: true,
+              status: true,
+              customerName: true,
+              customerPhone: true,
+              customerEmail: true,
+              notes: true,
+              barber: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  duration: true,
+                  price: true,
+                },
               },
             },
-            service: {
-              select: {
-                id: true,
-                name: true,
-                duration: true,
-                price: true,
-              },
-            },
-          },
-        })
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    )
+          })
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      )
+
+    let bookingWithToken: Awaited<ReturnType<typeof createFor>> = null
+    for (const candidate of candidates) {
+      bookingWithToken = await createFor(candidate.id)
+      if (bookingWithToken) break
+    }
 
     if (!bookingWithToken) {
       return Response.json(
@@ -272,8 +308,21 @@ export async function POST(request: Request) {
     const booking = { ...bookingWithToken }
     delete (booking as { cancelToken?: string }).cancelToken
 
+    // The booker already holds the booking through the email links; these
+    // power the "add to calendar" buttons on the confirmation screen.
+    const calendar = {
+      google: googleCalendarUrl({
+        uid: booking.id,
+        start: booking.startTime,
+        end: booking.endTime,
+        serviceName: booking.service.name,
+        barberName: booking.barber.name,
+      }),
+      ics: `/api/bookings/${booking.id}/calendar?token=${encodeURIComponent(bookingWithToken.cancelToken)}`,
+    }
+
     return Response.json(
-      { ...booking, notificationDelivery },
+      { ...booking, notificationDelivery, calendar },
       { status: 201 },
     )
   } catch (error) {
