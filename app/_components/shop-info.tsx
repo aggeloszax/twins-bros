@@ -48,16 +48,6 @@ function PhoneIcon({ className }: { className?: string }) {
   )
 }
 
-function InstagramIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="17.2" cy="6.8" r="1" fill="currentColor" />
-    </svg>
-  )
-}
-
 export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] }) {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [today, setToday] = useState<number | null>(null)
@@ -144,16 +134,6 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
               <PhoneIcon className="h-5 w-5 text-[var(--brand)]" />
               {SHOP.phone.label}
             </a>
-            {SHOP.instagram && (
-              <a
-                href={`https://www.instagram.com/${SHOP.instagram}/`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 py-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:border-[var(--brand)]"
-              >
-                <InstagramIcon className="h-5 w-5 text-[var(--brand)]" />@{SHOP.instagram}
-              </a>
-            )}
           </div>
     </section>
   )

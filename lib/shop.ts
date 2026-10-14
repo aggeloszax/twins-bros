@@ -13,8 +13,10 @@ export const SHOP = {
     label: '+30 211 218 0304',
     href: 'tel:+302112180304',
   },
-  // Instagram username without @, or null to hide the link.
+  // Social usernames without @, or null to hide the icon (top left of the
+  // booking page).
   instagram: null as string | null,
+  tiktok: null as string | null,
   adminEmail: 'admin@twins-bros.gr',
   // Public URL of the deployed app, used for links in emails.
   // NEXT_PUBLIC_APP_URL overrides it (e.g. for local testing).

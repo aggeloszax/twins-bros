@@ -18,6 +18,7 @@ import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
 import { groupByCategory } from '@/lib/catalog'
 import { SHOP } from '@/lib/shop'
 import { ShopInfo } from './shop-info'
+import { SocialLinks } from './social-links'
 
 type Service = {
   id: string
@@ -741,7 +742,8 @@ export default function BookingForm() {
       style={brandStyle}
     >
       <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col lg:max-w-6xl px-4 pb-36 pt-5 sm:px-6 sm:pb-40 sm:pt-8">
-        <header className="text-center">
+        <header className="relative text-center">
+          <SocialLinks className="absolute left-0 top-0" />
           <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200 bg-white shadow-sm">
             <Image
               src={SHOP.logoUrl}
