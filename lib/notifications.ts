@@ -186,9 +186,11 @@ function customerBookingEmailHtml({
   const shopName = escapeHtml(SHOP.name)
   const logoUrl = escapeHtml(new URL(SHOP.logoUrl, `${APP_BASE_URL}/`).toString())
   const brandColor = SHOP.primaryColor
+  // Inline colours only: email clients ignore stylesheets and CSS variables.
   return `
-<section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #09090b; color: #f4f4f5; border: 1px solid #27272a; border-radius: 18px; overflow: hidden;">
-  <div style="padding: 28px; border-bottom: 1px solid #27272a;">
+<div style="background: #f5efe6; padding: 24px 12px;">
+<section style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; color: #1f1a17; border: 1px solid #e6dccd; border-radius: 18px; overflow: hidden;">
+  <div style="padding: 28px; border-bottom: 1px solid #e6dccd;">
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 18px; border-collapse: collapse;">
       <tr>
         <td style="padding-right: 12px; vertical-align: middle;">
@@ -202,26 +204,27 @@ function customerBookingEmailHtml({
     <h1 style="margin: 0; font-size: 24px; line-height: 1.25;">${heading}</h1>
   </div>
   <div style="padding: 28px;">
-    <p style="margin: 0 0 20px; color: #d4d4d8;">${intro}</p>
+    <p style="margin: 0 0 20px; color: #4a413a; line-height: 1.6;">${intro}</p>
     <dl style="margin: 0; display: grid; gap: 12px;">
-      <div><dt style="color: #a1a1aa; font-size: 13px;">Υπηρεσία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${serviceName}</dd></div>
-      <div><dt style="color: #a1a1aa; font-size: 13px;">Barber</dt><dd style="margin: 4px 0 0; font-weight: 700;">${barberName}</dd></div>
-      <div><dt style="color: #a1a1aa; font-size: 13px;">Ημερομηνία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailDate}</dd></div>
-      <div><dt style="color: #a1a1aa; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailTime}</dd></div>
-      <div><dt style="color: #a1a1aa; font-size: 13px;">Διεύθυνση</dt><dd style="margin: 4px 0 0; font-weight: 700;">${escapeHtml(SHOP.address)}</dd></div>
+      <div><dt style="color: #7a6f64; font-size: 13px;">Υπηρεσία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${serviceName}</dd></div>
+      <div><dt style="color: #7a6f64; font-size: 13px;">Barber</dt><dd style="margin: 4px 0 0; font-weight: 700;">${barberName}</dd></div>
+      <div><dt style="color: #7a6f64; font-size: 13px;">Ημερομηνία</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailDate}</dd></div>
+      <div><dt style="color: #7a6f64; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailTime}</dd></div>
+      <div><dt style="color: #7a6f64; font-size: 13px;">Διεύθυνση</dt><dd style="margin: 4px 0 0; font-weight: 700;">${escapeHtml(SHOP.address)}</dd></div>
     </dl>
-    <p style="margin: 22px 0 0; font-size: 13px; color: #a1a1aa;">
+    <p style="margin: 22px 0 0; font-size: 13px; color: #7a6f64;">
       Προσθήκη στο ημερολόγιο:
-      <a href="${escapeHtml(googleCalendarUrl)}" style="color: #f4f4f5; font-weight: 700;">Google</a>
+      <a href="${escapeHtml(googleCalendarUrl)}" style="color: ${brandColor}; font-weight: 700;">Google</a>
       &nbsp;·&nbsp;
-      <a href="${escapeHtml(icsUrl)}" style="color: #f4f4f5; font-weight: 700;">iPhone / Outlook</a>
+      <a href="${escapeHtml(icsUrl)}" style="color: ${brandColor}; font-weight: 700;">iPhone / Outlook</a>
     </p>
   </div>
-  <div style="padding: 24px 28px; border-top: 1px solid #27272a; text-align: center;">
-    <p style="margin: 0 0 14px; color: #a1a1aa; font-size: 13px; line-height: 1.6;">Θέλεις άλλη ώρα ή δεν μπορείς να έρθεις; Άλλαξε ή ακύρωσε το ραντεβού έως και 2,5 ώρες πριν.</p>
+  <div style="padding: 24px 28px; border-top: 1px solid #e6dccd; background: #fbf8f3; text-align: center;">
+    <p style="margin: 0 0 14px; color: #7a6f64; font-size: 13px; line-height: 1.6;">Θέλεις άλλη ώρα ή δεν μπορείς να έρθεις; Άλλαξε ή ακύρωσε το ραντεβού έως και 2,5 ώρες πριν.</p>
     <a href="${cancelUrl}" style="display: inline-block; padding: 12px 26px; border-radius: 999px; background: ${brandColor}; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none;">Αλλαγή ή ακύρωση</a>
   </div>
-</section>`
+</section>
+</div>`
 }
 
 export async function sendBookingNotifications(
