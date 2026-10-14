@@ -27,6 +27,14 @@ export const SHOP = {
   emailFrom: 'onboarding@resend.dev',
 } as const
 
+// Colours of the customer-facing pages (booking, manage, legal): the same
+// light beige as the admin, with white cards.
+export const SITE_THEME = {
+  '--brand': SHOP.primaryColor,
+  '--page-bg': '#f5efe6',
+  '--page-border': '#e6dccd',
+} as CSSProperties
+
 // CSS custom properties for the admin UI (login and dashboard): a light beige
 // workspace with the shop's brand colour as the accent.
 export const ADMIN_THEME = {

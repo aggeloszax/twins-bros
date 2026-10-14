@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Fragment, useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import {
   ANY_BARBER,
   BOOKING_WINDOW_DAYS,
@@ -16,7 +16,7 @@ import {
 } from '@/lib/schedule'
 import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
 import { groupByCategory } from '@/lib/catalog'
-import { SHOP } from '@/lib/shop'
+import { SHOP, SITE_THEME } from '@/lib/shop'
 import { ShopInfo } from './shop-info'
 import { SocialLinks } from './social-links'
 
@@ -83,7 +83,7 @@ const GR_MONTHS = [
 const STEP_LABELS = ['Υπηρεσία', 'Barber', 'Ημ/νία & Ώρα', 'Στοιχεία Πελάτη']
 // Light-mode input: white field, charcoal text, burgundy focus ring.
 const inputClass =
-  'w-full rounded-2xl border border-neutral-200 bg-white py-3.5 pl-12 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
+  'w-full rounded-2xl border border-[var(--page-border)] bg-white py-3.5 pl-12 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
 // Reusable eyebrow for step/section headers: small, uppercase, sharp gray.
 const stepHeaderClass =
   'text-xs font-bold uppercase tracking-wider text-neutral-500'
@@ -286,7 +286,7 @@ function Stepper({
                       ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
                       : isActive
                         ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-neutral-900 shadow-[0_0_0_4px_rgba(128,0,32,0.10)]'
-                        : 'border-neutral-200 bg-white text-neutral-400'
+                        : 'border-[var(--page-border)] bg-white text-neutral-400'
                   }`}
                 >
                   {isDone ? <CheckIcon className="h-4 w-4" /> : n}
@@ -320,7 +320,7 @@ function Stepper({
 
 function CardSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-neutral-200 bg-white p-5">
+    <div className="animate-pulse rounded-2xl border border-[var(--page-border)] bg-white p-5">
       <div className="h-4 w-2/3 rounded bg-neutral-200" />
       <div className="mt-4 h-3 w-1/3 rounded bg-neutral-200" />
     </div>
@@ -329,7 +329,7 @@ function CardSkeleton() {
 
 function AvatarSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-neutral-200 bg-white p-3">
+    <div className="animate-pulse rounded-2xl border border-[var(--page-border)] bg-white p-3">
       <div className="aspect-square rounded-2xl bg-neutral-200" />
       <div className="mx-auto mt-4 h-3 w-2/3 rounded bg-neutral-200" />
     </div>
@@ -410,7 +410,7 @@ export default function BookingForm() {
   const calendarDays = buildCalendarGrid(calendarMonth)
   const canGoPreviousMonth = calendarMonth > startOfMonth(today)
   const canGoNextMonth = addMonths(calendarMonth, 1) <= startOfMonth(maxBookingDate)
-  const brandStyle = { '--brand': SHOP.primaryColor } as CSSProperties
+  const brandStyle = SITE_THEME
 
   async function loadServices() {
     setLoadingServices(true)
@@ -640,7 +640,7 @@ export default function BookingForm() {
     selectedTime &&
     customerName.trim() &&
     normalizedCustomerPhone) ? (
-        <div className="animate-fade-in w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-7 text-center shadow-md sm:p-8">
+        <div className="animate-fade-in w-full max-w-md rounded-3xl border border-[var(--page-border)] bg-white p-7 text-center shadow-md sm:p-8">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_8px_24px_rgba(16,185,129,0.28)]">
             <CheckIcon className="h-8 w-8" />
           </div>
@@ -664,7 +664,7 @@ export default function BookingForm() {
               Δεν δηλώθηκε email. Τα στοιχεία του ραντεβού εμφανίζονται παρακάτω.
             </p>
           )}
-          <div className="mt-6 space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-left text-sm">
+          <div className="mt-6 space-y-3 rounded-2xl border border-[var(--page-border)] bg-neutral-50 p-4 text-left text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-neutral-500">Υπηρεσία</span>
               <span className="font-bold text-neutral-900">
@@ -710,13 +710,13 @@ export default function BookingForm() {
                   href={confirmedBooking.calendar.google}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-neutral-200 px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                  className="rounded-full border border-[var(--page-border)] px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
                 >
                   Google
                 </a>
                 <a
                   href={confirmedBooking.calendar.ics}
-                  className="rounded-full border border-neutral-200 px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                  className="rounded-full border border-[var(--page-border)] px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
                 >
                   iPhone / Outlook
                 </a>
@@ -738,13 +738,13 @@ export default function BookingForm() {
 
   return (
     <div
-      className="min-h-screen bg-white font-sans text-neutral-900"
+      className="min-h-screen bg-[var(--page-bg)] font-sans text-neutral-900"
       style={brandStyle}
     >
       <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col lg:max-w-6xl px-4 pb-36 pt-5 sm:px-6 sm:pb-40 sm:pt-8">
         <header className="relative text-center">
           <SocialLinks className="absolute left-0 top-0" />
-          <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200 bg-white shadow-sm">
+          <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-[var(--page-border)] bg-white shadow-sm">
             <Image
               src={SHOP.logoUrl}
               alt={`${SHOP.name} logo`}
@@ -769,7 +769,7 @@ export default function BookingForm() {
           <div className="mt-8 flex flex-1 justify-center">{successCard}</div>
         ) : (
         <>
-        <div className="mt-7 rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+        <div className="mt-7 rounded-3xl border border-[var(--page-border)] bg-white p-3 shadow-sm sm:p-4">
           <Stepper
             step={step}
             done={stepDone}
@@ -918,7 +918,7 @@ export default function BookingForm() {
                             : 'border-[var(--brand)] hover:bg-neutral-50'
                         }`}
                       >
-                        <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 transition-all duration-300 ease-in-out group-hover:border-[var(--brand)]">
+                        <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-2xl border border-[var(--page-border)] bg-neutral-100 transition-all duration-300 ease-in-out group-hover:border-[var(--brand)]">
                           {isAny ? (
                             <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-neutral-50 px-3 text-center text-neutral-500">
                               <UsersIcon className="h-12 w-12 text-[var(--brand)]" />
@@ -979,7 +979,7 @@ export default function BookingForm() {
               </div>
 
               <div className="grid gap-5 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)] md:items-start">
-                <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                <section className="rounded-2xl border border-[var(--page-border)] bg-white p-4 shadow-sm sm:p-5">
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-bold capitalize text-neutral-900">
@@ -995,7 +995,7 @@ export default function BookingForm() {
                         disabled={!canGoPreviousMonth}
                         onClick={() => setCalendarMonth((current) => addMonths(current, -1))}
                         aria-label="Προηγούμενος μήνας"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition-colors hover:border-[var(--brand)] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--page-border)] bg-white text-neutral-700 transition-colors hover:border-[var(--brand)] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         ‹
                       </button>
@@ -1004,7 +1004,7 @@ export default function BookingForm() {
                         disabled={!canGoNextMonth}
                         onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
                         aria-label="Επόμενος μήνας"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition-colors hover:border-[var(--brand)] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--page-border)] bg-white text-neutral-700 transition-colors hover:border-[var(--brand)] hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         ›
                       </button>
@@ -1053,7 +1053,7 @@ export default function BookingForm() {
                               ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
                               : isDisabled
                                 ? 'cursor-not-allowed border-transparent bg-neutral-50 text-neutral-300'
-                                : 'border-neutral-200 bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
+                                : 'border-[var(--page-border)] bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
                           }`}
                         >
                           <span>{day.getDate()}</span>
@@ -1066,7 +1066,7 @@ export default function BookingForm() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                <section className="rounded-2xl border border-[var(--page-border)] bg-white p-4 shadow-sm sm:p-5">
                   <div className="mb-5">
                     <h3 className="text-base font-bold text-neutral-900">
                       Διαθέσιμες ώρες
@@ -1077,7 +1077,7 @@ export default function BookingForm() {
                   </div>
 
                   {!selectedDate ? (
-                    <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center text-sm text-neutral-500">
+                    <div className="rounded-2xl border border-dashed border-[var(--page-border)] bg-neutral-50 p-8 text-center text-sm text-neutral-500">
                       Διάλεξε πρώτα μια ημέρα.
                     </div>
                   ) : loadingSlots ? (
@@ -1089,7 +1089,7 @@ export default function BookingForm() {
                   ) : slotsError ? (
                     <ErrorState onRetry={() => setSelectedDate(selectedDate)} />
                   ) : !hasAvailableSlot ? (
-                    <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center text-sm text-neutral-500">
+                    <div className="rounded-2xl border border-dashed border-[var(--page-border)] bg-neutral-50 p-8 text-center text-sm text-neutral-500">
                       Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημέρα.
                     </div>
                   ) : (
@@ -1107,7 +1107,7 @@ export default function BookingForm() {
                                 ? 'cursor-not-allowed border-neutral-100 bg-neutral-50 text-neutral-300 line-through'
                                 : isSelected
                                   ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
-                                  : 'border-neutral-200 bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
+                                  : 'border-[var(--page-border)] bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
                             }`}
                           >
                             {slot.time}
@@ -1131,7 +1131,7 @@ export default function BookingForm() {
                 </p>
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+              <div className="space-y-4 rounded-2xl border border-[var(--page-border)] bg-white p-5 shadow-sm">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
                     Όνοματεπώνυμο
@@ -1199,7 +1199,7 @@ export default function BookingForm() {
                     value={bookingNotes}
                     onChange={(event) => setBookingNotes(event.target.value)}
                     placeholder="Κάτι που πρέπει να ξέρει ο κουρέας;"
-                    className="mt-2 w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]"
+                    className="mt-2 w-full resize-none rounded-2xl border border-[var(--page-border)] bg-white px-4 py-3 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]"
                   />
                 </label>
               </div>
@@ -1249,7 +1249,7 @@ export default function BookingForm() {
 
         <ShopInfo schedules={barbers.map((barber) => barber.schedule)} />
 
-        <footer className="mt-12 border-t border-neutral-200 pt-6 text-center text-xs leading-5 text-neutral-500">
+        <footer className="mt-12 border-t border-[var(--page-border)] pt-6 text-center text-xs leading-5 text-neutral-500">
           <p className="font-semibold text-neutral-700">{SHOP.name}</p>
           <nav
             aria-label="Νομικές πληροφορίες"
@@ -1276,7 +1276,7 @@ export default function BookingForm() {
       </main>
 
       {!successCard && (
-      <div className="fixed inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 backdrop-blur-xl">
+      <div className="fixed inset-x-0 bottom-0 border-t border-[var(--page-border)] bg-[var(--page-bg)]/95 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4 lg:max-w-6xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-6">
           {step > 1 && (
             <button
@@ -1285,7 +1285,7 @@ export default function BookingForm() {
                 setStep((current) => (current - 1) as BookingStep)
               }
               aria-label="Πίσω"
-              className="flex min-h-12 shrink-0 items-center gap-2 rounded-md border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition-all duration-300 ease-in-out hover:border-[var(--brand)] hover:bg-neutral-50 active:scale-95 sm:px-5"
+              className="flex min-h-12 shrink-0 items-center gap-2 rounded-md border border-[var(--page-border)] bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition-all duration-300 ease-in-out hover:border-[var(--brand)] hover:bg-neutral-50 active:scale-95 sm:px-5"
             >
               <ArrowIcon className="h-4 w-4 rotate-180" />
               <span className="hidden sm:inline">Πίσω</span>

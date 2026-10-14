@@ -19,7 +19,7 @@ function TikTokIcon({ className }: { className?: string }) {
 }
 
 const LINK_CLASS =
-  'flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm transition hover:border-[var(--brand)] hover:text-[var(--brand)]'
+  'flex h-10 w-10 items-center justify-center rounded-full border border-[var(--page-border)] bg-white text-neutral-700 shadow-sm transition hover:border-[var(--brand)] hover:text-[var(--brand)]'
 
 // The shop's social profiles; each shows only when set in lib/shop.ts.
 export function SocialLinks({ className = '' }: { className?: string }) {

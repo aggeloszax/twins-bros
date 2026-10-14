@@ -1,20 +1,19 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import type { CSSProperties } from 'react'
-import { SHOP } from '@/lib/shop'
+import { SHOP, SITE_THEME } from '@/lib/shop'
 
 const LAST_UPDATED = '13 Οκτωβρίου 2026'
 
 export default function PrivacyPage() {
   return (
     <main
-      className="min-h-screen bg-neutral-50 px-4 py-8 text-neutral-900 sm:px-6 sm:py-12"
-      style={{ '--brand': SHOP.primaryColor } as CSSProperties}
+      className="min-h-screen bg-[var(--page-bg)] px-4 py-8 text-neutral-900 sm:px-6 sm:py-12"
+      style={SITE_THEME}
     >
-      <article className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
-        <header className="border-b border-neutral-200 px-6 py-7 sm:px-10 sm:py-9">
+      <article className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-[var(--page-border)] bg-white shadow-sm">
+        <header className="border-b border-[var(--page-border)] px-6 py-7 sm:px-10 sm:py-9">
           <div className="flex items-center gap-4">
-            <div className="relative h-14 w-14 overflow-hidden rounded-full border border-neutral-200 bg-white">
+            <div className="relative h-14 w-14 overflow-hidden rounded-full border border-[var(--page-border)] bg-white">
               <Image
                 src={SHOP.logoUrl}
                 alt={`${SHOP.name} logo`}
@@ -160,7 +159,7 @@ export default function PrivacyPage() {
           </section>
         </div>
 
-        <footer className="border-t border-neutral-200 bg-neutral-50 px-6 py-6 text-center sm:px-10">
+        <footer className="border-t border-[var(--page-border)] bg-[#fbf8f3] px-6 py-6 text-center sm:px-10">
           <Link
             href="/"
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-bold text-white transition hover:brightness-110"

@@ -79,14 +79,14 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
               src={photo.url}
               alt={photo.caption ?? `${SHOP.name}`}
               loading="lazy"
-              className="h-56 w-auto max-w-[85%] shrink-0 snap-start rounded-2xl border border-neutral-200 object-cover sm:h-64"
+              className="h-56 w-auto max-w-[85%] shrink-0 snap-start rounded-2xl border border-[var(--page-border)] object-cover sm:h-64"
             />
           ))}
         </div>
       )}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-[var(--page-border)] bg-white shadow-sm">
           <iframe
             title={`Χάρτης: ${SHOP.address}`}
             src={`https://maps.google.com/maps?q=${mapQuery}&z=16&output=embed`}
@@ -103,14 +103,14 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
               href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 rounded-full border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
+              className="shrink-0 rounded-full border border-[var(--page-border)] px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
             >
               Οδηγίες
             </a>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-[var(--page-border)] bg-white p-4 shadow-sm">
             <p className="text-sm font-bold text-neutral-900">Ωράριο</p>
             <dl className="mt-3 space-y-1.5 text-sm">
               {hours.map((row) => (
@@ -129,7 +129,7 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
       <div className="mt-4 flex flex-wrap justify-center gap-3">
             <a
               href={SHOP.phone.href}
-              className="flex items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 py-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:border-[var(--brand)]"
+              className="flex items-center justify-center gap-3 rounded-2xl border border-[var(--page-border)] bg-white px-6 py-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:border-[var(--brand)]"
             >
               <PhoneIcon className="h-5 w-5 text-[var(--brand)]" />
               {SHOP.phone.label}
