@@ -374,6 +374,17 @@ export default function BookingForm() {
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
   const [bookingNotes, setBookingNotes] = useState('')
+  // Services whose description the visitor has expanded.
+  const [openDescriptions, setOpenDescriptions] = useState<Set<string>>(new Set())
+
+  function toggleDescription(id: string) {
+    setOpenDescriptions((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
   const [submittingBooking, setSubmittingBooking] = useState(false)
   const [bookingError, setBookingError] = useState<'failed' | 'blocked' | null>(null)
   const [confirmed, setConfirmed] = useState(false)
@@ -795,16 +806,21 @@ export default function BookingForm() {
                     )}
                   {items.map((service) => {
                     const isSelected = selectedService?.id === service.id
+                    const isOpen = openDescriptions.has(service.id)
                     return (
-                      <button
+                      <div
                         key={service.id}
-                        type="button"
-                        onClick={() => handleSelectService(service)}
-                        className={`group flex w-full items-center justify-between gap-4 rounded-2xl border p-5 text-left shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md ${
+                        className={`group rounded-2xl border shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md ${
                           isSelected
                             ? 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
                             : 'border-[var(--brand)] bg-white hover:bg-neutral-50'
                         }`}
+                      >
+                      <button
+                        type="button"
+                        onClick={() => handleSelectService(service)}
+                        aria-pressed={isSelected}
+                        className="flex w-full items-center justify-between gap-4 p-5 text-left"
                       >
                         <div className="min-w-0">
                           <h3 className="truncate text-base font-bold text-neutral-900 sm:text-lg">
@@ -814,11 +830,6 @@ export default function BookingForm() {
                             <ClockIcon className="h-4 w-4 text-[var(--brand)]" />
                             <span>{service.duration} λεπτά</span>
                           </div>
-                          {service.description && (
-                            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-500">
-                              {service.description}
-                            </p>
-                          )}
                         </div>
                         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                           <span className="text-lg font-bold tabular-nums text-neutral-900">
@@ -835,6 +846,32 @@ export default function BookingForm() {
                           </span>
                         </div>
                       </button>
+                      {service.description && (
+                        <div className="-mt-3 px-5 pb-4">
+                          <button
+                            type="button"
+                            onClick={() => toggleDescription(service.id)}
+                            aria-expanded={isOpen}
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand)] hover:underline"
+                          >
+                            Λεπτομέρειες
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              aria-hidden
+                              className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                            >
+                              <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          {isOpen && (
+                            <p className="animate-fade-in mt-2 whitespace-pre-line text-sm leading-6 text-neutral-500">
+                              {service.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      </div>
                     )
                   })}
                   </div>
