@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 type UpdateBookingPayload = {
   status?: unknown
   noShow?: unknown
+  notes?: unknown
   // Moves the booking. The admin may place it outside working hours, but
   // never on top of another active booking of the same barber.
   reschedule?: {
@@ -32,6 +33,7 @@ const BOOKING_SELECT = {
   customerPhone: true,
   customerEmail: true,
   noShow: true,
+  notes: true,
   barber: { select: { id: true, name: true } },
   service: { select: { id: true, name: true, price: true, duration: true } },
 } satisfies Prisma.BookingSelect
@@ -54,9 +56,10 @@ export async function PATCH(
 
   const hasStatus = payload.status !== undefined
   const hasNoShow = payload.noShow !== undefined
+  const hasNotes = payload.notes !== undefined
   const reschedule = payload.reschedule
 
-  if (!hasStatus && !hasNoShow && !reschedule) {
+  if (!hasStatus && !hasNoShow && !hasNotes && !reschedule) {
     return Response.json({ error: 'No booking updates provided' }, { status: 400 })
   }
   if (
@@ -68,6 +71,14 @@ export async function PATCH(
   if (hasNoShow && typeof payload.noShow !== 'boolean') {
     return Response.json({ error: 'Invalid no-show value' }, { status: 400 })
   }
+  if (
+    hasNotes &&
+    payload.notes !== null &&
+    (typeof payload.notes !== 'string' || payload.notes.length > 500)
+  ) {
+    return Response.json({ error: 'Το σχόλιο είναι πολύ μεγάλο.' }, { status: 400 })
+  }
+  const notes = typeof payload.notes === 'string' && payload.notes.trim() ? payload.notes.trim() : null
 
   let move: { barberId: string; serviceId: string; date: string; slotTime: string } | null = null
   if (reschedule) {
@@ -148,6 +159,7 @@ export async function PATCH(
           data: {
             ...(hasStatus ? { status: nextStatus } : {}),
             ...(hasNoShow ? { noShow: payload.noShow as boolean } : {}),
+            ...(hasNotes ? { notes } : {}),
             ...(move ? { barberId, serviceId, startTime, endTime } : {}),
           },
           select: BOOKING_SELECT,
@@ -170,7 +182,12 @@ export async function PATCH(
       ? await prisma.booking.count({ where: { noShow: true, customerPhone: phoneKey } })
       : 0
 
-    return Response.json({ ...booking, noShowCount, customerNotification })
+    const customer = await prisma.customer.findUnique({
+      where: { phone: booking.customerPhone },
+      select: { phone: true, notes: true, blocked: true, blockedReason: true },
+    })
+
+    return Response.json({ ...booking, noShowCount, customer, customerNotification })
   } catch (error) {
     if (error instanceof ConflictError) {
       return Response.json(

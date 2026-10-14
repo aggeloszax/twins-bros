@@ -25,6 +25,7 @@ type BookingNotificationDetails = {
   customerName: string
   customerPhone: string
   customerEmail: string | null
+  notes?: string | null
   barber: {
     name: string
   }
@@ -242,7 +243,9 @@ export async function sendBookingNotifications(
     `<p style="font-family:Arial;color:#f5f5f5;background:#0f0f0f;padding:24px;border-radius:12px;">
       <strong>${customerName}</strong> · ${bookingDetails.customerPhone}<br/>
       ${serviceName} με τον ${barberName}<br/>
-      ${emailDate} στις ${emailTime}
+      ${emailDate} στις ${emailTime}${
+        bookingDetails.notes ? `<br/><br/>Σχόλιο: ${escapeHtml(bookingDetails.notes)}` : ''
+      }
     </p>`,
     shopSender,
   )

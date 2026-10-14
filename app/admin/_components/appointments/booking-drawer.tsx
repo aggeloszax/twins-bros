@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { EditableNote } from '../editable-note'
 import {
   type Booking,
   type BookingStatus,
+  type CustomerProfile,
   adminFetch,
   bookingDateKey,
   errorMessage,
@@ -28,7 +30,7 @@ import {
   UserIcon,
 } from '../ui'
 
-type BookingUpdate = { status?: BookingStatus; noShow?: boolean }
+type BookingUpdate = { status?: BookingStatus; noShow?: boolean; notes?: string | null }
 
 export function BookingDrawer({
   booking,
@@ -60,6 +62,22 @@ export function BookingDrawer({
     const otherStart = minutesOfDay(other.startTime)
     return start < otherStart + other.service.duration && otherStart < start + booking.service.duration
   })
+
+  async function saveCustomerNotes(notes: string | null) {
+    const customer = await adminFetch<CustomerProfile>('/api/admin/customers', {
+      method: 'PATCH',
+      body: JSON.stringify({ phone: booking.customerPhone, notes }),
+    })
+    onUpdated({ ...booking, customer })
+  }
+
+  async function saveBookingNotes(notes: string | null) {
+    const updated = await adminFetch<Booking>(`/api/admin/bookings/${booking.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ notes }),
+    })
+    onUpdated(updated)
+  }
 
   async function update(changes: BookingUpdate) {
     setBusy(true)
@@ -134,6 +152,16 @@ export function BookingDrawer({
         </div>
       </div>
 
+      {booking.customer?.blocked && (
+        <div className="mt-4 flex gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-800">
+          <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <strong>Μπλοκαρισμένος πελάτης.</strong> Δεν μπορεί να κλείσει online
+            {booking.customer.blockedReason ? `. Αιτία: ${booking.customer.blockedReason}` : '.'}
+          </span>
+        </div>
+      )}
+
       {booking.noShowCount > 0 && (
         <div className="mt-4 flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900">
           <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
@@ -175,6 +203,24 @@ export function BookingDrawer({
           </div>
         ))}
       </dl>
+
+      <div className="mt-6 space-y-5">
+        <EditableNote
+          label="Σχόλιο ραντεβού"
+          value={booking.notes}
+          emptyText="Χωρίς σχόλιο."
+          maxLength={500}
+          onSave={saveBookingNotes}
+        />
+        <EditableNote
+          label="Σημειώσεις πελάτη"
+          value={booking.customer?.notes ?? null}
+          emptyText="Καμία σημείωση. Φαίνονται σε κάθε ραντεβού του πελάτη."
+          placeholder="π.χ. Κούρεμα με 2 στα πλάγια, αλλεργία σε…"
+          maxLength={1000}
+          onSave={saveCustomerNotes}
+        />
+      </div>
 
       <div className="mt-6">
         <p className="mb-2 text-[13px] font-medium text-[var(--admin-muted)]">Ενέργειες</p>

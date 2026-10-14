@@ -148,9 +148,10 @@ export function AppointmentsPage() {
     setBookings((current) =>
       current.map((booking) => {
         if (booking.id === updated.id) return { ...booking, ...updated }
-        // Keep every booking of the same customer in sync with the new count.
+        // Keep every booking of the same customer in sync with the new count
+        // and profile.
         if (phone && normalizeGreekMobilePhone(booking.customerPhone) === phone) {
-          return { ...booking, noShowCount: updated.noShowCount }
+          return { ...booking, noShowCount: updated.noShowCount, customer: updated.customer }
         }
         return booking
       }),

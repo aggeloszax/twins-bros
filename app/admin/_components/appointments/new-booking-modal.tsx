@@ -11,7 +11,7 @@ import {
   errorMessage,
   formatPrice,
 } from '../../_lib/admin-data'
-import { Field, FormError, Modal, SelectInput, TextInput } from '../ui'
+import { AlertIcon, Field, FormError, Modal, SelectInput, TextArea, TextInput } from '../ui'
 import { ADMIN_TIME_OPTIONS, takenTimes } from './time-options'
 
 export type NewBookingPrefill = {
@@ -45,6 +45,7 @@ export function NewBookingModal({
     prefill.customerPhone ? toNationalPhoneInput(prefill.customerPhone) : '',
   )
   const [customerEmail, setCustomerEmail] = useState(prefill.customerEmail ?? '')
+  const [notes, setNotes] = useState('')
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
   const [barberId, setBarberId] = useState(prefill.barberId ?? barbers[0]?.id ?? '')
   const [date, setDate] = useState(prefill.date)
@@ -59,6 +60,10 @@ export function NewBookingModal({
     () => takenTimes(knownBookings, barberId, date, duration),
     [knownBookings, barberId, date, duration],
   )
+
+  const knownCustomer = knownBookings.find(
+    (b) => b.customerPhone === normalizeGreekMobilePhone(customerPhone),
+  )?.customer
 
   // Fill a returning customer's name and email from their phone number.
   function handlePhoneChange(value: string) {
@@ -85,7 +90,7 @@ export function NewBookingModal({
     setSubmitting(true)
     setError(null)
     try {
-      const created = await adminFetch<Omit<Booking, 'noShow' | 'noShowCount'>>(
+      const created = await adminFetch<Omit<Booking, 'noShow' | 'noShowCount' | 'customer'>>(
         '/api/bookings',
         {
           method: 'POST',
@@ -97,14 +102,18 @@ export function NewBookingModal({
             customerName: customerName.trim(),
             customerPhone: phone,
             customerEmail: customerEmail.trim() || null,
+            notes: notes.trim() || null,
             adminManual: true,
           }),
         },
       )
-      const previousNoShows =
-        knownBookings.find((b) => normalizeGreekMobilePhone(b.customerPhone) === phone)
-          ?.noShowCount ?? 0
-      onCreated({ ...created, noShow: false, noShowCount: previousNoShows })
+      const previous = knownBookings.find((b) => b.customerPhone === phone)
+      onCreated({
+        ...created,
+        noShow: false,
+        noShowCount: previous?.noShowCount ?? 0,
+        customer: previous?.customer ?? null,
+      })
       onClose()
     } catch (submitError) {
       setError(
@@ -191,6 +200,26 @@ export function NewBookingModal({
           </Field>
         </div>
       </div>
+      <Field label="Σχόλιο ραντεβού" hint="Προαιρετικό, φαίνεται μόνο στο πρόγραμμα.">
+        <TextArea
+          rows={2}
+          maxLength={500}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
+      </Field>
+      {knownCustomer?.blocked && (
+        <p className="flex gap-2 text-sm text-red-700">
+          <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          Ο πελάτης είναι μπλοκαρισμένος για online κρατήσεις
+          {knownCustomer.blockedReason ? ` (${knownCustomer.blockedReason})` : ''}.
+        </p>
+      )}
+      {knownCustomer?.notes && (
+        <p className="rounded-xl bg-[var(--admin-surface-2)] px-3 py-2 text-sm">
+          <span className="font-medium">Σημειώσεις πελάτη:</span> {knownCustomer.notes}
+        </p>
+      )}
       {taken.has(time) && (
         <p className="text-sm text-amber-800">
           Η ώρα αυτή συμπίπτει με άλλο ραντεβού του κουρέα. Διάλεξε άλλη ώρα.

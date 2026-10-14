@@ -25,6 +25,7 @@ type BookingPayload = {
   customerName?: unknown
   customerPhone?: unknown
   customerEmail?: unknown
+  notes?: unknown
   adminManual?: unknown
 }
 
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
     customerName,
     customerPhone,
     customerEmail,
+    notes,
     adminManual,
   } = payload
   const isAdminManualBooking = isAdminSession && adminManual === true
@@ -113,7 +115,26 @@ export async function POST(request: Request) {
     )
   }
 
+  if (notes !== undefined && notes !== null && (typeof notes !== 'string' || notes.length > 500)) {
+    return Response.json({ error: 'Invalid notes' }, { status: 400 })
+  }
+  const bookingNotes = typeof notes === 'string' && notes.trim() ? notes.trim() : null
+
   try {
+    // Blocked customers cannot book online; the shop can still book them.
+    if (!isAdminManualBooking) {
+      const customer = await prisma.customer.findUnique({
+        where: { phone: normalizedCustomerPhone },
+        select: { blocked: true },
+      })
+      if (customer?.blocked) {
+        return Response.json(
+          { error: 'Online booking is not available for this customer', code: 'CUSTOMER_BLOCKED' },
+          { status: 403 },
+        )
+      }
+    }
+
     const service = await prisma.service.findFirst({
       where: { id: serviceId },
       select: { duration: true },
@@ -195,6 +216,7 @@ export async function POST(request: Request) {
             customerName: customerName.trim(),
             customerPhone: normalizedCustomerPhone,
             customerEmail: isValidEmail(customerEmail) ? customerEmail.trim() : null,
+            notes: bookingNotes,
           },
           select: {
             id: true,
@@ -205,6 +227,7 @@ export async function POST(request: Request) {
             customerName: true,
             customerPhone: true,
             customerEmail: true,
+            notes: true,
             barber: {
               select: {
                 id: true,

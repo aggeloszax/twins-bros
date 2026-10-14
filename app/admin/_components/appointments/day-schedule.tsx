@@ -15,7 +15,7 @@ import {
   timeToMinutes,
   todayKey,
 } from '../../_lib/admin-data'
-import { AlertIcon, Avatar } from '../ui'
+import { AlertIcon, Avatar, BanIcon, NoteIcon } from '../ui'
 
 const PX_PER_MINUTE = 1.8
 const CELL_MINUTES = 15
@@ -305,6 +305,8 @@ export function DaySchedule({
                       <div className="flex items-center gap-1 text-[11px] font-medium tabular-nums opacity-75">
                         {formatTime(booking.startTime)}–{formatTime(booking.endTime)}
                         {warn && <AlertIcon className="h-3 w-3 text-amber-600" />}
+                        {booking.customer?.blocked && <BanIcon className="h-3 w-3 text-red-600" />}
+                        {(booking.notes || booking.customer?.notes) && <NoteIcon className="h-3 w-3" />}
                       </div>
                       {!compact && (
                         <>

@@ -19,6 +19,16 @@ export type Booking = {
   status: BookingStatus
   noShow: boolean
   noShowCount: number
+  notes: string | null
+  customer: CustomerProfile | null
+}
+
+// Shop-side profile of a customer, keyed by the phone on the bookings.
+export type CustomerProfile = {
+  phone: string
+  notes: string | null
+  blocked: boolean
+  blockedReason: string | null
 }
 
 // schedule is null for barbers on the default weekly hours.

@@ -341,8 +341,9 @@ export default function BookingForm() {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
+  const [bookingNotes, setBookingNotes] = useState('')
   const [submittingBooking, setSubmittingBooking] = useState(false)
-  const [bookingError, setBookingError] = useState(false)
+  const [bookingError, setBookingError] = useState<'failed' | 'blocked' | null>(null)
   const [confirmed, setConfirmed] = useState(false)
   const [customerEmailDelivery, setCustomerEmailDelivery] =
     useState<EmailDeliveryStatus | null>(null)
@@ -528,7 +529,7 @@ export default function BookingForm() {
       isValidCustomerEmail(customerEmail)
     ) {
       setSubmittingBooking(true)
-      setBookingError(false)
+      setBookingError(null)
       try {
         const res = await fetch('/api/bookings', {
           method: 'POST',
@@ -543,9 +544,14 @@ export default function BookingForm() {
             customerName: customerName.trim(),
             customerPhone: normalizedCustomerPhone,
             customerEmail: customerEmail.trim(),
+            notes: bookingNotes.trim() || null,
           }),
         })
 
+        if (res.status === 403) {
+          setBookingError('blocked')
+          return
+        }
         if (!res.ok) throw new Error('Booking failed')
         const result = (await res.json()) as BookingCreationResponse
         setCustomerEmailDelivery(
@@ -554,7 +560,7 @@ export default function BookingForm() {
         )
         setConfirmed(true)
       } catch {
-        setBookingError(true)
+        setBookingError('failed')
       } finally {
         setSubmittingBooking(false)
       }
@@ -1048,6 +1054,19 @@ export default function BookingForm() {
                     />
                   </span>
                 </label>
+                <label className="block">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                    Σχόλιο <span className="normal-case tracking-normal text-neutral-400">(προαιρετικό)</span>
+                  </span>
+                  <textarea
+                    rows={2}
+                    maxLength={500}
+                    value={bookingNotes}
+                    onChange={(event) => setBookingNotes(event.target.value)}
+                    placeholder="Κάτι που πρέπει να ξέρει ο κουρέας;"
+                    className="mt-2 w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]"
+                  />
+                </label>
               </div>
 
               <p className="text-xs leading-5 text-neutral-500">
@@ -1074,7 +1093,17 @@ export default function BookingForm() {
 
               {bookingError && (
                 <div className="rounded-2xl border border-[var(--brand)] bg-[var(--brand)]/5 p-4 text-sm text-[var(--brand)]">
-                  Δεν μπορέσαμε να καταχωρήσουμε το ραντεβού. Δοκίμασε ξανά.
+                  {bookingError === 'blocked' ? (
+                    <>
+                      Δεν είναι δυνατή η online κράτηση για αυτό το κινητό. Κάλεσέ μας στο{' '}
+                      <a href={SHOP.phone.href} className="font-semibold underline underline-offset-4">
+                        {SHOP.phone.label}
+                      </a>{' '}
+                      για να κλείσεις ραντεβού.
+                    </>
+                  ) : (
+                    'Δεν μπορέσαμε να καταχωρήσουμε το ραντεβού. Δοκίμασε ξανά.'
+                  )}
                 </div>
               )}
             </div>

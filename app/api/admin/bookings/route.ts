@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         customerPhone: true,
         customerEmail: true,
         noShow: true,
+        notes: true,
         barber: { select: { id: true, name: true } },
         service: { select: { id: true, name: true, price: true, duration: true } },
       },
@@ -59,9 +60,16 @@ export async function GET(request: Request) {
       )
     }
 
+    const profiles = await prisma.customer.findMany({
+      where: { phone: { in: Array.from(new Set(bookings.map((b) => b.customerPhone))) } },
+      select: { phone: true, notes: true, blocked: true, blockedReason: true },
+    })
+    const profileByPhone = new Map(profiles.map((profile) => [profile.phone, profile]))
+
     return Response.json(
       bookings.map((booking) => ({
         ...booking,
+        customer: profileByPhone.get(booking.customerPhone) ?? null,
         noShowCount:
           noShowCountsByPhone.get(
             normalizeGreekMobilePhone(booking.customerPhone) ?? '',

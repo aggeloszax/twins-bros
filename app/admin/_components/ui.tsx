@@ -7,6 +7,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
   useEffect,
   useState,
 } from 'react'
@@ -252,6 +253,16 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${FIELD_CLASS} ${props.className ?? ''}`} />
 }
 
+export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      rows={3}
+      {...props}
+      className={`${FIELD_CLASS} h-auto resize-y py-2 leading-relaxed ${props.className ?? ''}`}
+    />
+  )
+}
+
 export function SelectInput(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`${FIELD_CLASS} ${props.className ?? ''}`} />
 }
@@ -458,3 +469,5 @@ export const SearchIcon = (p: IconProps) => <Icon {...p} d="m20 20-4-4m2-5a7 7 0
 export const LogoutIcon = (p: IconProps) => <Icon {...p} d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />
 export const AlertIcon = (p: IconProps) => <Icon {...p} d="M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
 export const LockIcon = (p: IconProps) => <Icon {...p} d="M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+export const NoteIcon = (p: IconProps) => <Icon {...p} d="M5 4h14v11l-5 5H5zM14 20v-5h5M8.5 9h7M8.5 12.5h4" />
+export const BanIcon = (p: IconProps) => <Icon {...p} d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM5.6 5.6l12.8 12.8" />

@@ -96,6 +96,7 @@ model Booking {
   customerPhone String
   customerEmail String?
   noShow       Boolean @default(false)
+  notes        String?  // Optional comment the customer leaves when booking
 
   // Σχέσεις
   barberId    String
@@ -105,6 +106,17 @@ model Booking {
 
   @@index([startTime])
   @@index([barberId, startTime])
+}
+
+// Shop-side profile of a customer, keyed by the normalized mobile number
+// that every booking stores. Name and email live on the bookings.
+model Customer {
+  phone         String   @id // +3069XXXXXXXX
+  notes         String?  // Private notes for the shop, e.g. preferences
+  blocked       Boolean  @default(false) // Cannot book online
+  blockedReason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 // Fixed-window request counters shared by every serverless instance.
