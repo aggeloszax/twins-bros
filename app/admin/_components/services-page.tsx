@@ -105,7 +105,7 @@ export function ServicesPage() {
                   <p className="truncate text-sm font-medium">{service.name}</p>
                   <p className="text-[13px] text-[var(--admin-muted)]">{service.duration} λεπτά</p>
                   {service.description && (
-                    <p className="mt-0.5 line-clamp-2 text-[13px] text-[var(--admin-muted)]">{service.description}</p>
+                    <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-[13px] text-[var(--admin-muted)]">{service.description}</p>
                   )}
                 </div>
                 <p className="text-base font-semibold tabular-nums">{formatPrice(service.price)}</p>
@@ -229,7 +229,7 @@ function ServiceModal({
         </datalist>
       </Field>
       <Field label="Περιγραφή" hint="Προαιρετικό. Τι περιλαμβάνει, όπως το βλέπει ο πελάτης.">
-        <TextArea rows={2} maxLength={300} value={description} onChange={(event) => setDescription(event.target.value)} />
+        <TextArea rows={4} maxLength={600} value={description} onChange={(event) => setDescription(event.target.value)} />
       </Field>
       <FormError message={error} />
     </Modal>

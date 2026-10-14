@@ -815,7 +815,7 @@ export default function BookingForm() {
                             <span>{service.duration} λεπτά</span>
                           </div>
                           {service.description && (
-                            <p className="mt-2 text-sm leading-6 text-neutral-500">
+                            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-500">
                               {service.description}
                             </p>
                           )}

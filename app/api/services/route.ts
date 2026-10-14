@@ -43,9 +43,9 @@ function parseService(payload: ServicePayload):
   if (!Number.isFinite(priceNum) || priceNum < 0) {
     return { ok: false, error: 'Το κόστος πρέπει να είναι μη αρνητικός αριθμός.' }
   }
-  const description = optionalText(payload.description, 300)
+  const description = optionalText(payload.description, 600)
   if (description === false) {
-    return { ok: false, error: 'Η περιγραφή μπορεί να έχει έως 300 χαρακτήρες.' }
+    return { ok: false, error: 'Η περιγραφή μπορεί να έχει έως 600 χαρακτήρες.' }
   }
   const category = optionalText(payload.category, 40)
   if (category === false) {
