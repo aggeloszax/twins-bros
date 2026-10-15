@@ -80,7 +80,7 @@ const GR_MONTHS = [
   'Δεκ',
 ]
 
-const STEP_LABELS = ['Υπηρεσία', 'Barber', 'Ημ/νία & Ώρα', 'Στοιχεία Πελάτη']
+const STEP_LABELS = ['Υπηρεσία', 'Κουρέας', 'Ημέρα & ώρα', 'Τα στοιχεία σου']
 // Light-mode input: white field, charcoal text, burgundy focus ring.
 const inputClass =
   'w-full rounded-2xl border border-[var(--page-border)] bg-white py-3.5 pl-12 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
@@ -329,9 +329,9 @@ function CardSkeleton() {
 
 function AvatarSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-[var(--page-border)] bg-white p-3">
-      <div className="aspect-square rounded-2xl bg-neutral-200" />
-      <div className="mx-auto mt-4 h-3 w-2/3 rounded bg-neutral-200" />
+    <div className="flex animate-pulse items-center gap-4 rounded-2xl border border-[var(--page-border)] bg-white p-3 sm:block">
+      <div className="h-24 w-20 shrink-0 rounded-xl bg-neutral-200 sm:aspect-[4/5] sm:h-auto sm:w-full" />
+      <div className="h-3 w-1/2 rounded bg-neutral-200 sm:mx-auto sm:mt-4 sm:w-2/3" />
     </div>
   )
 }
@@ -399,6 +399,10 @@ export default function BookingForm() {
   const [slots, setSlots] = useState<Slot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [slotsError, setSlotsError] = useState(false)
+  const [slotsRetry, setSlotsRetry] = useState(0)
+  const [nextAvailableDate, setNextAvailableDate] = useState<string | null>(null)
+  const [searchingNextDate, setSearchingNextDate] = useState(false)
+  const [nextDateError, setNextDateError] = useState(false)
 
   const [scheduleExceptions, setScheduleExceptions] = useState<
     NormalizedScheduleException[]
@@ -495,6 +499,9 @@ export default function BookingForm() {
       setLoadingSlots(true)
       setSlotsError(false)
       setSelectedTime(null)
+      setNextAvailableDate(null)
+      setSearchingNextDate(false)
+      setNextDateError(false)
     })
 
     fetch(
@@ -507,8 +514,41 @@ export default function BookingForm() {
         if (!res.ok) throw new Error('Request failed')
         return res.json()
       })
-      .then((data: Slot[]) => {
-        if (active) setSlots(data)
+      .then(async (data: Slot[]) => {
+        if (!active) return
+        setSlots(data)
+        setLoadingSlots(false)
+        if (data.some((slot) => slot.available)) return
+
+        setSearchingNextDate(true)
+        try {
+          const candidate = new Date(`${selectedDate}T00:00:00`)
+          const lastDate = getMaxBookingDate(new Date())
+          candidate.setDate(candidate.getDate() + 1)
+          while (candidate <= lastDate && active) {
+            const date = toDateKey(candidate)
+            const params = new URLSearchParams({
+              barberId: selectedBarber.id,
+              serviceId: selectedService.id,
+              date,
+            })
+            const response = await fetch(`/api/available-slots?${params}`, {
+              signal: controller.signal,
+            })
+            if (!response.ok) throw new Error('Request failed')
+            const nextSlots: Slot[] = await response.json()
+            if (!active) return
+            if (nextSlots.some((slot) => slot.available)) {
+              setNextAvailableDate(date)
+              break
+            }
+            candidate.setDate(candidate.getDate() + 1)
+          }
+        } catch (error) {
+          if (active && (error as Error).name !== 'AbortError') setNextDateError(true)
+        } finally {
+          if (active) setSearchingNextDate(false)
+        }
       })
       .catch((err: unknown) => {
         if (active && (err as Error).name !== 'AbortError') {
@@ -523,7 +563,7 @@ export default function BookingForm() {
       active = false
       controller.abort()
     }
-  }, [selectedDate, selectedBarber, selectedService])
+  }, [selectedDate, selectedBarber, selectedService, slotsRetry])
 
   const stepDone: Record<number, boolean> = {
     1: Boolean(selectedService),
@@ -734,7 +774,8 @@ export default function BookingForm() {
   ) : null
 
 
-  const hasAvailableSlot = slots.some((s) => s.available)
+  const availableSlots = slots.filter((slot) => slot.available)
+  const hasAvailableSlot = availableSlots.length > 0
 
   return (
     <div
@@ -886,16 +927,16 @@ export default function BookingForm() {
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <h2 className={stepHeaderClass}>Διάλεξε barber</h2>
+                <h2 className={stepHeaderClass}>Διάλεξε κουρέα</h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {loadingBarbers ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <AvatarSkeleton key={i} />
                   ))
                 ) : barbersError ? (
-                  <div className="col-span-2 sm:col-span-3">
+                  <div className="col-span-full">
                     <ErrorState onRetry={loadBarbers} />
                   </div>
                 ) : (
@@ -912,17 +953,18 @@ export default function BookingForm() {
                         key={barber.id}
                         type="button"
                         onClick={() => setSelectedBarber(barber)}
-                        className={`group rounded-2xl border bg-white p-3 text-left transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md ${
+                        aria-pressed={isSelected}
+                        className={`group relative flex items-center gap-4 rounded-2xl border bg-white p-3 text-left transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md sm:block ${
                           isSelected
                             ? 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
-                            : 'border-[var(--brand)] hover:bg-neutral-50'
+                            : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-neutral-50'
                         }`}
                       >
-                        <div className="relative mx-auto aspect-[4/5] w-full max-w-52 overflow-hidden rounded-2xl border border-[var(--page-border)] bg-neutral-100 transition-all duration-300 ease-in-out group-hover:border-[var(--brand)]">
+                        <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100 sm:mx-auto sm:aspect-[4/5] sm:h-auto sm:w-full sm:max-w-52 sm:rounded-2xl">
                           {isAny ? (
                             <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-neutral-50 px-3 text-center text-neutral-500">
-                              <UsersIcon className="h-12 w-12 text-[var(--brand)]" />
-                              <span className="text-xs leading-5">Πρώτη διαθέσιμη ώρα με όποιον είναι ελεύθερος</span>
+                              <UsersIcon className="h-8 w-8 shrink-0 text-[var(--brand)] sm:h-12 sm:w-12" />
+                              <span className="hidden text-xs leading-5 sm:block">Με όποιον είναι διαθέσιμος</span>
                             </div>
                           ) : showImage && barberImageSrc ? (
                             <Image
@@ -930,14 +972,14 @@ export default function BookingForm() {
                               alt={barber.name}
                               fill
                               unoptimized
-                              sizes="(max-width: 640px) 46vw, 208px"
+                              sizes="(max-width: 639px) 80px, 208px"
                               onError={() =>
                                 setFailedBarberImages((current) => ({
                                   ...current,
                                   [barber.id]: true,
                                 }))
                               }
-                              className="object-contain object-center transition-transform duration-500 ease-in-out group-hover:scale-105"
+                              className="object-cover object-top transition-transform duration-500 ease-in-out group-hover:scale-105"
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-4xl font-semibold text-neutral-400">
@@ -945,22 +987,20 @@ export default function BookingForm() {
                             </div>
                           )}
                           <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/5" />
-                          {isSelected && (
-                            <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-lg">
-                              <CheckIcon className="h-4 w-4" />
-                            </span>
-                          )}
                         </div>
-                        <div className="px-1 pb-1 pt-3">
-                          <span className="block truncate text-sm font-bold text-neutral-900 sm:text-base">
+                        <div className="min-w-0 flex-1 pr-8 sm:px-1 sm:pb-1 sm:pt-3">
+                          <span className="block break-words text-base font-bold text-neutral-900">
                             {barber.name}
                           </span>
-                          {barber.bio && (
+                          {(barber.bio || isAny) && (
                             <span className="mt-1 line-clamp-2 block text-xs leading-5 text-neutral-500">
-                              {barber.bio}
+                              {isAny ? 'Χωρίς προτίμηση' : barber.bio}
                             </span>
                           )}
                         </div>
+                        <span aria-hidden className={`absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border sm:top-5 sm:translate-y-0 ${isSelected ? 'border-[var(--brand)] bg-[var(--brand)] text-white' : 'border-neutral-300 bg-white'}`}>
+                          {isSelected && <CheckIcon className="h-3.5 w-3.5" />}
+                        </span>
                       </button>
                     )
                   })
@@ -974,7 +1014,7 @@ export default function BookingForm() {
               <div>
                 <h2 className={stepHeaderClass}>Ημέρα και ώρα</h2>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  Βρες το διαθέσιμο slot που ταιριάζει στο πρόγραμμά σου.
+                  Διάλεξε την ημέρα και την ώρα που σε βολεύει.
                 </p>
               </div>
 
@@ -1087,25 +1127,47 @@ export default function BookingForm() {
                       ))}
                     </div>
                   ) : slotsError ? (
-                    <ErrorState onRetry={() => setSelectedDate(selectedDate)} />
+                    <ErrorState onRetry={() => setSlotsRetry((value) => value + 1)} />
                   ) : !hasAvailableSlot ? (
-                    <div className="rounded-2xl border border-dashed border-[var(--page-border)] bg-neutral-50 p-8 text-center text-sm text-neutral-500">
-                      Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημέρα.
+                    <div aria-live="polite" className="rounded-2xl border border-dashed border-[var(--page-border)] bg-neutral-50 p-6 text-center text-sm text-neutral-500">
+                      <p>Δεν υπάρχει ελεύθερη ώρα αυτή την ημέρα.</p>
+                      {searchingNextDate ? (
+                        <p className="mt-3">Ψάχνουμε την επόμενη διαθέσιμη ημέρα…</p>
+                      ) : nextAvailableDate ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTime(null)
+                            setSelectedDate(nextAvailableDate)
+                            setCalendarMonth(startOfMonth(new Date(`${nextAvailableDate}T00:00:00`)))
+                          }}
+                          className="mt-4 min-h-11 w-full rounded-xl bg-[var(--brand)] px-4 py-3 font-semibold text-white"
+                        >
+                          Δες ώρες για {formatDateLong(nextAvailableDate)}
+                        </button>
+                      ) : nextDateError ? (
+                        <div className="mt-3">
+                          <p>Δεν μπορέσαμε να ελέγξουμε τις επόμενες ημέρες.</p>
+                          <button type="button" onClick={() => setSlotsRetry((value) => value + 1)} className="mt-2 min-h-11 font-semibold text-[var(--brand)] underline">
+                            Δοκίμασε ξανά
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="mt-3">Δεν βρέθηκε άλλη διαθέσιμη ημέρα έως {formatDateLong(toDateKey(maxBookingDate))}. Δοκίμασε άλλον κουρέα ή άλλη υπηρεσία.</p>
+                      )}
                     </div>
                   ) : (
                     <div className="grid grid-cols-3 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
-                      {slots.map((slot) => {
+                      {availableSlots.map((slot) => {
                         const isSelected = selectedTime === slot.time
                         return (
                           <button
                             key={slot.time}
                             type="button"
-                            disabled={!slot.available}
+                            aria-pressed={isSelected}
                             onClick={() => setSelectedTime(slot.time)}
                             className={`h-12 rounded-xl border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
-                              !slot.available
-                                ? 'cursor-not-allowed border-neutral-100 bg-neutral-50 text-neutral-300 line-through'
-                                : isSelected
+                              isSelected
                                   ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
                                   : 'border-[var(--page-border)] bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
                             }`}
@@ -1124,17 +1186,16 @@ export default function BookingForm() {
           {step === 4 && (
             <div className="mx-auto max-w-2xl space-y-5">
               <div>
-                <h2 className={stepHeaderClass}>Στοιχεία Πελάτη</h2>
+                <h2 className={stepHeaderClass}>Τα στοιχεία σου</h2>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  Συμπλήρωσε τα στοιχεία επικοινωνίας για την τελική
-                  επιβεβαίωση.
+                  Συμπλήρωσε τα στοιχεία σου για να κλείσεις το ραντεβού.
                 </p>
               </div>
 
               <div className="space-y-4 rounded-2xl border border-[var(--page-border)] bg-white p-5 shadow-sm">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                    Όνοματεπώνυμο
+                    Ονοματεπώνυμο
                   </span>
                   <span className="relative mt-2 block">
                     <UserIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />

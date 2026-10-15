@@ -109,7 +109,7 @@ export function WeekSchedule({
         </div>
       )}
 
-      <div className="max-h-[calc(100vh-250px)] min-h-[420px] overflow-auto">
+      <div className="min-h-[420px] overflow-x-auto">
         <div className="grid min-w-[760px]" style={{ gridTemplateColumns: '48px repeat(7, minmax(0, 1fr))' }}>
           <div className="sticky top-0 z-20 border-b border-[var(--admin-border)] bg-white" />
           {days.map((day) => {

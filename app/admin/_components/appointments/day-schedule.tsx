@@ -116,7 +116,6 @@ export function DaySchedule({
   onBookingClick: (booking: Booking) => void
   onBookingDrop?: (booking: Booking, barber: Barber, time: string) => void
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   // The click that ends a drag must not open the booking.
   const suppressClickRef = useRef(false)
@@ -171,14 +170,6 @@ export function DaySchedule({
 
   const height = (rangeEnd - rangeStart) * PX_PER_MINUTE
   const showNowLine = isToday && nowMinutes >= rangeStart && nowMinutes <= rangeEnd
-
-  // Bring the current time (or the opening hour) into view on each new day.
-  useEffect(() => {
-    const target = isToday ? nowMinutes - 60 : firstMinute
-    scrollRef.current?.scrollTo({ top: Math.max(0, (target - rangeStart) * PX_PER_MINUTE) })
-    // Only on day change; ignore minute ticks.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateKey])
 
   function dropTarget(clientX: number, clientY: number, grabOffset: number) {
     const column = document
@@ -251,7 +242,7 @@ export function DaySchedule({
         </div>
       )}
 
-      <div ref={scrollRef} className="max-h-[calc(100vh-250px)] min-h-[420px] overflow-auto">
+      <div className="min-h-[420px] overflow-x-auto">
         <div
           className="grid"
           style={{
