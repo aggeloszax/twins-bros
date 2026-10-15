@@ -63,6 +63,14 @@ const ANY_BARBER_CHOICE: Barber = {
   schedule: null,
 }
 
+// Frame the existing photos around the barber, rather than the ceiling.
+// Newly uploaded photos keep their natural framing.
+const BARBER_PORTRAIT_FRAMING: Record<string, { transform: string; transformOrigin: string }> = {
+  '/barbers/donaldo.webp': { transform: 'scale(1.6)', transformOrigin: '40% 85%' },
+  '/barbers/kleidi.png': { transform: 'scale(1.6)', transformOrigin: '48% 85%' },
+  '/barbers/redi.jpg': { transform: 'scale(1.45)', transformOrigin: '40% 75%' },
+}
+
 const GR_DAYS = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ']
 const GR_WEEKDAYS_MON_FIRST = ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ']
 const GR_MONTHS = [
@@ -329,9 +337,9 @@ function CardSkeleton() {
 
 function AvatarSkeleton() {
   return (
-    <div className="flex animate-pulse items-center gap-4 rounded-2xl border border-[var(--page-border)] bg-white p-3 sm:block">
-      <div className="h-24 w-20 shrink-0 rounded-xl bg-neutral-200 sm:aspect-[4/5] sm:h-auto sm:w-full" />
-      <div className="h-3 w-1/2 rounded bg-neutral-200 sm:mx-auto sm:mt-4 sm:w-2/3" />
+    <div className="animate-pulse overflow-hidden rounded-2xl border border-[var(--page-border)] bg-white">
+      <div className="aspect-[3/4] bg-neutral-200" />
+      <div className="mx-auto my-5 h-4 w-1/2 rounded bg-neutral-200" />
     </div>
   )
 }
@@ -782,7 +790,7 @@ export default function BookingForm() {
       className="min-h-screen bg-[var(--page-bg)] font-sans text-neutral-900"
       style={brandStyle}
     >
-      <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col lg:max-w-6xl px-4 pb-36 pt-5 sm:px-6 sm:pb-40 sm:pt-8">
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-36 pt-5 sm:px-8 sm:pb-40 sm:pt-8">
         <header className="relative text-center">
           <SocialLinks className="absolute left-0 top-0" />
           <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-[var(--page-border)] bg-white shadow-sm">
@@ -810,7 +818,7 @@ export default function BookingForm() {
           <div className="mt-8 flex flex-1 justify-center">{successCard}</div>
         ) : (
         <>
-        <div className="mt-7 rounded-3xl border border-[var(--page-border)] bg-white p-3 shadow-sm sm:p-4">
+        <div className="mx-auto mt-8 w-full max-w-2xl px-2 sm:mt-10">
           <Stepper
             step={step}
             done={stepDone}
@@ -824,7 +832,7 @@ export default function BookingForm() {
           className="animate-fade-in mt-8 flex-1 transition-all duration-300 ease-in-out"
         >
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
                 <h2 className={stepHeaderClass}>Επίλεξε υπηρεσία</h2>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
@@ -843,9 +851,9 @@ export default function BookingForm() {
                   <ErrorState onRetry={loadServices} />
                 ) : (
                   groupByCategory(services).map(([category, items]) => (
-                  <div key={category || 'none'} className="grid gap-3 lg:grid-cols-2 lg:items-start lg:gap-4">
+                  <div key={category || 'none'} className="grid grid-cols-2 items-stretch gap-3 sm:gap-4">
                     {category && (
-                      <h3 className="pt-2 text-sm font-bold text-neutral-900 lg:col-span-2">{category}</h3>
+                      <h3 className="col-span-2 pb-1 pt-4 text-center text-sm font-semibold text-neutral-600">{category}</h3>
                     )}
                   {items.map((service) => {
                     const isSelected = selectedService?.id === service.id
@@ -853,36 +861,37 @@ export default function BookingForm() {
                     return (
                       <div
                         key={service.id}
-                        className={`group rounded-2xl border shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md ${
+                        className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 ${
                           isSelected
-                            ? 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
-                            : 'border-[var(--brand)] bg-white hover:bg-neutral-50'
+                            ? 'border-[var(--brand)] bg-gradient-to-b from-[#f4e5e7] to-white shadow-[0_8px_24px_-16px_rgba(128,0,32,0.4)]'
+                            : 'border-[var(--page-border)] bg-gradient-to-b from-white to-[#fbf9f5] hover:border-[var(--brand)]/40 hover:shadow-sm'
                         }`}
                       >
                       <button
                         type="button"
                         onClick={() => handleSelectService(service)}
                         aria-pressed={isSelected}
-                        className="flex w-full items-center justify-between gap-4 p-5 text-left"
+                        className="flex min-h-44 w-full flex-1 flex-col items-center justify-between gap-4 px-3 py-5 text-center sm:min-h-52 sm:px-6 sm:py-7"
                       >
-                        <div className="min-w-0">
-                          <h3 className="truncate text-base font-bold text-neutral-900 sm:text-lg">
+                        <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-2">
+                          <h3 className="text-sm font-bold leading-snug text-neutral-900 sm:text-xl">
                             {service.name}
                           </h3>
-                          <div className="mt-2 flex items-center gap-2 text-sm text-neutral-500">
+                          <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-neutral-500 sm:text-sm">
                             <ClockIcon className="h-4 w-4 text-[var(--brand)]" />
                             <span>{service.duration} λεπτά</span>
                           </div>
                         </div>
-                        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                          <span className="text-lg font-bold tabular-nums text-neutral-900">
+                        <div className="flex shrink-0 items-center justify-center">
+                          <span className="inline-flex min-w-20 items-center justify-center rounded-full border border-[var(--brand)]/20 bg-[var(--brand)]/5 px-5 py-1.5 text-sm font-bold tabular-nums text-[var(--brand)] sm:text-base">
                             {formatPrice(service.price)}
                           </span>
                           <span
-                            className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-300 ease-in-out ${
+                            aria-hidden
+                            className={`absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full transition-all duration-200 ${
                               isSelected
                                 ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
-                                : 'border-neutral-300 text-transparent group-hover:border-[var(--brand)]'
+                                : 'text-transparent'
                             }`}
                           >
                             <CheckIcon className="h-4 w-4" />
@@ -890,7 +899,7 @@ export default function BookingForm() {
                         </div>
                       </button>
                       {service.description && (
-                        <div className="-mt-3 px-5 pb-4">
+                        <div className="px-3 pb-4 text-center sm:px-5">
                           <button
                             type="button"
                             onClick={() => toggleDescription(service.id)}
@@ -930,7 +939,7 @@ export default function BookingForm() {
                 <h2 className={stepHeaderClass}>Διάλεξε κουρέα</h2>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5">
                 {loadingBarbers ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <AvatarSkeleton key={i} />
@@ -940,9 +949,8 @@ export default function BookingForm() {
                     <ErrorState onRetry={loadBarbers} />
                   </div>
                 ) : (
-                  [...(barbers.length > 1 ? [ANY_BARBER_CHOICE] : []), ...barbers].map((barber) => {
+                  barbers.map((barber) => {
                     const isSelected = selectedBarber?.id === barber.id
-                    const isAny = barber.id === ANY_BARBER
                     const showImage =
                       Boolean(barber.image) && !failedBarberImages[barber.id]
                     const barberImageSrc = barber.image
@@ -954,58 +962,66 @@ export default function BookingForm() {
                         type="button"
                         onClick={() => setSelectedBarber(barber)}
                         aria-pressed={isSelected}
-                        className={`group relative flex items-center gap-4 rounded-2xl border bg-white p-3 text-left transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md sm:block ${
+                        className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-white text-center transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${
                           isSelected
-                            ? 'border-[var(--brand)] bg-[var(--brand)]/[0.06] ring-1 ring-[var(--brand)]'
+                            ? 'border-[var(--brand)] ring-1 ring-[var(--brand)]'
                             : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-neutral-50'
                         }`}
                       >
-                        <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100 sm:mx-auto sm:aspect-[4/5] sm:h-auto sm:w-full sm:max-w-52 sm:rounded-2xl">
-                          {isAny ? (
-                            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-neutral-50 px-3 text-center text-neutral-500">
-                              <UsersIcon className="h-8 w-8 shrink-0 text-[var(--brand)] sm:h-12 sm:w-12" />
-                              <span className="hidden text-xs leading-5 sm:block">Με όποιον είναι διαθέσιμος</span>
-                            </div>
-                          ) : showImage && barberImageSrc ? (
+                        <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-100">
+                          {showImage && barberImageSrc ? (
                             <Image
                               src={barberImageSrc}
                               alt={barber.name}
                               fill
                               unoptimized
-                              sizes="(max-width: 639px) 80px, 208px"
+                              sizes="(max-width: 639px) 45vw, 240px"
                               onError={() =>
                                 setFailedBarberImages((current) => ({
                                   ...current,
                                   [barber.id]: true,
                                 }))
                               }
-                              className="object-cover object-top transition-transform duration-500 ease-in-out group-hover:scale-105"
+                              className="object-cover object-center"
+                              style={barber.image ? BARBER_PORTRAIT_FRAMING[barber.image.split('?')[0]] : undefined}
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-4xl font-semibold text-neutral-400">
                               {barber.name.charAt(0)}
                             </div>
                           )}
-                          <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/5" />
                         </div>
-                        <div className="min-w-0 flex-1 pr-8 sm:px-1 sm:pb-1 sm:pt-3">
-                          <span className="block break-words text-base font-bold text-neutral-900">
+                        <div className="w-full flex-1 px-3 py-4 sm:px-4">
+                          <span className="flex items-center justify-center gap-2 break-words text-base font-semibold text-neutral-900 sm:text-lg">
                             {barber.name}
+                            {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-[var(--brand)]" />}
                           </span>
-                          {(barber.bio || isAny) && (
+                          {barber.bio && (
                             <span className="mt-1 line-clamp-2 block text-xs leading-5 text-neutral-500">
-                              {isAny ? 'Χωρίς προτίμηση' : barber.bio}
+                              {barber.bio}
                             </span>
                           )}
                         </div>
-                        <span aria-hidden className={`absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border sm:top-5 sm:translate-y-0 ${isSelected ? 'border-[var(--brand)] bg-[var(--brand)] text-white' : 'border-neutral-300 bg-white'}`}>
-                          {isSelected && <CheckIcon className="h-3.5 w-3.5" />}
-                        </span>
                       </button>
                     )
                   })
                 )}
               </div>
+              {!loadingBarbers && !barbersError && barbers.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedBarber(ANY_BARBER_CHOICE)}
+                  aria-pressed={selectedBarber?.id === ANY_BARBER}
+                  className={`mx-auto flex min-h-12 w-full max-w-3xl items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${selectedBarber?.id === ANY_BARBER ? 'border-[var(--brand)] bg-white ring-1 ring-[var(--brand)]' : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-white/60'}`}
+                >
+                  <UsersIcon className="h-6 w-6 shrink-0 text-[var(--brand)]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">Οποιοσδήποτε κουρέας</span>
+                    <span className="mt-0.5 block text-xs text-neutral-500">Χωρίς προτίμηση — δες τις διαθέσιμες ώρες όλης της ομάδας.</span>
+                  </span>
+                  {selectedBarber?.id === ANY_BARBER && <CheckIcon className="h-5 w-5 shrink-0 text-[var(--brand)]" />}
+                </button>
+              )}
             </div>
           )}
 
@@ -1338,7 +1354,7 @@ export default function BookingForm() {
 
       {!successCard && (
       <div className="fixed inset-x-0 bottom-0 border-t border-[var(--page-border)] bg-[var(--page-bg)]/95 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4 lg:max-w-6xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-6">
+        <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-8">
           {step > 1 && (
             <button
               type="button"

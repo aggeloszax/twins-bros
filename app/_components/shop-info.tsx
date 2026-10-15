@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { type WorkingPeriod, WORKING_PERIODS, timeToMinutes, minutesToTime } from '@/lib/schedule'
 import { SHOP } from '@/lib/shop'
 
@@ -51,6 +51,17 @@ function PhoneIcon({ className }: { className?: string }) {
 export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] }) {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [today, setToday] = useState<number | null>(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
+  const photoDialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    if (!selectedPhoto) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [selectedPhoto])
 
   useEffect(() => {
     queueMicrotask(() => setToday(new Date().getDay()))
@@ -64,26 +75,75 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
   const mapQuery = encodeURIComponent(`${SHOP.address}, Ελλάδα`)
 
   return (
+    <>
+      {photos.length > 0 && (
+        <section aria-labelledby="shop-work-title" className="mt-14 border-t border-[var(--page-border)] pt-8">
+          <h2 id="shop-work-title" className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+            Η δουλειά μας
+          </h2>
+          <p className="mt-2 text-sm text-neutral-600">Μια ματιά στη δουλειά μας. Πάτησε μια φωτογραφία για να τη δεις μεγαλύτερη.</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
+            {photos.map((photo, index) => (
+              <button
+                key={photo.id}
+                type="button"
+                onClick={() => {
+                  setSelectedPhoto(photo)
+                  photoDialogRef.current?.showModal()
+                }}
+                aria-label={`Μεγαλύτερη προβολή: ${photo.caption || `κούρεμα ${index + 1}`}`}
+                aria-haspopup="dialog"
+                className="group relative aspect-square overflow-hidden rounded-xl border border-[var(--page-border)] bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)]"
+              >
+                {/* Photos are already resized on upload. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.url}
+                  alt={photo.caption || `Κούρεμα από την ομάδα του ${SHOP.name}, φωτογραφία ${index + 1}`}
+                  loading="lazy"
+                  width={400}
+                  height={400}
+                  className="h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]"
+                />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <dialog
+        ref={photoDialogRef}
+        aria-labelledby="shop-photo-title"
+        onClose={() => setSelectedPhoto(null)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) photoDialogRef.current?.close()
+        }}
+        className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-[432px] overflow-y-auto rounded-2xl border border-[var(--page-border)] bg-white p-4 text-neutral-900 shadow-2xl backdrop:bg-black/70"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 id="shop-photo-title" className="text-sm font-semibold">Η δουλειά μας · {SHOP.name}</h2>
+          <button
+            type="button"
+            onClick={() => photoDialogRef.current?.close()}
+            aria-label="Κλείσιμο φωτογραφίας"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xl hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+          >
+            <span aria-hidden>×</span>
+          </button>
+        </div>
+        {selectedPhoto && (
+          <figure>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={selectedPhoto.url} alt={selectedPhoto.caption || `Κούρεμα από την ομάδα του ${SHOP.name}`} width={400} height={400} className="mx-auto h-auto max-h-[65dvh] w-full rounded-xl object-contain" />
+            {selectedPhoto.caption && <figcaption className="mt-3 text-center text-sm text-neutral-600">{selectedPhoto.caption}</figcaption>}
+          </figure>
+        )}
+      </dialog>
+
     <section aria-labelledby="shop-info-title" className="mt-14">
       <h2 id="shop-info-title" className="text-xs font-bold uppercase tracking-wider text-neutral-500">
         Το μαγαζί
       </h2>
-
-      {photos.length > 0 && (
-        <div className="-mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-          {photos.map((photo) => (
-            // Plain img: photos are already sized on upload and cached forever.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={photo.id}
-              src={photo.url}
-              alt={photo.caption ?? `${SHOP.name}`}
-              loading="lazy"
-              className="h-56 w-auto max-w-[85%] shrink-0 snap-start rounded-2xl border border-[var(--page-border)] object-cover sm:h-64"
-            />
-          ))}
-        </div>
-      )}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-[var(--page-border)] bg-white shadow-sm">
@@ -136,5 +196,6 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
             </a>
           </div>
     </section>
+    </>
   )
 }
