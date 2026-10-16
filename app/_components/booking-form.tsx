@@ -92,9 +92,6 @@ const STEP_LABELS = ['Υπηρεσία', 'Κουρέας', 'Ημέρα & ώρα'
 // Light-mode input: white field, charcoal text, burgundy focus ring.
 const inputClass =
   'w-full rounded-2xl border border-[var(--page-border)] bg-white py-3.5 pl-12 pr-4 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]'
-// Reusable eyebrow for step/section headers: small, uppercase, sharp gray.
-const stepHeaderClass =
-  'text-xs font-bold uppercase tracking-wider text-neutral-500'
 
 const formatPrice = (price: number) =>
   `${Number.isInteger(price) ? price : price.toFixed(2)}€`
@@ -832,14 +829,7 @@ export default function BookingForm() {
           className="animate-fade-in mt-8 flex-1 transition-all duration-300 ease-in-out"
         >
           {step === 1 && (
-            <div className="space-y-5">
-              <div>
-                <h2 className={stepHeaderClass}>Επίλεξε υπηρεσία</h2>
-                <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  {SHOP.bookingSubtitle}
-                </p>
-              </div>
-
+            <div className="mx-auto max-w-2xl">
               <div
                 className="space-y-3"
               >
@@ -871,10 +861,10 @@ export default function BookingForm() {
                         type="button"
                         onClick={() => handleSelectService(service)}
                         aria-pressed={isSelected}
-                        className="flex min-h-44 w-full flex-1 flex-col items-center justify-between gap-4 px-3 py-5 text-center sm:min-h-52 sm:px-6 sm:py-7"
+                        className="flex min-h-32 w-full flex-1 flex-col items-center justify-between gap-3 px-3 py-4 text-center sm:min-h-40 sm:px-5 sm:py-5"
                       >
                         <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-2">
-                          <h3 className="text-sm font-bold leading-snug text-neutral-900 sm:text-xl">
+                          <h3 className="text-sm font-bold leading-snug text-neutral-900 sm:text-base">
                             {service.name}
                           </h3>
                           <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-neutral-500 sm:text-sm">
@@ -883,7 +873,7 @@ export default function BookingForm() {
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center justify-center">
-                          <span className="inline-flex min-w-20 items-center justify-center rounded-full border border-[var(--brand)]/20 bg-[var(--brand)]/5 px-5 py-1.5 text-sm font-bold tabular-nums text-[var(--brand)] sm:text-base">
+                          <span className="inline-flex min-w-16 items-center justify-center rounded-full border border-[var(--brand)]/20 bg-[var(--brand)]/5 px-4 py-1 text-sm font-bold tabular-nums text-[var(--brand)]">
                             {formatPrice(service.price)}
                           </span>
                           <span
@@ -935,11 +925,7 @@ export default function BookingForm() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <div>
-                <h2 className={stepHeaderClass}>Διάλεξε κουρέα</h2>
-              </div>
-
-              <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5">
+              <div className="mx-auto grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                 {loadingBarbers ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <AvatarSkeleton key={i} />
@@ -991,8 +977,8 @@ export default function BookingForm() {
                             </div>
                           )}
                         </div>
-                        <div className="w-full flex-1 px-3 py-4 sm:px-4">
-                          <span className="flex items-center justify-center gap-2 break-words text-base font-semibold text-neutral-900 sm:text-lg">
+                        <div className="w-full flex-1 px-3 py-3">
+                          <span className="flex items-center justify-center gap-2 break-words text-sm font-semibold text-neutral-900 sm:text-base">
                             {barber.name}
                             {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-[var(--brand)]" />}
                           </span>
@@ -1012,7 +998,7 @@ export default function BookingForm() {
                   type="button"
                   onClick={() => setSelectedBarber(ANY_BARBER_CHOICE)}
                   aria-pressed={selectedBarber?.id === ANY_BARBER}
-                  className={`mx-auto flex min-h-12 w-full max-w-3xl items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${selectedBarber?.id === ANY_BARBER ? 'border-[var(--brand)] bg-white ring-1 ring-[var(--brand)]' : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-white/60'}`}
+                  className={`mx-auto flex min-h-12 w-full max-w-xl items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${selectedBarber?.id === ANY_BARBER ? 'border-[var(--brand)] bg-white ring-1 ring-[var(--brand)]' : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-white/60'}`}
                 >
                   <UsersIcon className="h-6 w-6 shrink-0 text-[var(--brand)]" />
                   <span className="min-w-0 flex-1">
@@ -1026,14 +1012,7 @@ export default function BookingForm() {
           )}
 
           {step === 3 && (
-            <div className="space-y-7">
-              <div>
-                <h2 className={stepHeaderClass}>Ημέρα και ώρα</h2>
-                <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  Διάλεξε την ημέρα και την ώρα που σε βολεύει.
-                </p>
-              </div>
-
+            <div className="mx-auto max-w-3xl">
               <div className="grid gap-5 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)] md:items-start">
                 <section className="rounded-2xl border border-[var(--page-border)] bg-white p-4 shadow-sm sm:p-5">
                   <div className="mb-5 flex items-center justify-between gap-3">
@@ -1104,7 +1083,7 @@ export default function BookingForm() {
                             setSelectedDate(key)
                             setSelectedTime(null)
                           }}
-                          className={`relative flex aspect-square min-h-11 items-center justify-center rounded-xl border text-sm font-semibold transition-all duration-200 ease-in-out sm:min-h-14 ${
+                          className={`relative flex aspect-square min-h-9 items-center justify-center rounded-lg border text-sm font-semibold transition-all duration-200 ease-in-out ${
                             isSelected
                               ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
                               : isDisabled
@@ -1200,14 +1179,7 @@ export default function BookingForm() {
           )}
 
           {step === 4 && (
-            <div className="mx-auto max-w-2xl space-y-5">
-              <div>
-                <h2 className={stepHeaderClass}>Τα στοιχεία σου</h2>
-                <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  Συμπλήρωσε τα στοιχεία σου για να κλείσεις το ραντεβού.
-                </p>
-              </div>
-
+            <div className="mx-auto max-w-md space-y-5">
               <div className="space-y-4 rounded-2xl border border-[var(--page-border)] bg-white p-5 shadow-sm">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
@@ -1281,7 +1253,7 @@ export default function BookingForm() {
                 </label>
               </div>
 
-              <p className="text-xs leading-5 text-neutral-500">
+              <p className="text-center text-xs leading-5 text-neutral-500">
                 Με την καταχώριση του ραντεβού αποδέχεσαι τους{' '}
                 <Link
                   href="/booking-terms"
