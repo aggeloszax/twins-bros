@@ -176,20 +176,6 @@ function ClockIcon({ className }: { className?: string }) {
   )
 }
 
-function ArrowIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <path
-        d="M5 12h14m-6-7 7 7-7 7"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.2"
-      />
-    </svg>
-  )
-}
-
 function UsersIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
@@ -590,26 +576,16 @@ export default function BookingForm() {
 
   const normalizedCustomerPhone = normalizeGreekMobilePhone(customerPhone)
 
-  const canProceed =
-    step === 1
-      ? Boolean(selectedService)
-      : step === 2
-        ? Boolean(selectedService && selectedBarber)
-        : step === 3
-          ? Boolean(selectedDate && selectedTime)
-          : Boolean(
-              customerName.trim() &&
-                normalizedCustomerPhone &&
-                isValidCustomerEmail(customerEmail),
-            ) &&
-            !submittingBooking
+  const canSubmit =
+    Boolean(
+      customerName.trim() &&
+        normalizedCustomerPhone &&
+        isValidCustomerEmail(customerEmail),
+    ) && !submittingBooking
 
-  async function handleNext() {
-    if (step === 1 && selectedService) setStep(2)
-    else if (step === 2 && selectedService && selectedBarber) setStep(3)
-    else if (step === 3 && selectedDate && selectedTime) setStep(4)
-    else if (
-      step === 4 &&
+  // Steps 1-3 advance as soon as a choice is made; only step 4 submits.
+  async function handleSubmit() {
+    if (
       selectedService &&
       selectedBarber &&
       selectedDate &&
@@ -676,6 +652,7 @@ export default function BookingForm() {
 
   function handleSelectService(service: Service) {
     setSelectedService(service)
+    setStep(2)
   }
 
   const successCard = (confirmed &&
@@ -787,7 +764,7 @@ export default function BookingForm() {
       className="min-h-screen bg-[var(--page-bg)] font-sans text-neutral-900"
       style={brandStyle}
     >
-      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-36 pt-5 sm:px-8 sm:pb-40 sm:pt-8">
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-10 pt-5 sm:px-8 sm:pt-8">
         <header className="relative text-center">
           <SocialLinks className="absolute left-0 top-0" />
           <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-[var(--page-border)] bg-white shadow-sm">
@@ -815,7 +792,19 @@ export default function BookingForm() {
           <div className="mt-8 flex flex-1 justify-center">{successCard}</div>
         ) : (
         <>
-        <div className="mx-auto mt-8 w-full max-w-2xl px-2 sm:mt-10">
+        <div className="relative mx-auto mt-8 w-full max-w-2xl px-2 sm:mt-10">
+          {step > 1 && (
+            <button
+              type="button"
+              onClick={() => setStep((current) => (current - 1) as BookingStep)}
+              aria-label="Πίσω"
+              className="absolute -left-2 -top-7 flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-white hover:text-[var(--brand)] sm:-left-8 sm:top-0.5"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+                <path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
           <Stepper
             step={step}
             done={stepDone}
@@ -946,7 +935,10 @@ export default function BookingForm() {
                       <button
                         key={barber.id}
                         type="button"
-                        onClick={() => setSelectedBarber(barber)}
+                        onClick={() => {
+                          setSelectedBarber(barber)
+                          setStep(3)
+                        }}
                         aria-pressed={isSelected}
                         className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-white text-center transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${
                           isSelected
@@ -996,7 +988,10 @@ export default function BookingForm() {
               {!loadingBarbers && !barbersError && barbers.length > 1 && (
                 <button
                   type="button"
-                  onClick={() => setSelectedBarber(ANY_BARBER_CHOICE)}
+                  onClick={() => {
+                    setSelectedBarber(ANY_BARBER_CHOICE)
+                    setStep(3)
+                  }}
                   aria-pressed={selectedBarber?.id === ANY_BARBER}
                   className={`mx-auto flex min-h-12 w-full max-w-xl items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${selectedBarber?.id === ANY_BARBER ? 'border-[var(--brand)] bg-white ring-1 ring-[var(--brand)]' : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-white/60'}`}
                 >
@@ -1160,7 +1155,10 @@ export default function BookingForm() {
                             key={slot.time}
                             type="button"
                             aria-pressed={isSelected}
-                            onClick={() => setSelectedTime(slot.time)}
+                            onClick={() => {
+                              setSelectedTime(slot.time)
+                              setStep(4)
+                            }}
                             className={`h-12 rounded-xl border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
                               isSelected
                                   ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
@@ -1290,6 +1288,20 @@ export default function BookingForm() {
                   )}
                 </div>
               )}
+
+              <button
+                type="button"
+                disabled={!canSubmit}
+                onClick={handleSubmit}
+                className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 ease-in-out ${
+                  canSubmit
+                    ? 'bg-[var(--brand)] text-white shadow-sm active:scale-95'
+                    : 'cursor-not-allowed bg-neutral-200 text-neutral-400'
+                }`}
+              >
+                {submittingBooking ? 'Καταχώρηση...' : 'Επιβεβαίωση Ραντεβού'}
+                <CheckIcon className="h-4 w-4" />
+              </button>
             </div>
           )}
         </section>
@@ -1323,68 +1335,6 @@ export default function BookingForm() {
           </nav>
         </footer>
       </main>
-
-      {!successCard && (
-      <div className="fixed inset-x-0 bottom-0 border-t border-[var(--page-border)] bg-[var(--page-bg)]/95 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:gap-4 sm:px-8">
-          {step > 1 && (
-            <button
-              type="button"
-              onClick={() =>
-                setStep((current) => (current - 1) as BookingStep)
-              }
-              aria-label="Πίσω"
-              className="flex min-h-12 shrink-0 items-center gap-2 rounded-md border border-[var(--page-border)] bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition-all duration-300 ease-in-out hover:border-[var(--brand)] hover:bg-neutral-50 active:scale-95 sm:px-5"
-            >
-              <ArrowIcon className="h-4 w-4 rotate-180" />
-              <span className="hidden sm:inline">Πίσω</span>
-            </button>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold text-neutral-900">
-              {selectedService
-                ? `${selectedService.name} • ${formatPrice(
-                    selectedService.price,
-                  )}`
-                : 'Επίλεξε υπηρεσία'}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-neutral-500">
-              {step === 4 && customerName.trim()
-                ? customerName.trim()
-                : selectedBarber
-                  ? selectedBarber.name
-                  : 'Επίλεξε barber'}
-              {selectedDate && selectedTime
-                ? ` · ${formatDateLong(selectedDate)} ${selectedTime}`
-                : ''}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={!canProceed}
-            onClick={handleNext}
-            className={`flex min-h-12 shrink-0 items-center gap-2 rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 ease-in-out sm:px-6 ${
-              canProceed
-                ? 'bg-[var(--brand)] text-white shadow-sm hover:bg-[var(--brand)] active:scale-95'
-                : 'cursor-not-allowed bg-neutral-100 text-neutral-400'
-            }`}
-          >
-            <span className="max-w-[9.5rem] truncate sm:max-w-none">
-              {step === 4
-                ? submittingBooking
-                  ? 'Καταχώρηση...'
-                  : 'Επιβεβαίωση Ραντεβού'
-                : 'Επόμενο'}
-            </span>
-            {step === 4 ? (
-              <CheckIcon className="h-4 w-4" />
-            ) : (
-              <ArrowIcon className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-      </div>
-      )}
     </div>
   )
 }
