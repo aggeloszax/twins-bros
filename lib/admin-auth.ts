@@ -6,6 +6,9 @@ import { prisma } from '@/lib/prisma'
 import { verifyPassword } from '@/lib/admin-password'
 
 export const ADMIN_SESSION_COOKIE = 'twins_admin_session'
+// The Google account the admin signed in with, only to show "Συνδεδεμένος ως".
+// Access is decided by the session cookie alone.
+export const ADMIN_EMAIL_COOKIE = 'twins_admin_email'
 export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days, in seconds
 export const ADMIN_CREDENTIAL_ID = 'admin'
 

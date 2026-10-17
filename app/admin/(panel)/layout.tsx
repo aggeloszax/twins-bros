@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/admin-auth'
+import { ADMIN_EMAIL_COOKIE, ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/admin-auth'
 import { SHOP } from '@/lib/shop'
 import { AdminShell } from '../_components/admin-shell'
 
@@ -20,5 +20,5 @@ export default async function AdminPanelLayout({ children }: { children: ReactNo
     redirect('/admin/login')
   }
 
-  return <AdminShell>{children}</AdminShell>
+  return <AdminShell signedInAs={store.get(ADMIN_EMAIL_COOKIE)?.value ?? null}>{children}</AdminShell>
 }

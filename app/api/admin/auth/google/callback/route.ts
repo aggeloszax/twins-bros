@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import {
+  ADMIN_EMAIL_COOKIE,
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   computeSessionToken,
@@ -72,6 +73,15 @@ export async function GET(request: Request) {
   response.cookies.set({
     name: ADMIN_SESSION_COOKIE,
     value: await computeSessionToken(secret),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: ADMIN_SESSION_MAX_AGE,
+  })
+  response.cookies.set({
+    name: ADMIN_EMAIL_COOKIE,
+    value: email,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

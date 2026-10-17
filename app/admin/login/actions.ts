@@ -3,6 +3,7 @@
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import {
+  ADMIN_EMAIL_COOKIE,
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   computeSessionToken,
@@ -49,6 +50,8 @@ export async function login(
     path: '/',
     maxAge: ADMIN_SESSION_MAX_AGE,
   })
+  // A password login has no Google account to show.
+  store.delete(ADMIN_EMAIL_COOKIE)
 
   // redirect throws a control-flow signal; nothing after it runs.
   redirect('/admin')
@@ -57,5 +60,6 @@ export async function login(
 export async function logout() {
   const store = await cookies()
   store.delete(ADMIN_SESSION_COOKIE)
+  store.delete(ADMIN_EMAIL_COOKIE)
   redirect('/admin/login')
 }

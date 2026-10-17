@@ -18,7 +18,13 @@ const NAV_ITEMS = [
   { href: '/admin/settings', label: 'Ρυθμίσεις' },
 ]
 
-export function AdminShell({ children }: { children: ReactNode }) {
+export function AdminShell({
+  children,
+  signedInAs,
+}: {
+  children: ReactNode
+  signedInAs: string | null
+}) {
   const pathname = usePathname()
 
   return (
@@ -42,6 +48,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 {SHOP.name}
               </span>
             </Link>
+            {signedInAs && (
+              <p className="mt-1.5 max-w-full truncate text-xs text-[var(--admin-muted)]">
+                Συνδεδεμένος ως <span className="font-medium text-[var(--admin-text)]">{signedInAs}</span>
+              </p>
+            )}
           </div>
 
           <form action={logout} className="absolute right-4 top-5 sm:right-6">
