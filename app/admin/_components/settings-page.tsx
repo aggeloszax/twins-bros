@@ -10,6 +10,7 @@ import { Button, Card, CardHeader, Field, FormError, LockIcon, PageHeader, TextI
 const MIN_PASSWORD_LENGTH = 15
 
 export function SettingsPage() {
+  const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -19,6 +20,7 @@ export function SettingsPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setSaved(false)
+    if (!currentPassword) return setError('Συμπλήρωσε τον τρέχοντα κωδικό.')
     if (password.length < MIN_PASSWORD_LENGTH) {
       return setError(`Ο κωδικός πρέπει να έχει τουλάχιστον ${MIN_PASSWORD_LENGTH} χαρακτήρες.`)
     }
@@ -29,8 +31,9 @@ export function SettingsPage() {
     try {
       await adminFetch('/api/admin/password', {
         method: 'POST',
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ currentPassword, password }),
       })
+      setCurrentPassword('')
       setPassword('')
       setConfirm('')
       setSaved(true)
@@ -77,6 +80,15 @@ export function SettingsPage() {
             description={`Τουλάχιστον ${MIN_PASSWORD_LENGTH} χαρακτήρες. Μετά την αλλαγή, οι άλλες συσκευές αποσυνδέονται.`}
           />
           <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4 p-5">
+            <Field label="Τρέχων κωδικός">
+              <TextInput
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                autoComplete="current-password"
+                maxLength={128}
+              />
+            </Field>
             <Field label="Νέος κωδικός">
               <TextInput
                 type="password"

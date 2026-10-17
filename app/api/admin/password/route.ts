@@ -5,8 +5,10 @@ import {
   ADMIN_SESSION_MAX_AGE,
   computeSessionToken,
   requireAdmin,
+  verifyAdminPassword,
 } from '@/lib/admin-auth'
 import { hashPassword } from '@/lib/admin-password'
+import { getClientIp, rateLimit } from '@/lib/rate-limit'
 
 const MIN_PASSWORD_LENGTH = 15
 const MAX_PASSWORD_LENGTH = 128
@@ -32,9 +34,27 @@ export async function POST(request: Request) {
   if (denied) return denied
 
   const body = (await request.json().catch(() => null)) as
-    | { password?: unknown }
+    | { password?: unknown; currentPassword?: unknown }
     | null
   const password = typeof body?.password === 'string' ? body.password : ''
+  const currentPassword =
+    typeof body?.currentPassword === 'string' ? body.currentPassword : ''
+
+  // A session left open on someone else's phone must not be enough to take
+  // over the account, so the current password is required too.
+  const limited = await rateLimit(`admin-password:${getClientIp(request.headers)}`, {
+    limit: 5,
+    windowMs: 15 * 60_000,
+  })
+  if (!limited.allowed) {
+    return Response.json(
+      { error: 'Πολλές προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.' },
+      { status: 429 },
+    )
+  }
+  if (!(await verifyAdminPassword(currentPassword)).valid) {
+    return Response.json({ error: 'Ο τρέχων κωδικός είναι λάθος.' }, { status: 403 })
+  }
 
   if (
     password.length < MIN_PASSWORD_LENGTH ||
