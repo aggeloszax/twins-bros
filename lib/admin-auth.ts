@@ -37,13 +37,16 @@ async function getStoredPasswordHash(): Promise<string | null> {
   }
 }
 
-async function getExpectedToken(): Promise<string | null> {
-  const storedHash = await getStoredPasswordHash()
-  if (storedHash) return computeSessionToken(storedHash)
+// The secret every session token derives from: the stored password hash, or
+// ADMIN_PASSWORD before one is saved. Changing the password changes it, which
+// signs out every device, however it signed in.
+export async function getSessionTokenSecret(): Promise<string | null> {
+  return (await getStoredPasswordHash()) ?? process.env.ADMIN_PASSWORD ?? null
+}
 
-  const firstRunPassword = process.env.ADMIN_PASSWORD
-  if (!firstRunPassword) return null
-  return computeSessionToken(firstRunPassword)
+async function getExpectedToken(): Promise<string | null> {
+  const secret = await getSessionTokenSecret()
+  return secret ? computeSessionToken(secret) : null
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
