@@ -4,7 +4,9 @@ import { type FormEvent, useMemo, useState } from 'react'
 import {
   type Barber,
   type Booking,
+  type ScheduleException,
   type Service,
+  type TimeOff,
   adminFetch,
   bookingDateKey,
   errorMessage,
@@ -13,7 +15,7 @@ import {
   formatTime,
 } from '../../_lib/admin-data'
 import { Field, FormError, Modal, SelectInput, TextInput } from '../ui'
-import { ADMIN_TIME_OPTIONS, takenTimes } from './time-options'
+import { takenTimes, workingTimeOptions } from './time-options'
 
 type RescheduleResult = Booking & { customerNotification: 'sent' | 'failed' | 'skipped' }
 
@@ -21,6 +23,8 @@ export function RescheduleModal({
   booking,
   barbers,
   services,
+  exceptions,
+  timeOff,
   knownBookings,
   target,
   onClose,
@@ -31,6 +35,8 @@ export function RescheduleModal({
   target?: { barberId: string; date: string; time: string }
   barbers: Barber[]
   services: Service[]
+  exceptions: ScheduleException[]
+  timeOff: TimeOff[]
   knownBookings: Booking[]
   onClose: () => void
   onSaved: (booking: Booking, notification: RescheduleResult['customerNotification']) => void
@@ -54,10 +60,18 @@ export function RescheduleModal({
     date === bookingDateKey(booking) &&
     time === formatTime(booking.startTime)
 
-  // The current time may not be on the quarter-hour grid; keep it selectable.
-  const timeOptions = ADMIN_TIME_OPTIONS.includes(time)
-    ? ADMIN_TIME_OPTIONS
-    : [...ADMIN_TIME_OPTIONS, time].sort()
+  // The barber's hours that day; the current or dropped time stays selectable
+  // even when it falls outside them.
+  const workingOptions = workingTimeOptions(
+    barbers.find((item) => item.id === barberId),
+    date,
+    exceptions,
+    timeOff,
+    duration,
+  )
+  const timeOptions = workingOptions.includes(time)
+    ? workingOptions
+    : [...workingOptions, time].sort()
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()

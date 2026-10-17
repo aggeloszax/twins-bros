@@ -51,8 +51,8 @@ export function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const [monthKey, setMonthKey] = useState(todayKey)
   const [view, setView] = useState<View>('schedule')
-  const [showCancelled, setShowCancelled] = useState(false)
   const [hiddenBarbers, setHiddenBarbers] = useState<Set<string>>(new Set())
+  const [fullscreen, setFullscreen] = useState(false)
 
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -89,6 +89,33 @@ export function AppointmentsPage() {
     })
     window.history.replaceState(null, '', '/admin')
   }, [])
+
+  // Leaving browser fullscreen (Esc) also leaves the full-screen schedule.
+  useEffect(() => {
+    if (!fullscreen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function handleChange() {
+      if (!document.fullscreenElement) setFullscreen(false)
+    }
+    document.addEventListener('fullscreenchange', handleChange)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('fullscreenchange', handleChange)
+    }
+  }, [fullscreen])
+
+  // The schedule always fills the window; real browser fullscreen is a bonus
+  // where supported (not on iPhone).
+  function toggleFullscreen() {
+    if (fullscreen) {
+      setFullscreen(false)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    } else {
+      setFullscreen(true)
+      void document.documentElement.requestFullscreen?.().catch(() => {})
+    }
+  }
 
   const grid = useMemo(() => buildMonthGrid(monthKey), [monthKey])
   const rangeFrom = grid[0]
@@ -144,13 +171,10 @@ export function AppointmentsPage() {
     [bookings, selectedDate],
   )
   const activeDayBookings = dayBookings.filter((b) => b.status !== 'CANCELLED')
-  const cancelledCount = dayBookings.length - activeDayBookings.length
 
   const visibleBarbers = barbers.filter((barber) => !hiddenBarbers.has(barber.id))
-  const scheduleBookings = dayBookings.filter(
-    (booking) =>
-      !hiddenBarbers.has(booking.barber.id) &&
-      (showCancelled || booking.status !== 'CANCELLED'),
+  const scheduleBookings = activeDayBookings.filter(
+    (booking) => !hiddenBarbers.has(booking.barber.id),
   )
   const openBooking = bookings.find((booking) => booking.id === openBookingId) ?? null
   const rescheduleBooking = bookings.find((booking) => booking.id === rescheduleId) ?? null
@@ -228,30 +252,38 @@ export function AppointmentsPage() {
       </aside>
 
       {/* Right: day schedule or list */}
-      <section className="min-w-0">
+      <section
+        className={
+          fullscreen
+            ? 'fixed inset-0 z-[35] overflow-auto bg-[var(--admin-bg)] p-3 sm:p-5'
+            : 'min-w-0'
+        }
+      >
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => selectDate(todayKey())}>
+          <div className="flex min-w-0 items-center gap-2">
+            <Button size="sm" className="shrink-0" onClick={() => selectDate(todayKey())}>
               Σήμερα
             </Button>
             <IconButton
               label="Προηγούμενη ημέρα"
+              className="shrink-0"
               onClick={() => selectDate(addDaysToKey(selectedDate, -1))}
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </IconButton>
             <IconButton
               label="Επόμενη ημέρα"
+              className="shrink-0"
               onClick={() => selectDate(addDaysToKey(selectedDate, 1))}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </IconButton>
-            <h1 className="ml-1 text-base font-semibold tracking-tight sm:text-xl">
+            <h1 className="ml-1 min-w-0 truncate text-base font-semibold tracking-tight sm:text-xl">
               {formatDateKeyLong(selectedDate)}
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 xl:shrink-0 xl:flex-nowrap">
             <div className="inline-flex rounded-xl border border-[var(--admin-border)] bg-white p-0.5">
               {(
                 [
@@ -274,15 +306,22 @@ export function AppointmentsPage() {
                 </button>
               ))}
             </div>
-            <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl px-2 text-[13px] text-[var(--admin-muted)]">
-              <input
-                type="checkbox"
-                checked={showCancelled}
-                onChange={(event) => setShowCancelled(event.target.checked)}
-                className="h-4 w-4 accent-[var(--admin-accent)]"
-              />
-              Ακυρωμένα{cancelledCount ? ` (${cancelledCount})` : ''}
-            </label>
+            <Button onClick={toggleFullscreen} aria-pressed={fullscreen}>
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+                <path
+                  d={
+                    fullscreen
+                      ? 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5'
+                      : 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5'
+                  }
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {fullscreen ? 'Έξοδος' : 'Πλήρης οθόνη'}
+            </Button>
             <Button
               variant="primary"
               onClick={() => setNewBooking({ date: selectedDate, barberId: visibleBarbers[0]?.id })}
@@ -392,6 +431,8 @@ export function AppointmentsPage() {
 
       {rescheduleBooking && (
         <RescheduleModal
+          exceptions={exceptions}
+          timeOff={timeOff}
           booking={rescheduleBooking}
           barbers={barbers}
           services={services}
@@ -413,6 +454,8 @@ export function AppointmentsPage() {
 
       {newBooking && (
         <NewBookingModal
+          exceptions={exceptions}
+          timeOff={timeOff}
           prefill={newBooking}
           barbers={barbers}
           services={services}

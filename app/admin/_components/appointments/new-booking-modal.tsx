@@ -5,14 +5,16 @@ import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
 import {
   type Barber,
   type Booking,
+  type ScheduleException,
   type Service,
+  type TimeOff,
   ApiError,
   adminFetch,
   errorMessage,
   formatPrice,
 } from '../../_lib/admin-data'
 import { AlertIcon, Field, FormError, Modal, SelectInput, TextArea, TextInput } from '../ui'
-import { ADMIN_TIME_OPTIONS, takenTimes } from './time-options'
+import { takenTimes, workingTimeOptions } from './time-options'
 
 export type NewBookingPrefill = {
   barberId?: string
@@ -27,6 +29,8 @@ export function NewBookingModal({
   prefill,
   barbers,
   services,
+  exceptions,
+  timeOff,
   knownBookings,
   onClose,
   onCreated,
@@ -34,6 +38,8 @@ export function NewBookingModal({
   prefill: NewBookingPrefill
   barbers: Barber[]
   services: Service[]
+  exceptions: ScheduleException[]
+  timeOff: TimeOff[]
   // Bookings already loaded in the calendar, used to flag taken times and to
   // fill in returning customers' details.
   knownBookings: Booking[]
@@ -49,7 +55,7 @@ export function NewBookingModal({
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
   const [barberId, setBarberId] = useState(prefill.barberId ?? barbers[0]?.id ?? '')
   const [date, setDate] = useState(prefill.date)
-  const [time, setTime] = useState(prefill.time ?? '10:00')
+  const [time, setTime] = useState(prefill.time ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,6 +66,25 @@ export function NewBookingModal({
     () => takenTimes(knownBookings, barberId, date, duration),
     [knownBookings, barberId, date, duration],
   )
+
+  // The barber's hours that day, plus a slot the admin clicked outside them.
+  const timeOptions = useMemo(() => {
+    const options = workingTimeOptions(
+      barbers.find((item) => item.id === barberId),
+      date,
+      exceptions,
+      timeOff,
+      duration,
+    )
+    const clicked = prefill.time && date === prefill.date ? prefill.time : null
+    return clicked && !options.includes(clicked) ? [...options, clicked].sort() : options
+  }, [barbers, barberId, date, exceptions, timeOff, duration, prefill.time, prefill.date])
+
+  // A time that no longer fits (other barber, day or service) moves to the
+  // first free one.
+  const selectedTime = timeOptions.includes(time)
+    ? time
+    : (timeOptions.find((option) => !taken.has(option)) ?? timeOptions[0])
 
   const knownCustomer = knownBookings.find(
     (b) => b.customerPhone === normalizeGreekMobilePhone(customerPhone),
@@ -98,7 +123,7 @@ export function NewBookingModal({
             serviceId,
             barberId,
             date,
-            slotTime: time,
+            slotTime: selectedTime,
             customerName: customerName.trim(),
             customerPhone: phone,
             customerEmail: customerEmail.trim() || null,
@@ -135,7 +160,7 @@ export function NewBookingModal({
       onSubmit={(event) => void handleSubmit(event)}
       submitLabel="Καταχώρηση"
       submitting={submitting}
-      submitDisabled={services.length === 0 || barbers.length === 0 || taken.has(time)}
+      submitDisabled={services.length === 0 || barbers.length === 0 || taken.has(selectedTime)}
       wide
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -190,8 +215,8 @@ export function NewBookingModal({
             <TextInput type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </Field>
           <Field label="Ώρα">
-            <SelectInput value={time} onChange={(event) => setTime(event.target.value)}>
-              {ADMIN_TIME_OPTIONS.map((option) => (
+            <SelectInput value={selectedTime} onChange={(event) => setTime(event.target.value)}>
+              {timeOptions.map((option) => (
                 <option key={option} value={option} disabled={taken.has(option)}>
                   {option}
                   {taken.has(option) ? ' · κλεισμένη' : ''}
@@ -221,7 +246,7 @@ export function NewBookingModal({
           <span className="font-medium">Σημειώσεις πελάτη:</span> {knownCustomer.notes}
         </p>
       )}
-      {taken.has(time) && (
+      {taken.has(selectedTime) && (
         <p className="text-sm text-amber-800">
           Η ώρα αυτή συμπίπτει με άλλο ραντεβού του κουρέα. Διάλεξε άλλη ώρα.
         </p>

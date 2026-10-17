@@ -1,7 +1,7 @@
 'use client'
 
 import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { getBarberPeriodsForDate, isOnTimeOff } from '@/lib/schedule'
+import { SLOT_MINUTES, getBarberPeriodsForDate, isOnTimeOff } from '@/lib/schedule'
 import {
   type Barber,
   type Booking,
@@ -18,7 +18,7 @@ import {
 import { AlertIcon, Avatar, BanIcon, NoteIcon } from '../ui'
 
 const PX_PER_MINUTE = 1.8
-const CELL_MINUTES = 15
+const CELL_MINUTES = SLOT_MINUTES
 const COLUMN_MIN_WIDTH = 190
 const DEFAULT_OPEN = 9 * 60
 const DEFAULT_CLOSE = 21 * 60
@@ -275,20 +275,20 @@ export function DaySchedule({
           })}
 
           {/* Time axis */}
-          <div className="sticky left-0 z-10 bg-white" style={{ height }}>
-            {cellTimes
-              .filter((minute) => minute % 60 === 0)
-              .map((minute) => (
-                <div
-                  key={minute}
-                  className={`absolute right-2 text-[11px] tabular-nums text-[var(--admin-muted)] ${
-                    minute === rangeStart ? 'translate-y-1' : '-translate-y-1/2'
-                  }`}
-                  style={{ top: (minute - rangeStart) * PX_PER_MINUTE }}
-                >
-                  {minutesToTime(minute)}
-                </div>
-              ))}
+          <div className="sticky left-0 z-10 border-r border-[#d9ccb9] bg-white" style={{ height }}>
+            {cellTimes.map((minute) => (
+              <div
+                key={minute}
+                className={`absolute right-2 tabular-nums ${
+                  minute % 60 === 0
+                    ? 'text-[13px] font-semibold text-[var(--admin-text)]'
+                    : 'text-[11px] text-[var(--admin-muted)]'
+                } ${minute === rangeStart ? 'translate-y-1' : '-translate-y-1/2'}`}
+                style={{ top: (minute - rangeStart) * PX_PER_MINUTE }}
+              >
+                {minutesToTime(minute)}
+              </div>
+            ))}
           </div>
 
           {/* Barber columns */}
@@ -298,7 +298,7 @@ export function DaySchedule({
               <div
                 key={barber.id}
                 data-barber-column={barber.id}
-                className="relative border-l border-[var(--admin-border)]"
+                className="relative border-l border-[#d9ccb9]"
                 style={{ height }}
               >
                 {cellTimes.map((minute) => {
@@ -310,12 +310,12 @@ export function DaySchedule({
                       onClick={() => onSlotClick(barber, minutesToTime(minute))}
                       aria-label={`Νέο ραντεβού με ${barber.name} στις ${minutesToTime(minute)}`}
                       className={`group absolute inset-x-0 flex items-start px-2 pt-0.5 text-left ${
-                        minute % 60 === 0
-                          ? 'border-t border-[var(--admin-border)]'
-                          : minute % 30 === 0
-                            ? 'border-t border-dashed border-[#efe7dc]'
-                            : ''
-                      } ${open ? 'bg-white hover:bg-[var(--admin-accent-soft)]/60' : 'bg-[repeating-linear-gradient(135deg,#f6f1ea_0,#f6f1ea_6px,#f1ebe2_6px,#f1ebe2_12px)] hover:bg-[#efe7dc]'}`}
+                        minute % 60 === 0 ? 'border-t border-[#d9ccb9]' : 'border-t border-[#ece3d6]'
+                      } ${
+                        open
+                          ? `${Math.floor(minute / 60) % 2 ? 'bg-[#fcfaf6]' : 'bg-white'} hover:bg-[var(--admin-accent-soft)]/60`
+                          : 'bg-[repeating-linear-gradient(135deg,#f6f1ea_0,#f6f1ea_6px,#f1ebe2_6px,#f1ebe2_12px)] hover:bg-[#efe7dc]'
+                      }`}
                       style={{
                         top: (minute - rangeStart) * PX_PER_MINUTE,
                         height: CELL_MINUTES * PX_PER_MINUTE,
