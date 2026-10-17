@@ -13,13 +13,10 @@ import {
   bookingDateKey,
   buildMonthGrid,
   errorMessage,
-  dateFromKey,
   formatDateKeyLong,
   formatPhone,
-  formatPrice,
   formatTime,
   getBookingState,
-  isBillable,
   shiftMonth,
   todayKey,
 } from '../../_lib/admin-data'
@@ -41,7 +38,6 @@ import { DaySchedule } from './day-schedule'
 import { MiniCalendar } from './mini-calendar'
 import { type NewBookingPrefill, NewBookingModal } from './new-booking-modal'
 import { RescheduleModal } from './reschedule-modal'
-import { WeekSchedule, weekStartKey } from './week-schedule'
 
 const NOTIFICATION_NOTICES = {
   sent: 'Το ραντεβού μετακινήθηκε και ο πελάτης ενημερώθηκε με email.',
@@ -49,16 +45,7 @@ const NOTIFICATION_NOTICES = {
   skipped: 'Το ραντεβού μετακινήθηκε.',
 } as const
 
-type View = 'schedule' | 'week' | 'list'
-
-function weekTitle(dateKey: string) {
-  const start = dateFromKey(weekStartKey(dateKey))
-  const end = dateFromKey(addDaysToKey(weekStartKey(dateKey), 6))
-  const sameMonth = start.getMonth() === end.getMonth()
-  const startText = start.toLocaleDateString('el-GR', sameMonth ? { day: 'numeric' } : { day: 'numeric', month: 'short' })
-  const endText = end.toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' })
-  return `${startText} – ${endText}`
-}
+type View = 'schedule' | 'list'
 
 export function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(todayKey)
@@ -158,9 +145,6 @@ export function AppointmentsPage() {
   )
   const activeDayBookings = dayBookings.filter((b) => b.status !== 'CANCELLED')
   const cancelledCount = dayBookings.length - activeDayBookings.length
-  const dayRevenue = activeDayBookings
-    .filter(isBillable)
-    .reduce((sum, booking) => sum + booking.service.price, 0)
 
   const visibleBarbers = barbers.filter((barber) => !hiddenBarbers.has(barber.id))
   const scheduleBookings = dayBookings.filter(
@@ -168,18 +152,6 @@ export function AppointmentsPage() {
       !hiddenBarbers.has(booking.barber.id) &&
       (showCancelled || booking.status !== 'CANCELLED'),
   )
-  const weekStart = weekStartKey(selectedDate)
-  const weekEnd = addDaysToKey(weekStart, 6)
-  const weekBookings = bookings.filter((booking) => {
-    const key = bookingDateKey(booking)
-    return (
-      key >= weekStart &&
-      key <= weekEnd &&
-      !hiddenBarbers.has(booking.barber.id) &&
-      (showCancelled || booking.status !== 'CANCELLED')
-    )
-  })
-  const stepDays = view === 'week' ? 7 : 1
   const openBooking = bookings.find((booking) => booking.id === openBookingId) ?? null
   const rescheduleBooking = bookings.find((booking) => booking.id === rescheduleId) ?? null
 
@@ -221,15 +193,9 @@ export function AppointmentsPage() {
           />
         </Card>
 
-        <Card className="grid grid-cols-2 divide-x divide-[var(--admin-border)]">
-          <div className="px-4 py-3.5">
-            <p className="text-xs text-[var(--admin-muted)]">Ραντεβού ημέρας</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{activeDayBookings.length}</p>
-          </div>
-          <div className="px-4 py-3.5">
-            <p className="text-xs text-[var(--admin-muted)]">Έσοδα ημέρας</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{formatPrice(dayRevenue)}</p>
-          </div>
+        <Card className="px-4 py-3.5">
+          <p className="text-xs text-[var(--admin-muted)]">Ραντεβού ημέρας</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{activeDayBookings.length}</p>
         </Card>
 
         {barbers.length > 0 && (
@@ -269,19 +235,19 @@ export function AppointmentsPage() {
               Σήμερα
             </Button>
             <IconButton
-              label={view === 'week' ? 'Προηγούμενη εβδομάδα' : 'Προηγούμενη ημέρα'}
-              onClick={() => selectDate(addDaysToKey(selectedDate, -stepDays))}
+              label="Προηγούμενη ημέρα"
+              onClick={() => selectDate(addDaysToKey(selectedDate, -1))}
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </IconButton>
             <IconButton
-              label={view === 'week' ? 'Επόμενη εβδομάδα' : 'Επόμενη ημέρα'}
-              onClick={() => selectDate(addDaysToKey(selectedDate, stepDays))}
+              label="Επόμενη ημέρα"
+              onClick={() => selectDate(addDaysToKey(selectedDate, 1))}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </IconButton>
             <h1 className="ml-1 text-base font-semibold tracking-tight sm:text-xl">
-              {view === 'week' ? weekTitle(selectedDate) : formatDateKeyLong(selectedDate)}
+              {formatDateKeyLong(selectedDate)}
             </h1>
           </div>
 
@@ -290,7 +256,6 @@ export function AppointmentsPage() {
               {(
                 [
                   ['schedule', 'Ημέρα'],
-                  ['week', 'Εβδομάδα'],
                   ['list', 'Λίστα'],
                 ] as const
               ).map(([key, label]) => (
@@ -365,22 +330,6 @@ export function AppointmentsPage() {
                 setRescheduleId(booking.id)
               }}
             />
-          ) : view === 'week' ? (
-            <WeekSchedule
-              dateKey={selectedDate}
-              barbers={visibleBarbers}
-              bookings={weekBookings}
-              exceptions={exceptions}
-              timeOff={timeOff}
-              onDayClick={(day) => {
-                selectDate(day)
-                setView('schedule')
-              }}
-              onSlotClick={(day, time) =>
-                setNewBooking({ date: day, barberId: visibleBarbers[0]?.id, time })
-              }
-              onBookingClick={(booking) => setOpenBookingId(booking.id)}
-            />
           ) : scheduleBookings.length === 0 ? (
             <div className="p-5">
               <EmptyState title="Δεν υπάρχουν ραντεβού αυτή την ημέρα." />
@@ -403,12 +352,7 @@ export function AppointmentsPage() {
                         {booking.service.name} · {booking.barber.name} · {formatPhone(booking.customerPhone)}
                       </span>
                     </span>
-                    <span className="flex items-center gap-3">
-                      <span className="hidden text-sm tabular-nums text-[var(--admin-muted)] sm:inline">
-                        {formatPrice(booking.service.price)}
-                      </span>
-                      <StateBadge state={getBookingState(booking)} />
-                    </span>
+                    <StateBadge state={getBookingState(booking)} />
                   </button>
                 </li>
               ))}
