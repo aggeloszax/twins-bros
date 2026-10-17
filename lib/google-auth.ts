@@ -6,8 +6,10 @@ export const GOOGLE_STATE_COOKIE = 'twins_google_oauth'
 export const GOOGLE_CALLBACK_PATH = '/api/admin/auth/google/callback'
 
 export function getGoogleConfig() {
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  // Trimmed: values pasted into the Vercel dashboard often end in a newline,
+  // which Google rejects as an unknown client.
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim()
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim()
   const allowedEmails = new Set(
     (process.env.ADMIN_EMAILS ?? '')
       .split(',')
