@@ -2,10 +2,15 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
+import { NewBookingModal } from './appointments/new-booking-modal'
 import { EditableNote } from './editable-note'
 import {
+  type Barber,
   type Booking,
   type CustomerProfile,
+  type ScheduleException,
+  type Service,
+  type TimeOff,
   adminFetch,
   bookingDateKey,
   errorMessage,
@@ -16,12 +21,14 @@ import {
   formatTime,
   getBookingState,
   isBillable,
+  todayKey,
 } from '../_lib/admin-data'
 import {
   AlertIcon,
   BanIcon,
   Button,
   Card,
+  ConfirmButton,
   Drawer,
   EmptyState,
   ErrorNotice,
@@ -32,12 +39,13 @@ import {
   NoteIcon,
   PageHeader,
   PhoneIcon,
+  PlusIcon,
   SearchIcon,
   SelectInput,
   Skeleton,
-  StatCard,
   StateBadge,
   TextInput,
+  TrashIcon,
 } from './ui'
 
 type Customer = {
@@ -56,7 +64,11 @@ type Customer = {
 }
 
 type SortKey = 'recent' | 'name' | 'visits' | 'spent'
-type FilterKey = 'all' | 'notes' | 'noShows' | 'blocked'
+
+// Lowercase without accents, so "γιωργος" finds "Γιώργος".
+function searchText(value: string) {
+  return value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('el').replaceAll('ς', 'σ')
+}
 
 function buildCustomers(bookings: Booking[], profiles: Map<string, CustomerProfile>): Customer[] {
   const now = new Date()
@@ -125,9 +137,16 @@ export function CustomersPage() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('recent')
-  const [filter, setFilter] = useState<FilterKey>('all')
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  const [booking, setBooking] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  // What the new-booking form needs: the team, the services and the hours.
+  const [barbers, setBarbers] = useState<Barber[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [exceptions, setExceptions] = useState<ScheduleException[]>([])
+  const [timeOff, setTimeOff] = useState<TimeOff[]>([])
 
   async function load() {
     setLoading(true)
@@ -148,6 +167,12 @@ export function CustomersPage() {
 
   useEffect(() => {
     queueMicrotask(() => void load())
+    void Promise.all([
+      adminFetch<Barber[]>('/api/barbers').then(setBarbers),
+      adminFetch<Service[]>('/api/services').then(setServices),
+      adminFetch<ScheduleException[]>('/api/admin/schedule-exceptions').then(setExceptions),
+      adminFetch<TimeOff[]>('/api/admin/time-off').then(setTimeOff),
+    ]).catch((loadError) => setError(errorMessage(loadError)))
   }, [])
 
   const customers = useMemo(() => buildCustomers(bookings, profiles), [bookings, profiles])
@@ -166,21 +191,14 @@ export function CustomersPage() {
   }
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('el')
+    const term = searchText(query.trim())
     const digits = term.replace(/\D/g, '')
-    const filters: Record<FilterKey, (c: Customer) => boolean> = {
-      all: () => true,
-      notes: (c) => Boolean(c.profile?.notes),
-      noShows: (c) => c.noShows > 0,
-      blocked: (c) => Boolean(c.profile?.blocked),
-    }
     const list = customers.filter(
       (c) =>
-        filters[filter](c) &&
-        (!term ||
-          c.name.toLocaleLowerCase('el').includes(term) ||
-          (digits.length >= 3 && c.phone.replace(/\D/g, '').includes(digits)) ||
-          c.email?.toLowerCase().includes(term)),
+        !term ||
+        searchText(c.name).includes(term) ||
+        (digits.length >= 3 && c.phone.replace(/\D/g, '').includes(digits)) ||
+        c.email?.toLowerCase().includes(term),
     )
     const sorters: Record<SortKey, (a: Customer, b: Customer) => number> = {
       recent: (a, b) => (b.bookings[0]?.startTime ?? '').localeCompare(a.bookings[0]?.startTime ?? ''),
@@ -189,16 +207,42 @@ export function CustomersPage() {
       spent: (a, b) => b.spent - a.spent,
     }
     return [...list].sort(sorters[sort])
-  }, [customers, query, sort, filter])
+  }, [customers, query, sort])
 
   const openCustomer = customers.find((c) => c.key === openKey) ?? null
-  const returning = customers.filter((c) => c.visits >= 2).length
+
+  function openDetails(key: string) {
+    setDeleteError(null)
+    setBooking(false)
+    setOpenKey(key)
+  }
+
+  async function deleteCustomer(customer: Customer) {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await adminFetch(`/api/admin/customers?phone=${encodeURIComponent(customer.phone)}`, {
+        method: 'DELETE',
+      })
+      const ids = new Set(customer.bookings.map((b) => b.id))
+      setBookings((current) => current.filter((b) => !ids.has(b.id)))
+      setProfiles((current) => {
+        const next = new Map(current)
+        next.delete(customer.phone)
+        return next
+      })
+      setOpenKey(null)
+    } catch (deleteFailure) {
+      setDeleteError(errorMessage(deleteFailure))
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <>
       <PageHeader
         title="Πελάτες"
-        description="Όλοι όσοι έχουν κλείσει ραντεβού, με το ιστορικό και τις σημειώσεις τους."
         actions={
           <Button onClick={() => downloadCsv(filtered)} disabled={filtered.length === 0}>
             Εξαγωγή CSV
@@ -206,20 +250,15 @@ export function CustomersPage() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Πελάτες" value={String(customers.length)} />
-        <StatCard
-          label="Επαναλαμβανόμενοι"
-          value={String(returning)}
-          hint={customers.length ? `${Math.round((returning / customers.length) * 100)}% των πελατών` : undefined}
-        />
-        <StatCard
-          label="Με «δεν ήρθε»"
-          value={String(customers.filter((c) => c.noShows > 0).length)}
-        />
-        <StatCard
-          label="Μπλοκαρισμένοι"
-          value={String(customers.filter((c) => c.profile?.blocked).length)}
+      <div className="relative mx-auto mb-6 max-w-xl">
+        <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--admin-muted)]" />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Αναζήτηση με όνομα, κινητό ή email"
+          aria-label="Αναζήτηση πελάτη"
+          className="h-12 w-full rounded-2xl border border-[var(--admin-border)] bg-white pl-11 pr-4 text-base shadow-sm outline-none focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent-soft)]"
         />
       </div>
 
@@ -230,31 +269,14 @@ export function CustomersPage() {
       )}
 
       <Card>
-        <div className="flex flex-col gap-3 border-b border-[var(--admin-border)] p-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--admin-muted)]" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Αναζήτηση με όνομα, κινητό ή email"
-              className="h-10 w-full rounded-xl border border-[var(--admin-border)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent-soft)]"
-            />
-          </div>
-          <SelectInput
-            value={filter}
-            onChange={(event) => setFilter(event.target.value as FilterKey)}
-            className="!mt-0 sm:w-48"
-            aria-label="Φίλτρο"
-          >
-            <option value="all">Όλοι οι πελάτες</option>
-            <option value="notes">Με σημειώσεις</option>
-            <option value="noShows">Με «δεν ήρθε»</option>
-            <option value="blocked">Μπλοκαρισμένοι</option>
-          </SelectInput>
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--admin-border)] px-5 py-3">
+          <p className="text-sm text-[var(--admin-muted)]">
+            {loading ? '' : filtered.length === 1 ? '1 πελάτης' : `${filtered.length} πελάτες`}
+          </p>
           <SelectInput
             value={sort}
             onChange={(event) => setSort(event.target.value as SortKey)}
-            className="!mt-0 sm:w-56"
+            className="!mt-0 w-auto"
             aria-label="Ταξινόμηση"
           >
             <option value="recent">Πιο πρόσφατοι</option>
@@ -274,15 +296,49 @@ export function CustomersPage() {
           <div className="p-5">
             <EmptyState
               title={
-                query || filter !== 'all'
+                query
                   ? 'Κανένας πελάτης δεν ταιριάζει με την αναζήτηση.'
                   : 'Δεν υπάρχουν πελάτες ακόμα.'
               }
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+          <>
+          {/* Phones: one card per customer */}
+          <ul className="divide-y divide-[var(--admin-border)] md:hidden">
+            {filtered.map((customer) => (
+              <li key={customer.key}>
+                <button
+                  type="button"
+                  onClick={() => openDetails(customer.key)}
+                  className="w-full px-4 py-3.5 text-left transition-colors active:bg-[var(--admin-surface-2)]"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="min-w-0 truncate font-medium">{customer.name}</span>
+                    {customer.profile?.blocked && <BanIcon className="h-3.5 w-3.5 shrink-0 text-red-600" />}
+                    {customer.noShows > 0 && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                        <AlertIcon className="h-3 w-3" />
+                        {customer.noShows}
+                      </span>
+                    )}
+                    {customer.profile?.notes && <NoteIcon className="h-3.5 w-3.5 shrink-0 text-[var(--admin-muted)]" />}
+                  </span>
+                  <span className="mt-0.5 block text-sm tabular-nums text-[var(--admin-muted)]">
+                    {formatPhone(customer.phone)}
+                  </span>
+                  {customer.nextBooking && (
+                    <span className="mt-1 block text-xs font-medium text-[var(--admin-accent)]">
+                      Επόμενο: {formatDateShort(customer.nextBooking)}, {formatTime(customer.nextBooking)}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left text-sm">
               <thead>
                 <tr className="text-xs text-[var(--admin-muted)]">
                   <th className="px-5 py-3 font-medium">Πελάτης</th>
@@ -297,7 +353,7 @@ export function CustomersPage() {
                 {filtered.map((customer) => (
                   <tr
                     key={customer.key}
-                    onClick={() => setOpenKey(customer.key)}
+                    onClick={() => openDetails(customer.key)}
                     className="cursor-pointer transition-colors hover:bg-[var(--admin-surface-2)]"
                   >
                     <td className="px-5 py-3">
@@ -344,6 +400,7 @@ export function CustomersPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
 
@@ -393,6 +450,11 @@ export function CustomersPage() {
             )}
           </div>
 
+          <Button variant="primary" className="mt-3 w-full" onClick={() => setBooking(true)}>
+            <PlusIcon className="h-4 w-4" />
+            Νέο ραντεβού
+          </Button>
+
           <div className="mt-5 grid grid-cols-3 divide-x divide-[var(--admin-border)] rounded-xl border border-[var(--admin-border)] text-center">
             {[
               ['Επισκέψεις', String(openCustomer.visits)],
@@ -441,7 +503,43 @@ export function CustomersPage() {
               </li>
             ))}
           </ul>
+
+          <div className="mt-8 border-t border-[var(--admin-border)] pt-4">
+            <ConfirmButton
+              label={
+                <>
+                  <TrashIcon className="h-4 w-4" />
+                  Διαγραφή πελάτη
+                </>
+              }
+              confirmLabel={`Οριστική διαγραφή μαζί με ${openCustomer.bookings.length === 1 ? '1 ραντεβού' : `${openCustomer.bookings.length} ραντεβού`}`}
+              busy={deleting}
+              onConfirm={() => void deleteCustomer(openCustomer)}
+            />
+            <p className="mt-2 text-xs text-[var(--admin-muted)]">
+              Σβήνει τα στοιχεία, τις σημειώσεις και όλα τα ραντεβού του, και τα αφαιρεί από τα έσοδα. Δεν αναιρείται.
+            </p>
+            <FormError message={deleteError} />
+          </div>
         </Drawer>
+      )}
+
+      {openCustomer && booking && (
+        <NewBookingModal
+          prefill={{
+            date: todayKey(),
+            customerName: openCustomer.name,
+            customerPhone: openCustomer.phone,
+            customerEmail: openCustomer.email,
+          }}
+          barbers={barbers}
+          services={services}
+          exceptions={exceptions}
+          timeOff={timeOff}
+          knownBookings={bookings}
+          onClose={() => setBooking(false)}
+          onCreated={(created) => setBookings((current) => [created, ...current])}
+        />
       )}
 
       {openCustomer && editing && (

@@ -141,3 +141,26 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'Η αποθήκευση του πελάτη απέτυχε.' }, { status: 500 })
   }
 }
+
+// Erases a customer on request: every booking with their phone and their
+// profile (notes, blocking). ?phone= is the phone stored on the bookings.
+export async function DELETE(request: Request) {
+  const denied = await requireAdmin(request)
+  if (denied) return denied
+
+  const phone = new URL(request.url).searchParams.get('phone')
+  if (!phone) {
+    return Response.json({ error: 'Λείπει το κινητό του πελάτη.' }, { status: 400 })
+  }
+
+  try {
+    const [bookings] = await prisma.$transaction([
+      prisma.booking.deleteMany({ where: { customerPhone: phone } }),
+      prisma.customer.deleteMany({ where: { phone } }),
+    ])
+    return Response.json({ deletedBookings: bookings.count })
+  } catch (error) {
+    console.error('Failed to delete customer:', error)
+    return Response.json({ error: 'Η διαγραφή του πελάτη απέτυχε.' }, { status: 500 })
+  }
+}
