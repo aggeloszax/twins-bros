@@ -4,6 +4,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { verifyPassword } from '@/lib/admin-password'
+import { passkeyLockEnabled, UNLOCK_HEADER, validUnlock } from '@/lib/admin-unlock'
 
 export const ADMIN_SESSION_COOKIE = 'twins_admin_session'
 // The Google account the admin signed in with, only to show "Συνδεδεμένος ως".
@@ -109,7 +110,12 @@ export function readSessionCookie(request: Request): string | undefined {
 //   const denied = await requireAdmin(request)
 //   if (denied) return denied
 export async function requireAdmin(request: Request): Promise<Response | null> {
-  const valid = await isValidSessionToken(readSessionCookie(request))
-  if (valid) return null
-  return Response.json({ error: 'Access Denied' }, { status: 401 })
+  const session = readSessionCookie(request)
+  if (!session || !(await isValidSessionToken(session))) {
+    return Response.json({ error: 'Access Denied' }, { status: 401 })
+  }
+  if (await passkeyLockEnabled() && !(await validUnlock(request.headers.get(UNLOCK_HEADER), session))) {
+    return Response.json({ error: 'Ξεκλείδωσε τη διαχείριση.', code: 'ADMIN_LOCKED' }, { status: 423 })
+  }
+  return null
 }

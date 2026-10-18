@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { ADMIN_EMAIL_COOKIE, ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/admin-auth'
 import { SHOP } from '@/lib/shop'
 import { AdminShell } from '../_components/admin-shell'
+import { AdminLock } from '../_components/admin-lock'
 
 export const metadata: Metadata = {
   title: `Διαχείριση | ${SHOP.name}`,
@@ -20,5 +21,5 @@ export default async function AdminPanelLayout({ children }: { children: ReactNo
     redirect('/admin/login')
   }
 
-  return <AdminShell signedInAs={store.get(ADMIN_EMAIL_COOKIE)?.value ?? null}>{children}</AdminShell>
+  return <AdminLock><AdminShell signedInAs={store.get(ADMIN_EMAIL_COOKIE)?.value ?? null}>{children}</AdminShell></AdminLock>
 }

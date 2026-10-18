@@ -87,6 +87,29 @@ model AdminCredential {
   createdAt    DateTime @default(now())
 }
 
+model AdminPasskey {
+  id        String @id
+  publicKey Bytes
+  counter   BigInt @default(0)
+  createdAt DateTime @default(now())
+}
+
+model AdminPasskeyChallenge {
+  id        String @id
+  challenge String
+  purpose   String
+  binding   String
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model AdminUnlock {
+  tokenHash String @id
+  binding   String
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
 model Booking {
   id          String   @id @default(cuid())
   cancelToken String   @unique @default(cuid())

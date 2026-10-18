@@ -1,7 +1,7 @@
 import { googleCalendarUrl } from '@/lib/calendar'
 import { sendBookingNotifications } from '@/lib/notifications'
 import { notifyNewBooking } from '@/lib/push'
-import { isValidSessionToken, readSessionCookie } from '@/lib/admin-auth'
+import { requireAdmin } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
 import { normalizeGreekMobilePhone } from '@/lib/phone'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
@@ -44,7 +44,7 @@ function isValidEmail(value: unknown): value is string {
 }
 
 export async function POST(request: Request) {
-  const isAdminSession = await isValidSessionToken(readSessionCookie(request))
+  const isAdminSession = (await requireAdmin(request)) === null
 
   if (!isAdminSession) {
     const clientIp = getClientIp(request.headers)

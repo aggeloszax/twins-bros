@@ -5,6 +5,7 @@ import { SHOP } from '@/lib/shop'
 import { adminFetch, errorMessage } from '../_lib/admin-data'
 import { GallerySettings } from './gallery-settings'
 import { PushSettings } from './push-settings'
+import { PasskeySettings } from './passkey-settings'
 import { Button, Card, CardHeader, Field, FormError, LockIcon, PageHeader, TextInput } from './ui'
 
 const MIN_PASSWORD_LENGTH = 15
@@ -55,6 +56,7 @@ export function SettingsPage() {
       <PageHeader title="Ρυθμίσεις" />
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <PasskeySettings />
         <PushSettings />
 
         <GallerySettings />

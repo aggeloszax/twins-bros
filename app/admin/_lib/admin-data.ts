@@ -4,6 +4,7 @@ import {
   type WorkingPeriod,
   getDateKeyInBookingTimeZone,
 } from '@/lib/schedule'
+import { getUnlockToken, lockAdmin } from './passkey-client'
 
 export type BookingStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED'
 
@@ -222,12 +223,17 @@ export class ApiError extends Error {
 // JSON fetch for admin endpoints. A 401 means the session expired, so the
 // browser is sent back to the login page.
 export async function adminFetch<T>(input: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers)
+  if (init?.body) headers.set('Content-Type', 'application/json')
+  const token = getUnlockToken()
+  if (token) headers.set('x-admin-unlock', token)
   const res = await fetch(input, {
     ...init,
-    headers: init?.body
-      ? { 'Content-Type': 'application/json', ...init.headers }
-      : init?.headers,
+    headers,
+    cache: 'no-store',
   })
+
+  if (res.status === 423) lockAdmin()
 
   if (res.status === 401) {
     window.location.assign('/admin/login')
