@@ -19,7 +19,6 @@ import { AlertIcon, Avatar, BanIcon, NoteIcon } from '../ui'
 
 const PX_PER_MINUTE = 1.8
 const CELL_MINUTES = SLOT_MINUTES
-const COLUMN_MIN_WIDTH = 190
 const DEFAULT_OPEN = 9 * 60
 const DEFAULT_CLOSE = 21 * 60
 
@@ -244,9 +243,9 @@ export function DaySchedule({
 
       <div className="min-h-[420px] overflow-x-auto">
         <div
-          className="grid"
+          className="grid [--time-axis-width:44px] [--booking-column:140px] sm:[--time-axis-width:56px] sm:[--booking-column:minmax(190px,1fr)]"
           style={{
-            gridTemplateColumns: `56px repeat(${barbers.length}, minmax(${COLUMN_MIN_WIDTH}px, 1fr))`,
+            gridTemplateColumns: `var(--time-axis-width) repeat(${barbers.length}, var(--booking-column))`,
           }}
         >
           {/* Header row */}
@@ -260,7 +259,7 @@ export function DaySchedule({
             return (
               <div
                 key={barber.id}
-                className="sticky top-0 z-20 flex items-center gap-2.5 border-b border-l border-[var(--admin-border)] bg-white px-3 py-2.5"
+                className="sticky top-0 z-20 flex items-center gap-1.5 border-b border-l border-[var(--admin-border)] bg-white px-1.5 py-2 sm:gap-2.5 sm:px-3 sm:py-2.5"
               >
                 <Avatar name={barber.name} image={barber.image} size={30} />
                 <div className="min-w-0">
@@ -279,7 +278,7 @@ export function DaySchedule({
             {cellTimes.map((minute) => (
               <div
                 key={minute}
-                className={`absolute right-2 tabular-nums ${
+                className={`absolute right-1 tabular-nums sm:right-2 ${
                   minute % 60 === 0
                     ? 'text-[13px] font-semibold text-[var(--admin-text)]'
                     : 'text-[11px] text-[var(--admin-muted)]'
@@ -368,7 +367,7 @@ export function DaySchedule({
                       onPointerUp={draggable ? handlePointerUp : undefined}
                       onPointerCancel={() => setDrag(null)}
                       title={draggable ? 'Σύρε για μετακίνηση' : undefined}
-                      className={`absolute overflow-hidden rounded-lg border border-l-[3px] border-black/[0.04] px-2 py-1 text-left shadow-[0_1px_2px_rgba(60,40,20,0.08)] transition ${BLOCK_STYLES[state]} ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging ? 'opacity-40' : ''}`}
+                      className={`absolute overflow-hidden rounded-lg border border-l-[3px] border-black/[0.04] px-1 py-1 text-left shadow-[0_1px_2px_rgba(60,40,20,0.08)] transition sm:px-2 ${BLOCK_STYLES[state]} ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging ? 'opacity-40' : ''}`}
                       style={{
                         top: (start - rangeStart) * PX_PER_MINUTE + 1,
                         height: blockHeight,
