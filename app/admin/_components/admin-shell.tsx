@@ -50,6 +50,7 @@ export function AdminShell({
             </Link>
             {signedInAs && (
               <p className="mt-1.5 max-w-full truncate text-xs text-[var(--admin-muted)]">
+                <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle" />
                 Συνδεδεμένος ως <span className="font-medium text-[var(--admin-text)]">{signedInAs}</span>
               </p>
             )}
