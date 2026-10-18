@@ -18,7 +18,6 @@ import { normalizeGreekMobilePhone, toNationalPhoneInput } from '@/lib/phone'
 import { groupByCategory } from '@/lib/catalog'
 import { SHOP, SITE_THEME } from '@/lib/shop'
 import { ShopInfo } from './shop-info'
-import { SocialLinks } from './social-links'
 
 type Service = {
   id: string
@@ -52,15 +51,6 @@ type BookingCreationResponse = {
   notificationDelivery?: {
     customerEmail: EmailDeliveryStatus
   }
-}
-
-// "No preference": the server assigns whichever barber is free.
-const ANY_BARBER_CHOICE: Barber = {
-  id: ANY_BARBER,
-  name: 'Οποιοσδήποτε',
-  image: null,
-  bio: null,
-  schedule: null,
 }
 
 // Frame the existing photos around the barber, rather than the ceiling.
@@ -171,22 +161,6 @@ function ClockIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.8"
-      />
-    </svg>
-  )
-}
-
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6" />
-      <circle cx="16.5" cy="9" r="2.8" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M2.5 19.5c.7-3.6 3-5.5 6.5-5.5s5.8 1.9 6.5 5.5M15 14.2c.5-.1 1-.2 1.5-.2 2.8 0 4.6 1.6 5 4.8"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
       />
     </svg>
   )
@@ -321,15 +295,15 @@ function CardSkeleton() {
 
 function AvatarSkeleton() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-2xl border border-[var(--page-border)] bg-white">
-      <div className="aspect-[3/4] bg-neutral-200" />
-      <div className="mx-auto my-5 h-4 w-1/2 rounded bg-neutral-200" />
+    <div className="w-[calc((100%-0.75rem)/2)] animate-pulse overflow-hidden rounded-2xl border border-[var(--page-border)] bg-white">
+      <div className="aspect-square bg-neutral-200" />
+      <div className="mx-auto my-2 h-4 w-1/2 rounded bg-neutral-200" />
     </div>
   )
 }
 
 function SlotSkeleton() {
-  return <div className="h-12 animate-pulse rounded-xl bg-neutral-100" />
+  return <div className="h-11 animate-pulse rounded-lg bg-neutral-100" />
 }
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
@@ -371,18 +345,6 @@ export default function BookingForm() {
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
   const [touched, setTouched] = useState({ name: false, phone: false, email: false })
-  const [bookingNotes, setBookingNotes] = useState('')
-  // Services whose description the visitor has expanded.
-  const [openDescriptions, setOpenDescriptions] = useState<Set<string>>(new Set())
-
-  function toggleDescription(id: string) {
-    setOpenDescriptions((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
   const [submittingBooking, setSubmittingBooking] = useState(false)
   const [bookingError, setBookingError] = useState<'failed' | 'blocked' | null>(null)
   const [slotConflict, setSlotConflict] = useState(false)
@@ -617,7 +579,6 @@ export default function BookingForm() {
             customerName: customerName.trim(),
             customerPhone: normalizedCustomerPhone,
             customerEmail: customerEmail.trim(),
-            notes: bookingNotes.trim() || null,
           }),
         })
 
@@ -661,7 +622,6 @@ export default function BookingForm() {
     setConfirmedBooking(null)
     setSelectedTime(null)
     setSelectedDate(null)
-    setBookingNotes('')
     setStep(1)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -782,7 +742,6 @@ export default function BookingForm() {
     >
       <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-10 pt-5 sm:px-8 sm:pt-8">
         <header className="relative text-center">
-          <SocialLinks className="absolute left-0 top-0" />
           <div className="mx-auto relative h-16 w-16 overflow-hidden rounded-full border border-[var(--page-border)] bg-white shadow-sm">
             <Image
               src={SHOP.logoUrl}
@@ -793,14 +752,11 @@ export default function BookingForm() {
               className="object-cover"
             />
           </div>
-          <p
+          <h1
             className="mt-3 text-sm font-bold uppercase tracking-[0.28em]"
             style={{ color: SHOP.primaryColor }}
           >
             {SHOP.name}
-          </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
-            Κλείσε το ραντεβού σου
           </h1>
         </header>
 
@@ -831,11 +787,11 @@ export default function BookingForm() {
 
         <section
           key={step}
-          className="animate-fade-in mt-8 flex-1 transition-all duration-300 ease-in-out"
+          className="animate-fade-in mt-5 flex-1 transition-all duration-300 ease-in-out"
         >
           <h2 ref={stepHeadingRef} tabIndex={-1} className="sr-only">{STEP_LABELS[step - 1]}</h2>
           {step > 1 && selectedService && (
-            <p className="mx-auto mb-5 max-w-2xl text-center text-sm leading-6 text-neutral-600" aria-label="Επιλεγμένη υπηρεσία">
+            <p className="mx-auto mb-3 max-w-2xl text-center text-sm leading-6 text-neutral-600" aria-label="Επιλεγμένη υπηρεσία">
               <span className="font-semibold text-neutral-900">{selectedService.name}</span>
               {' · '}{selectedService.duration}′{' · '}{formatPrice(selectedService.price)}
             </p>
@@ -859,7 +815,6 @@ export default function BookingForm() {
                     )}
                   {items.map((service) => {
                     const isSelected = selectedService?.id === service.id
-                    const isOpen = openDescriptions.has(service.id)
                     return (
                       <div
                         key={service.id}
@@ -873,7 +828,7 @@ export default function BookingForm() {
                         type="button"
                         onClick={() => handleSelectService(service)}
                         aria-pressed={isSelected}
-                        className="flex min-h-24 w-full flex-1 flex-col items-center justify-between gap-2 px-3 py-2 text-center sm:min-h-28 sm:px-5 sm:py-3"
+                        className="flex min-h-20 w-full flex-1 flex-col items-center justify-between gap-1.5 px-3 py-2 text-center sm:min-h-24 sm:px-4"
                       >
                         <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-2">
                           <h3 className="text-sm font-bold leading-snug text-neutral-900 sm:text-base">
@@ -900,31 +855,6 @@ export default function BookingForm() {
                           </span>
                         </div>
                       </button>
-                      {service.description && (
-                        <div className="px-3 pb-1 text-center sm:px-5">
-                          <button
-                            type="button"
-                            onClick={() => toggleDescription(service.id)}
-                            aria-expanded={isOpen}
-                            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--brand)] hover:underline"
-                          >
-                            Λεπτομέρειες
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              aria-hidden
-                              className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                            >
-                              <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                          {isOpen && (
-                            <p className="animate-fade-in mt-2 whitespace-pre-line text-sm leading-6 text-neutral-500">
-                              {service.description}
-                            </p>
-                          )}
-                        </div>
-                      )}
                       </div>
                     )
                   })}
@@ -937,13 +867,13 @@ export default function BookingForm() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="mx-auto grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+              <div className="mx-auto flex max-w-[280px] flex-wrap justify-center gap-3 sm:max-w-[320px]">
                 {loadingBarbers ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <AvatarSkeleton key={i} />
                   ))
                 ) : barbersError ? (
-                  <div className="col-span-full">
+                  <div className="w-full">
                     <ErrorState onRetry={loadBarbers} />
                   </div>
                 ) : (
@@ -963,20 +893,20 @@ export default function BookingForm() {
                           setStep(3)
                         }}
                         aria-pressed={isSelected}
-                        className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-white text-center transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${
+                        className={`group flex w-[calc((100%-0.75rem)/2)] flex-col overflow-hidden rounded-2xl border bg-white text-center transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${
                           isSelected
                             ? 'border-[var(--brand)] ring-1 ring-[var(--brand)]'
                             : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-neutral-50'
                         }`}
                       >
-                        <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-100">
+                        <div className="relative aspect-square w-full overflow-hidden bg-neutral-100">
                           {showImage && barberImageSrc ? (
                             <Image
                               src={barberImageSrc}
                               alt={barber.name}
                               fill
                               unoptimized
-                              sizes="(max-width: 639px) 45vw, 240px"
+                              sizes="(max-width: 639px) 134px, 154px"
                               onError={() =>
                                 setFailedBarberImages((current) => ({
                                   ...current,
@@ -992,7 +922,7 @@ export default function BookingForm() {
                             </div>
                           )}
                         </div>
-                        <div className="w-full flex-1 px-3 py-3">
+                        <div className="w-full flex-1 px-2 py-2">
                           <span className="flex items-center justify-center gap-2 break-words text-sm font-semibold text-neutral-900 sm:text-base">
                             {barber.name}
                             {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-[var(--brand)]" />}
@@ -1008,37 +938,19 @@ export default function BookingForm() {
                   })
                 )}
               </div>
-              {!loadingBarbers && !barbersError && barbers.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedBarber(ANY_BARBER_CHOICE)
-                    setStep(3)
-                  }}
-                  aria-pressed={selectedBarber?.id === ANY_BARBER}
-                  className={`mx-auto flex min-h-12 w-full max-w-xl items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${selectedBarber?.id === ANY_BARBER ? 'border-[var(--brand)] bg-white ring-1 ring-[var(--brand)]' : 'border-[var(--page-border)] hover:border-[var(--brand)] hover:bg-white/60'}`}
-                >
-                  <UsersIcon className="h-6 w-6 shrink-0 text-[var(--brand)]" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">Οποιοσδήποτε κουρέας</span>
-                    <span className="mt-0.5 block text-xs text-neutral-500">Χωρίς προτίμηση — δες τις διαθέσιμες ώρες όλης της ομάδας.</span>
-                  </span>
-                  {selectedBarber?.id === ANY_BARBER && <CheckIcon className="h-5 w-5 shrink-0 text-[var(--brand)]" />}
-                </button>
-              )}
             </div>
           )}
 
           {step === 3 && (
-            <div className="mx-auto max-w-3xl">
+            <div className="mx-auto max-w-sm">
               {slotConflict && (
                 <p role="alert" className="mb-5 rounded-xl border border-[var(--brand)]/30 bg-white p-4 text-sm leading-6 text-[var(--brand)]">
                   Η ώρα που επέλεξες μόλις δεσμεύτηκε. Διάλεξε μια άλλη διαθέσιμη ώρα. Τα στοιχεία σου έχουν διατηρηθεί.
                 </p>
               )}
-              <div className="grid gap-5 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)] md:items-start">
-                <section className="rounded-2xl border border-[var(--page-border)] bg-white p-4 shadow-sm sm:p-5">
-                  <div className="mb-5 flex items-center justify-between gap-3">
+              <div className="grid gap-3">
+                <section className="rounded-2xl border border-[var(--page-border)] bg-white p-3 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-2">
                     <div>
                       <h3 className="text-base font-bold capitalize text-neutral-900">
                         {formatMonthTitle(calendarMonth)}
@@ -1069,7 +981,7 @@ export default function BookingForm() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-7 gap-1">
                     {GR_WEEKDAYS_MON_FIRST.map((day) => (
                       <div
                         key={day}
@@ -1108,7 +1020,7 @@ export default function BookingForm() {
                             setSelectedDate(key)
                             setSelectedTime(null)
                           }}
-                          className={`relative flex aspect-square min-h-9 items-center justify-center rounded-lg border text-sm font-semibold transition-all duration-200 ease-in-out ${
+                          className={`relative flex h-9 items-center justify-center rounded-lg border text-sm font-semibold transition-all duration-200 ease-in-out ${
                             isSelected
                               ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
                               : isDisabled
@@ -1126,8 +1038,8 @@ export default function BookingForm() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-[var(--page-border)] bg-white p-4 shadow-sm sm:p-5">
-                  <div className="mb-5">
+                <section className="rounded-2xl border border-[var(--page-border)] bg-white p-3 shadow-sm">
+                  <div className="mb-3">
                     <h3 className="text-base font-bold text-neutral-900">
                       Διαθέσιμες ώρες
                     </h3>
@@ -1141,7 +1053,7 @@ export default function BookingForm() {
                       Διάλεξε πρώτα μια ημέρα.
                     </div>
                   ) : loadingSlots ? (
-                    <div className="grid grid-cols-3 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-4 gap-2">
                       {Array.from({ length: 12 }).map((_, i) => (
                         <SlotSkeleton key={i} />
                       ))}
@@ -1177,7 +1089,7 @@ export default function BookingForm() {
                       )}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-4 gap-2">
                       {availableSlots.map((slot) => {
                         const isSelected = selectedTime === slot.time
                         return (
@@ -1190,7 +1102,7 @@ export default function BookingForm() {
                               setSelectedTime(slot.time)
                               setStep(4)
                             }}
-                            className={`h-12 rounded-xl border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
+                            className={`h-11 rounded-lg border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
                               isSelected
                                   ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm'
                                   : 'border-[var(--page-border)] bg-white text-neutral-800 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-neutral-50'
@@ -1209,7 +1121,6 @@ export default function BookingForm() {
 
           {step === 4 && (
             <div className="mx-auto max-w-md space-y-5">
-              <p className="text-sm text-neutral-600">Το όνομα, το κινητό και το email είναι υποχρεωτικά.</p>
               <div className="space-y-4 rounded-2xl border border-[var(--page-border)] bg-white p-5 shadow-sm">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
@@ -1253,11 +1164,10 @@ export default function BookingForm() {
                       }}
                       autoComplete="tel"
                       aria-invalid={touched.phone && !normalizedCustomerPhone}
-                      aria-describedby={touched.phone && !normalizedCustomerPhone ? 'phone-help phone-error' : 'phone-help'}
+                      aria-describedby={touched.phone && !normalizedCustomerPhone ? 'phone-error' : undefined}
                       className={inputClass}
                     />
                   </span>
-                  <span id="phone-help" className="mt-2 block text-xs text-neutral-600">Ελληνικό κινητό: 10 ψηφία, ξεκινώντας από 69.</span>
                   {touched.phone && !normalizedCustomerPhone && <span id="phone-error" className="mt-2 block text-sm text-[var(--brand)]">Συμπλήρωσε έγκυρο ελληνικό κινητό.</span>}
                 </label>
 
@@ -1282,19 +1192,6 @@ export default function BookingForm() {
                   </span>
                   <span id="email-help" className="mt-2 block text-xs text-neutral-600">Για την επιβεβαίωση και τον σύνδεσμο διαχείρισης του ραντεβού.</span>
                   {touched.email && !isValidCustomerEmail(customerEmail) && <span id="email-error" className="mt-2 block text-sm text-[var(--brand)]">Συμπλήρωσε έγκυρη διεύθυνση email.</span>}
-                </label>
-                <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                    Σχόλιο <span className="normal-case tracking-normal text-neutral-400">(προαιρετικό)</span>
-                  </span>
-                  <textarea
-                    rows={2}
-                    maxLength={500}
-                    value={bookingNotes}
-                    onChange={(event) => setBookingNotes(event.target.value)}
-                    placeholder="Κάτι που πρέπει να ξέρει ο κουρέας;"
-                    className="mt-2 w-full resize-none rounded-2xl border border-[var(--page-border)] bg-white px-4 py-3 text-base text-neutral-900 outline-none transition-all duration-300 ease-in-out placeholder:text-neutral-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]"
-                  />
                 </label>
               </div>
 
