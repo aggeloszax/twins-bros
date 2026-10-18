@@ -62,3 +62,25 @@ input[type="date"] {
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
+
+/* Readable secondary copy on both cream and white customer surfaces. */
+.booking-page .text-neutral-500,
+.booking-page .text-neutral-400 {
+  color: #525252;
+}
+
+.booking-page :is(button, a, summary):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.booking-page details .mt-14 {
+  margin-top: 0;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-page .animate-fade-in { animation: none; }
+  .booking-page * { transition-duration: 0s; }
+}

@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   ANY_BARBER,
   BOOKING_WINDOW_DAYS,
@@ -253,7 +253,7 @@ function Stepper({
 }) {
   return (
     <nav
-      aria-label="Booking progress"
+      aria-label="Βήματα κράτησης"
       className="pb-1"
     >
       <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-start gap-x-1 sm:gap-x-2">
@@ -268,6 +268,7 @@ function Stepper({
               <button
                 type="button"
                 disabled={!reachable}
+                aria-current={isActive ? 'step' : undefined}
                 onClick={() => onGo(n)}
                 className="group flex min-w-0 flex-col items-center gap-2 rounded-2xl transition-all duration-300 ease-in-out disabled:cursor-not-allowed"
               >
@@ -349,6 +350,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 }
 
 export default function BookingForm() {
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
   const [services, setServices] = useState<Service[]>([])
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [loadingServices, setLoadingServices] = useState(true)
@@ -357,6 +359,9 @@ export default function BookingForm() {
   const [barbersError, setBarbersError] = useState(false)
 
   const [step, setStep] = useState<BookingStep>(1)
+  useEffect(() => {
+    if (step > 1) stepHeadingRef.current?.focus()
+  }, [step])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -365,6 +370,7 @@ export default function BookingForm() {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
+  const [touched, setTouched] = useState({ name: false, phone: false, email: false })
   const [bookingNotes, setBookingNotes] = useState('')
   // Services whose description the visitor has expanded.
   const [openDescriptions, setOpenDescriptions] = useState<Set<string>>(new Set())
@@ -761,7 +767,7 @@ export default function BookingForm() {
 
   return (
     <div
-      className="min-h-screen bg-[var(--page-bg)] font-sans text-neutral-900"
+      className="booking-page min-h-screen bg-[var(--page-bg)] font-sans text-neutral-900"
       style={brandStyle}
     >
       <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-10 pt-5 sm:px-8 sm:pt-8">
@@ -817,6 +823,7 @@ export default function BookingForm() {
           key={step}
           className="animate-fade-in mt-8 flex-1 transition-all duration-300 ease-in-out"
         >
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="sr-only">{STEP_LABELS[step - 1]}</h2>
           {step === 1 && (
             <div className="mx-auto max-w-2xl">
               <div
@@ -850,13 +857,13 @@ export default function BookingForm() {
                         type="button"
                         onClick={() => handleSelectService(service)}
                         aria-pressed={isSelected}
-                        className="flex min-h-32 w-full flex-1 flex-col items-center justify-between gap-3 px-3 py-4 text-center sm:min-h-40 sm:px-5 sm:py-5"
+                        className="flex min-h-24 w-full flex-1 flex-col items-center justify-between gap-2 px-3 py-2 text-center sm:min-h-28 sm:px-5 sm:py-3"
                       >
                         <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-2">
                           <h3 className="text-sm font-bold leading-snug text-neutral-900 sm:text-base">
                             {service.name}
                           </h3>
-                          <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-neutral-500 sm:text-sm">
+                          <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-neutral-600 sm:text-sm">
                             <ClockIcon className="h-4 w-4 text-[var(--brand)]" />
                             <span>{service.duration} λεπτά</span>
                           </div>
@@ -878,12 +885,12 @@ export default function BookingForm() {
                         </div>
                       </button>
                       {service.description && (
-                        <div className="px-3 pb-4 text-center sm:px-5">
+                        <div className="px-3 pb-1 text-center sm:px-5">
                           <button
                             type="button"
                             onClick={() => toggleDescription(service.id)}
                             aria-expanded={isOpen}
-                            className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand)] hover:underline"
+                            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--brand)] hover:underline"
                           >
                             Λεπτομέρειες
                             <svg
@@ -1074,6 +1081,8 @@ export default function BookingForm() {
                           key={key}
                           type="button"
                           disabled={isDisabled}
+                          aria-label={new Intl.DateTimeFormat('el-GR', { dateStyle: 'full' }).format(day)}
+                          aria-pressed={isSelected}
                           onClick={() => {
                             setSelectedDate(key)
                             setSelectedTime(null)
@@ -1178,6 +1187,7 @@ export default function BookingForm() {
 
           {step === 4 && (
             <div className="mx-auto max-w-md space-y-5">
+              <p className="text-sm text-neutral-600">Το όνομα, το κινητό και το email είναι υποχρεωτικά.</p>
               <div className="space-y-4 rounded-2xl border border-[var(--page-border)] bg-white p-5 shadow-sm">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
@@ -1191,9 +1201,13 @@ export default function BookingForm() {
                       value={customerName}
                       onChange={(event) => setCustomerName(event.target.value)}
                       autoComplete="name"
+                      onBlur={() => setTouched((current) => ({ ...current, name: true }))}
+                      aria-invalid={touched.name && !customerName.trim()}
+                      aria-describedby={touched.name && !customerName.trim() ? 'name-error' : undefined}
                       className={inputClass}
                     />
                   </span>
+                  {touched.name && !customerName.trim() && <span id="name-error" className="mt-2 block text-sm text-[var(--brand)]">Συμπλήρωσε το ονοματεπώνυμό σου.</span>}
                 </label>
 
                 <label className="block">
@@ -1204,20 +1218,25 @@ export default function BookingForm() {
                     <PhoneIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
                     <input
                       type="tel"
-                      inputMode="numeric"
+                      inputMode="tel"
                       pattern="69[0-9]{8}"
                       required
                       value={customerPhone}
                       onChange={(event) =>
                         setCustomerPhone(toNationalPhoneInput(event.target.value))
                       }
-                      onBlur={(event) =>
+                      onBlur={(event) => {
                         setCustomerPhone(toNationalPhoneInput(event.target.value))
-                      }
+                        setTouched((current) => ({ ...current, phone: true }))
+                      }}
                       autoComplete="tel"
+                      aria-invalid={touched.phone && !normalizedCustomerPhone}
+                      aria-describedby={touched.phone && !normalizedCustomerPhone ? 'phone-help phone-error' : 'phone-help'}
                       className={inputClass}
                     />
                   </span>
+                  <span id="phone-help" className="mt-2 block text-xs text-neutral-600">Ελληνικό κινητό: 10 ψηφία, ξεκινώντας από 69.</span>
+                  {touched.phone && !normalizedCustomerPhone && <span id="phone-error" className="mt-2 block text-sm text-[var(--brand)]">Συμπλήρωσε έγκυρο ελληνικό κινητό.</span>}
                 </label>
 
                 <label className="block">
@@ -1232,9 +1251,15 @@ export default function BookingForm() {
                       value={customerEmail}
                       onChange={(event) => setCustomerEmail(event.target.value)}
                       autoComplete="email"
+                      inputMode="email"
+                      onBlur={() => setTouched((current) => ({ ...current, email: true }))}
+                      aria-invalid={touched.email && !isValidCustomerEmail(customerEmail)}
+                      aria-describedby={touched.email && !isValidCustomerEmail(customerEmail) ? 'email-help email-error' : 'email-help'}
                       className={inputClass}
                     />
                   </span>
+                  <span id="email-help" className="mt-2 block text-xs text-neutral-600">Για την επιβεβαίωση και τον σύνδεσμο διαχείρισης του ραντεβού.</span>
+                  {touched.email && !isValidCustomerEmail(customerEmail) && <span id="email-error" className="mt-2 block text-sm text-[var(--brand)]">Συμπλήρωσε έγκυρη διεύθυνση email.</span>}
                 </label>
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
@@ -1308,10 +1333,16 @@ export default function BookingForm() {
         </>
         )}
 
-        <ShopInfo schedules={barbers.map((barber) => barber.schedule)} />
+        {step === 1 || confirmed ? (
+          <ShopInfo schedules={barbers.map((barber) => barber.schedule)} />
+        ) : (
+          <details key={step} className="mt-8 rounded-2xl border border-[var(--page-border)] px-4">
+            <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold text-neutral-700">Πληροφορίες καταστήματος</summary>
+            <ShopInfo schedules={barbers.map((barber) => barber.schedule)} />
+          </details>
+        )}
 
         <footer className="mt-12 border-t border-[var(--page-border)] pt-6 text-center text-xs leading-5 text-neutral-500">
-          <p className="font-semibold text-neutral-700">{SHOP.name}</p>
           <nav
             aria-label="Νομικές πληροφορίες"
             className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2"
@@ -1333,6 +1364,9 @@ export default function BookingForm() {
               Πολιτική Απορρήτου
             </Link>
           </nav>
+          <div className="mt-5 flex flex-col gap-2 border-t border-[var(--page-border)] pt-5 text-left sm:flex-row sm:items-center sm:justify-between">
+            <p>© {new Date().getFullYear()} Twins Bros. All rights reserved.</p>
+          </div>
         </footer>
       </main>
     </div>
