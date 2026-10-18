@@ -385,6 +385,7 @@ export default function BookingForm() {
   }
   const [submittingBooking, setSubmittingBooking] = useState(false)
   const [bookingError, setBookingError] = useState<'failed' | 'blocked' | null>(null)
+  const [slotConflict, setSlotConflict] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
   const [confirmedBooking, setConfirmedBooking] = useState<BookingCreationResponse | null>(null)
   const [customerEmailDelivery, setCustomerEmailDelivery] =
@@ -620,6 +621,15 @@ export default function BookingForm() {
           }),
         })
 
+        if (res.status === 409) {
+          setSlotConflict(true)
+          setSelectedTime(null)
+          setSlots([])
+          setLoadingSlots(true)
+          setSlotsRetry((current) => current + 1)
+          setStep(3)
+          return
+        }
         if (res.status === 403) {
           setBookingError('blocked')
           return
@@ -824,6 +834,12 @@ export default function BookingForm() {
           className="animate-fade-in mt-8 flex-1 transition-all duration-300 ease-in-out"
         >
           <h2 ref={stepHeadingRef} tabIndex={-1} className="sr-only">{STEP_LABELS[step - 1]}</h2>
+          {step > 1 && selectedService && (
+            <p className="mx-auto mb-5 max-w-2xl text-center text-sm leading-6 text-neutral-600" aria-label="Επιλεγμένη υπηρεσία">
+              <span className="font-semibold text-neutral-900">{selectedService.name}</span>
+              {' · '}{selectedService.duration}′{' · '}{formatPrice(selectedService.price)}
+            </p>
+          )}
           {step === 1 && (
             <div className="mx-auto max-w-2xl">
               <div
@@ -1015,6 +1031,11 @@ export default function BookingForm() {
 
           {step === 3 && (
             <div className="mx-auto max-w-3xl">
+              {slotConflict && (
+                <p role="alert" className="mb-5 rounded-xl border border-[var(--brand)]/30 bg-white p-4 text-sm leading-6 text-[var(--brand)]">
+                  Η ώρα που επέλεξες μόλις δεσμεύτηκε. Διάλεξε μια άλλη διαθέσιμη ώρα. Τα στοιχεία σου έχουν διατηρηθεί.
+                </p>
+              )}
               <div className="grid gap-5 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)] md:items-start">
                 <section className="rounded-2xl border border-[var(--page-border)] bg-white p-4 shadow-sm sm:p-5">
                   <div className="mb-5 flex items-center justify-between gap-3">
@@ -1165,6 +1186,7 @@ export default function BookingForm() {
                             type="button"
                             aria-pressed={isSelected}
                             onClick={() => {
+                              setSlotConflict(false)
                               setSelectedTime(slot.time)
                               setStep(4)
                             }}

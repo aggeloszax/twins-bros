@@ -212,16 +212,20 @@ function customerBookingEmailHtml({
       <div><dt style="color: #7a6f64; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailTime}</dd></div>
       <div><dt style="color: #7a6f64; font-size: 13px;">Διεύθυνση</dt><dd style="margin: 4px 0 0; font-weight: 700;">${escapeHtml(SHOP.address)}</dd></div>
     </dl>
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 24px 0 12px; border-collapse: collapse;">
+      <tr>
+        <td bgcolor="${brandColor}" style="border-radius: 12px; text-align: center;">
+          <a href="${escapeHtml(cancelUrl)}" style="display: inline-block; padding: 14px 20px; border: 1px solid ${brandColor}; border-radius: 12px; color: #ffffff; font-size: 15px; line-height: 1.5; font-weight: 700; text-decoration: none;">Αλλαγή ή ακύρωση ραντεβού</a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin: 0 0 24px; color: #4a413a; font-size: 13px; line-height: 1.6;">Διαχείριση για ${emailDate}, ${emailTime}. Online αλλαγή ή ακύρωση έως 2,5 ώρες πριν.</p>
     <p style="margin: 22px 0 0; font-size: 13px; color: #7a6f64;">
       Προσθήκη στο ημερολόγιο:
       <a href="${escapeHtml(googleCalendarUrl)}" style="color: ${brandColor}; font-weight: 700;">Google</a>
       &nbsp;·&nbsp;
       <a href="${escapeHtml(icsUrl)}" style="color: ${brandColor}; font-weight: 700;">iPhone / Outlook</a>
     </p>
-  </div>
-  <div style="padding: 24px 28px; border-top: 1px solid #e6dccd; background: #fbf8f3; text-align: center;">
-    <p style="margin: 0 0 14px; color: #7a6f64; font-size: 13px; line-height: 1.6;">Θέλεις άλλη ώρα ή δεν μπορείς να έρθεις; Άλλαξε ή ακύρωσε το ραντεβού έως και 2,5 ώρες πριν.</p>
-    <a href="${cancelUrl}" style="display: inline-block; padding: 12px 26px; border-radius: 999px; background: ${brandColor}; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none;">Αλλαγή ή ακύρωση</a>
   </div>
 </section>
 </div>`
@@ -251,7 +255,7 @@ export async function sendBookingNotifications(
   }
 
   if (bookingDetails.customerEmail) {
-    const subject = `Επιβεβαίωση ραντεβού · ${SHOP.name}`
+    const subject = `Επιβεβαίωση ραντεβού · ${emailDate}, ${emailTime} · ${SHOP.name}`
     const html = customerBookingEmailHtml({
       heading: 'Το ραντεβού σου επιβεβαιώθηκε',
       intro: `Γεια σου ${customerName}, σε περιμένουμε για το ραντεβού σου.`,

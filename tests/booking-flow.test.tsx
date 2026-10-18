@@ -14,10 +14,15 @@ import BookingForm from '@/app/_components/booking-form'
 let root: Root
 let container: HTMLDivElement
 let fetchMock: ReturnType<typeof vi.fn>
+let simulateConflict: boolean
 beforeEach(() => {
+  simulateConflict = false
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    if (init?.method === 'POST') throw new Error('This test must never create a booking')
+    if (init?.method === 'POST') {
+      if (simulateConflict) return new Response(JSON.stringify({ error: 'This time slot is no longer available' }), { status: 409 })
+      throw new Error('This test must never create a booking')
+    }
     const data = url === '/api/services' ? [
       { id: 'cut', name: 'Δοκιμαστικό κούρεμα', price: 17.5, duration: 35, description: 'Περιγραφή', category: null },
       { id: 'beard', name: 'Δοκιμαστικό μούσι', price: 9, duration: 15, description: null, category: null },
@@ -62,6 +67,7 @@ it('keeps customer details when revisiting and changing choices', async () => {
   expect(container.querySelector('iframe')?.src).toContain('maps.google.com/maps')
   expect(container.querySelector('details')).toBeNull()
   await click('Δοκιμαστικό κούρεμα')
+  expect(container.querySelector('[aria-label="Επιλεγμένη υπηρεσία"]')?.textContent).toContain('35′ · 17.50€')
   expect(container.querySelector('details')?.open).toBe(false)
   await click('Οποιοσδήποτε κουρέας')
   await chooseTime()
@@ -81,4 +87,24 @@ it('keeps customer details when revisiting and changing choices', async () => {
   expect(container.querySelector('details')?.open).toBe(false)
   expect(fetchMock.mock.calls.every(([, init]) => init?.method !== 'POST')).toBe(true)
   expect(container.querySelector<HTMLAnchorElement>('a[href^="tel:"]')?.href).toBe('tel:+302112180304')
+})
+
+it('refreshes availability after a conflict and preserves the customer fields', async () => {
+  simulateConflict = true
+  await act(async () => root.render(<BookingForm />))
+  await click('Δοκιμαστικό κούρεμα')
+  await click('Πρώτος')
+  await chooseTime()
+  await fill('input[type="text"]', 'Δοκιμή Πελάτη')
+  await fill('input[type="tel"]', '6912345678')
+  await fill('input[type="email"]', 'test@example.com')
+  const previousRequests = fetchMock.mock.calls.filter(([url]) => url.startsWith('/api/available-slots')).length
+  await click('Επιβεβαίωση Ραντεβού')
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain('μόλις δεσμεύτηκε')
+  expect(container.querySelector('[aria-current="step"]')?.textContent).toContain('Ημέρα & ώρα')
+  expect(fetchMock.mock.calls.filter(([url]) => url.startsWith('/api/available-slots')).length).toBeGreaterThan(previousRequests)
+  await click('12:00')
+  expect(container.querySelector('[role="alert"]')).toBeNull()
+  expect(container.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('Δοκιμή Πελάτη')
+  expect(container.querySelector<HTMLInputElement>('input[type="email"]')!.value).toBe('test@example.com')
 })

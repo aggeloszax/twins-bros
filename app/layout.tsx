@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Barbershop Booking",
-  description: "Book your barbershop appointment online.",
+  title: "Twins Bros | Κράτηση ραντεβού στο Περιστέρι",
+  description: "Κλείσε online το ραντεβού σου στο Twins Bros στο Περιστέρι. Διάλεξε υπηρεσία, κουρέα και διαθέσιμη ώρα.",
 };
 
 export default function RootLayout({
