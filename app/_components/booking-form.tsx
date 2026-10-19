@@ -698,29 +698,6 @@ export default function BookingForm() {
               </span>
             </div>
           </div>
-          {confirmedBooking?.calendar && (
-            <div className="mt-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Προσθήκη στο ημερολόγιο
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <a
-                  href={confirmedBooking.calendar.google}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full border border-[var(--page-border)] px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                >
-                  Google
-                </a>
-                <a
-                  href={confirmedBooking.calendar.ics}
-                  className="rounded-full border border-[var(--page-border)] px-4 py-2.5 text-sm font-semibold text-neutral-900 transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                >
-                  iPhone / Outlook
-                </a>
-              </div>
-            </div>
-          )}
           <button
             type="button"
             onClick={resetBooking}
