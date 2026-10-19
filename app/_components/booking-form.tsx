@@ -628,7 +628,6 @@ export default function BookingForm() {
 
   function handleSelectService(service: Service) {
     setSelectedService(service)
-    setStep(2)
   }
 
   const successCard = (confirmed &&
@@ -890,7 +889,6 @@ export default function BookingForm() {
                         type="button"
                         onClick={() => {
                           setSelectedBarber(barber)
-                          setStep(3)
                         }}
                         aria-pressed={isSelected}
                         className={`group flex w-[calc((100%-0.75rem)/2)] flex-col overflow-hidden rounded-2xl border bg-white text-center transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] ${
@@ -942,24 +940,15 @@ export default function BookingForm() {
           )}
 
           {step === 3 && (
-            <div className="mx-auto max-w-sm">
+            <div className="mx-auto max-w-2xl">
               {slotConflict && (
                 <p role="alert" className="mb-5 rounded-xl border border-[var(--brand)]/30 bg-white p-4 text-sm leading-6 text-[var(--brand)]">
                   Η ώρα που επέλεξες μόλις δεσμεύτηκε. Διάλεξε μια άλλη διαθέσιμη ώρα. Τα στοιχεία σου έχουν διατηρηθεί.
                 </p>
               )}
-              <div className="grid gap-3">
+              <div className="grid items-start gap-3 sm:grid-cols-2">
                 <section className="rounded-2xl border border-[var(--page-border)] bg-white p-3 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <div>
-                      <h3 className="text-base font-bold capitalize text-neutral-900">
-                        {formatMonthTitle(calendarMonth)}
-                      </h3>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        Διαθέσιμες ημερομηνίες έως {formatDateLong(toDateKey(maxBookingDate))}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         disabled={!canGoPreviousMonth}
@@ -969,6 +958,9 @@ export default function BookingForm() {
                       >
                         ‹
                       </button>
+                      <h3 className="flex-1 text-center text-base font-bold capitalize text-neutral-900">
+                        {formatMonthTitle(calendarMonth)}
+                      </h3>
                       <button
                         type="button"
                         disabled={!canGoNextMonth}
@@ -978,7 +970,6 @@ export default function BookingForm() {
                       >
                         ›
                       </button>
-                    </div>
                   </div>
 
                   <div className="grid grid-cols-7 gap-1">
@@ -1100,7 +1091,6 @@ export default function BookingForm() {
                             onClick={() => {
                               setSlotConflict(false)
                               setSelectedTime(slot.time)
-                              setStep(4)
                             }}
                             className={`h-11 rounded-lg border text-sm font-semibold tabular-nums transition-all duration-300 ease-in-out ${
                               isSelected
@@ -1245,6 +1235,18 @@ export default function BookingForm() {
               >
                 {submittingBooking ? 'Καταχώρηση...' : 'Επιβεβαίωση Ραντεβού'}
                 <CheckIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          {step < 4 && (
+            <div className="mx-auto mt-5 flex max-w-2xl justify-end">
+              <button
+                type="button"
+                disabled={!canReach(step + 1)}
+                onClick={() => goToStep(step + 1)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--page-border)] bg-white px-5 py-2 text-sm font-semibold text-[var(--brand)] transition-colors hover:border-[var(--brand)] hover:bg-[var(--brand)]/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Συνέχεια <span aria-hidden>→</span>
               </button>
             </div>
           )}
