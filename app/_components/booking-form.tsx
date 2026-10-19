@@ -1264,14 +1264,15 @@ export default function BookingForm() {
           </details>
         )}
 
-        <footer className="booking-policy mt-12 -mx-4 border-y border-[var(--page-border)] px-5 py-9 text-center text-[#625b50] sm:-mx-8 sm:px-8">
-          <h2 className="flex items-center justify-center gap-2 text-xl font-medium text-[#e30613]">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 shrink-0" aria-hidden>
+        <footer className="mt-12 -mx-4 border-y border-[var(--page-border)] px-5 py-6 text-center text-[#625b50] sm:-mx-8 sm:px-8">
+          <details>
+          <summary className="mx-auto flex min-h-11 w-fit cursor-pointer list-none items-center justify-center gap-1.5 rounded-sm text-sm font-semibold hover:text-[#e30613] [&::-webkit-details-marker]:hidden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0 text-[#e30613]" aria-hidden>
               <path d="m12 2 8 4v6c0 5-8 10-8 10S4 17 4 12V6l8-4Z" />
               <path d="M12 7v5m0 4h.01" />
             </svg>
             Πολιτική κρατήσεων
-          </h2>
+          </summary>
           <div className="mx-auto mt-4 max-w-3xl text-sm font-semibold leading-6 sm:text-base sm:leading-[1.6]">
             <p>
               Μπορείτε να ακυρώσετε ή να επαναπρογραμματίσετε το ραντεβού σας έως και{' '}
@@ -1288,9 +1289,10 @@ export default function BookingForm() {
               <a href={SHOP.phone.href} className="inline-block font-semibold text-[#8a5d13] hover:underline">{SHOP.phone.label}</a>.
             </p>
           </div>
+          </details>
           <nav
             aria-label="Νομικές πληροφορίες"
-            className="mt-6 flex flex-wrap justify-center gap-x-7 gap-y-2 text-sm font-semibold"
+            className="mt-1 flex flex-wrap justify-center gap-x-7 gap-y-2 text-sm font-semibold"
           >
             <Link
               href="/privacy"
