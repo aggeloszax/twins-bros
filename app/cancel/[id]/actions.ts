@@ -2,7 +2,7 @@
 
 import { Prisma } from '@prisma/client'
 import { BARBER_SCHEDULE_SELECT, computeBarberSlots, loadScheduleRules, toScheduleSource } from '@/lib/availability'
-import { sendBookingRescheduledEmail } from '@/lib/notifications'
+import { sendBookingCancelledEmail, sendBookingRescheduledEmail } from '@/lib/notifications'
 import { notifyBookingCancelled, notifyBookingMoved } from '@/lib/push'
 import { prisma } from '@/lib/prisma'
 import {
@@ -41,6 +41,7 @@ export async function cancelBooking(
         startTime: true,
         status: true,
         customerName: true,
+        customerEmail: true,
         barber: { select: { id: true, name: true } },
         service: { select: { name: true } },
       },
@@ -73,7 +74,7 @@ export async function cancelBooking(
       return { ok: false, reason: 'already-cancelled' }
     }
 
-    await notifyBookingCancelled(booking)
+    await Promise.allSettled([notifyBookingCancelled(booking), sendBookingCancelledEmail(booking)])
 
     return { ok: true }
   } catch (error) {

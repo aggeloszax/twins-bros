@@ -1,6 +1,5 @@
 import { Resend } from 'resend'
 import { SHOP } from '@/lib/shop'
-import { googleCalendarUrl } from '@/lib/calendar'
 
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? SHOP.emailFrom
 
@@ -37,24 +36,9 @@ type BookingNotificationDetails = {
   }
 }
 
-// Cancel and add-to-calendar links for a customer email.
+// Management link for active customer bookings.
 function bookingLinks(details: BookingNotificationDetails) {
-  const token = encodeURIComponent(details.cancelToken)
-  const start = new Date(details.startTime)
-  const end = details.endTime
-    ? new Date(details.endTime)
-    : new Date(start.getTime() + (details.service.duration ?? 30) * 60_000)
-  return {
-    cancelUrl: `${APP_BASE_URL}/cancel/${details.id}?token=${token}`,
-    googleCalendarUrl: googleCalendarUrl({
-      uid: details.id,
-      start,
-      end,
-      serviceName: details.service.name,
-      barberName: details.barber.name,
-    }),
-    icsUrl: `${APP_BASE_URL}/api/bookings/${details.id}/calendar?token=${token}`,
-  }
+  return { cancelUrl: `${APP_BASE_URL}/cancel/${details.id}?token=${encodeURIComponent(details.cancelToken)}` }
 }
 
 function escapeHtml(value: string) {
@@ -170,8 +154,6 @@ function customerBookingEmailHtml({
   emailDate,
   emailTime,
   cancelUrl,
-  googleCalendarUrl,
-  icsUrl,
 }: {
   heading: string
   intro: string
@@ -179,9 +161,7 @@ function customerBookingEmailHtml({
   barberName: string
   emailDate: string
   emailTime: string
-  cancelUrl: string
-  googleCalendarUrl: string
-  icsUrl: string
+  cancelUrl?: string
 }) {
   const shopName = escapeHtml(SHOP.name)
   const logoUrl = escapeHtml(new URL(SHOP.logoUrl, `${APP_BASE_URL}/`).toString())
@@ -212,20 +192,13 @@ function customerBookingEmailHtml({
       <div><dt style="color: #7a6f64; font-size: 13px;">Ώρα</dt><dd style="margin: 4px 0 0; font-weight: 700;">${emailTime}</dd></div>
       <div><dt style="color: #7a6f64; font-size: 13px;">Διεύθυνση</dt><dd style="margin: 4px 0 0; font-weight: 700;">${escapeHtml(SHOP.address)}</dd></div>
     </dl>
-    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 24px 0 12px; border-collapse: collapse;">
+${cancelUrl ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin: 24px 0 12px; border-collapse: collapse;">
       <tr>
         <td bgcolor="${brandColor}" style="border-radius: 12px; text-align: center;">
           <a href="${escapeHtml(cancelUrl)}" style="display: inline-block; padding: 14px 20px; border: 1px solid ${brandColor}; border-radius: 12px; color: #ffffff; font-size: 15px; line-height: 1.5; font-weight: 700; text-decoration: none;">Αλλαγή ή ακύρωση ραντεβού</a>
         </td>
       </tr>
-    </table>
-    <p style="margin: 0 0 24px; color: #4a413a; font-size: 13px; line-height: 1.6;">Διαχείριση για ${emailDate}, ${emailTime}. Online αλλαγή ή ακύρωση έως 2,5 ώρες πριν.</p>
-    <p style="margin: 22px 0 0; font-size: 13px; color: #7a6f64;">
-      Προσθήκη στο ημερολόγιο:
-      <a href="${escapeHtml(googleCalendarUrl)}" style="color: ${brandColor}; font-weight: 700;">Google</a>
-      &nbsp;·&nbsp;
-      <a href="${escapeHtml(icsUrl)}" style="color: ${brandColor}; font-weight: 700;">iPhone / Outlook</a>
-    </p>
+    </table>` : ''}
   </div>
 </section>
 </div>`
@@ -312,6 +285,23 @@ export async function sendBookingRescheduledEmail(
     html,
     getShopSender(),
   )
+  return result.status
+}
+
+export async function sendBookingCancelledEmail(
+  details: Pick<BookingNotificationDetails, 'startTime' | 'customerName' | 'customerEmail' | 'service' | 'barber'>,
+): Promise<'sent' | 'failed' | 'skipped'> {
+  if (!details.customerEmail) return 'skipped'
+  const { emailDate, emailTime } = formatEmailDateTime(details.startTime)
+  const html = customerBookingEmailHtml({
+    heading: 'Το ραντεβού σου ακυρώθηκε',
+    intro: `Γεια σου ${escapeHtml(details.customerName)}, επιβεβαιώνουμε ότι το παρακάτω ραντεβού ακυρώθηκε. Δεν χρειάζεται κάποια άλλη ενέργεια.`,
+    serviceName: escapeHtml(details.service.name),
+    barberName: escapeHtml(details.barber.name),
+    emailDate,
+    emailTime,
+  })
+  const result = await trySendEmail(details.customerEmail, `Ακύρωση ραντεβού · ${emailDate}, ${emailTime} · ${SHOP.name}`, html, getShopSender())
   return result.status
 }
 

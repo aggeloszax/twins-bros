@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
-import { sendBookingRescheduledEmail } from '@/lib/notifications'
+import { sendBookingCancelledEmail, sendBookingRescheduledEmail } from '@/lib/notifications'
 import { normalizeGreekMobilePhone } from '@/lib/phone'
 import { createBookingDateTime, parseDateKey } from '@/lib/schedule'
 import { Prisma, type BookingStatus } from '@prisma/client'
@@ -133,8 +133,9 @@ export async function PATCH(
     const needsOverlapCheck =
       nextStatus !== 'CANCELLED' && (move !== null || existing.status === 'CANCELLED')
 
-    const booking = await prisma.$transaction(
+    const { booking, newlyCancelled } = await prisma.$transaction(
       async (tx) => {
+        const beforeUpdate = await tx.booking.findUniqueOrThrow({ where: { id: existing.id }, select: { status: true } })
         if (needsOverlapCheck) {
           await tx.$queryRaw`
             WITH lock AS MATERIALIZED (
@@ -155,7 +156,7 @@ export async function PATCH(
           if (overlapping) throw new ConflictError()
         }
 
-        return tx.booking.update({
+        const booking = await tx.booking.update({
           where: { id: existing.id },
           data: {
             ...(hasStatus ? { status: nextStatus } : {}),
@@ -166,12 +167,15 @@ export async function PATCH(
           },
           select: BOOKING_SELECT,
         })
+        return { booking, newlyCancelled: beforeUpdate.status !== 'CANCELLED' && booking.status === 'CANCELLED' }
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     )
 
     let customerNotification: 'sent' | 'failed' | 'skipped' = 'skipped'
-    if (move && reschedule?.notifyCustomer === true) {
+    if (newlyCancelled) {
+      customerNotification = await sendBookingCancelledEmail(booking)
+    } else if (booking.status !== 'CANCELLED' && move && reschedule?.notifyCustomer === true) {
       const { cancelToken } = await prisma.booking.findUniqueOrThrow({
         where: { id: booking.id },
         select: { cancelToken: true },

@@ -29,7 +29,8 @@ it('builds the customer confirmation with encoded management links and configure
   expect(message.html).toContain('https://booking.example.com/cancel/test-booking?token=test%2Ftoken%2B123')
   expect(message.html).toContain('Test &lt;customer&gt;')
   expect(message.html.indexOf('Αλλαγή ή ακύρωση ραντεβού')).toBeGreaterThan(message.html.indexOf('</dl>'))
-  expect(message.html.indexOf('Αλλαγή ή ακύρωση ραντεβού')).toBeLessThan(message.html.indexOf('Προσθήκη στο ημερολόγιο'))
+  expect(message.html).not.toContain('Προσθήκη στο ημερολόγιο')
+  expect(message.html).not.toContain('Διαχείριση για')
   expect(message.subject).toContain('2026')
   expect(message.subject).toContain('12:00')
 })
@@ -38,6 +39,27 @@ it('reports provider rejection without treating it as a successful email', async
   mocks.send.mockResolvedValue({ data: null, error: { name: 'validation_error', message: 'Rejected' } })
   const { sendBookingNotifications } = await import('@/lib/notifications')
   expect(await sendBookingNotifications(booking)).toEqual({ customerEmail: 'failed' })
+})
+
+it('emails cancellation details without offering to manage the cancelled booking', async () => {
+  const { sendBookingCancelledEmail } = await import('@/lib/notifications')
+  expect(await sendBookingCancelledEmail(booking)).toBe('sent')
+  const message = mocks.send.mock.calls[0][0]
+  expect(message.to).toBe(booking.customerEmail)
+  expect(message.subject).toContain('Ακύρωση ραντεβού')
+  expect(message.html).toContain('Το ραντεβού σου ακυρώθηκε')
+  expect(message.html).toContain('Test &lt;customer&gt;')
+  expect(message.html).toContain('12:00')
+  expect(message.html).not.toContain('/cancel/')
+  expect(message.html).not.toContain('Προσθήκη στο ημερολόγιο')
+})
+
+it('skips cancellation email without an address and handles delivery failures', async () => {
+  const { sendBookingCancelledEmail } = await import('@/lib/notifications')
+  expect(await sendBookingCancelledEmail({ ...booking, customerEmail: null })).toBe('skipped')
+  expect(mocks.send).not.toHaveBeenCalled()
+  mocks.send.mockResolvedValue({ data: null, error: { name: 'validation_error', message: 'Rejected' } })
+  expect(await sendBookingCancelledEmail(booking)).toBe('failed')
 })
 
 it('reports missing configuration without contacting the email provider', async () => {
