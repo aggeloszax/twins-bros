@@ -67,13 +67,13 @@ async function fill(selector: string, value: string) {
 it('keeps customer details when revisiting and changing choices', async () => {
   await act(async () => root.render(<BookingForm />))
   expect(container.querySelector('iframe')?.src).toContain('maps.google.com/maps')
-  expect(container.querySelector('main > details')).toBeNull()
+  expect(container.querySelector<HTMLDetailsElement>('main > details')).toBeNull()
   expect([...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Συνέχεια'))?.disabled).toBe(true)
   await click('Δοκιμαστικό κούρεμα')
   expect(container.querySelector('[aria-current="step"]')?.textContent).toContain('Υπηρεσία')
   await click('Συνέχεια')
   expect(container.querySelector('[aria-label="Επιλεγμένη υπηρεσία"]')?.textContent).toContain('35′ · 17.50€')
-  expect(container.querySelector('main > details')?.open).toBe(false)
+  expect(container.querySelector<HTMLDetailsElement>('main > details')?.open).toBe(false)
   expect(container.textContent).not.toContain('Οποιοσδήποτε κουρέας')
   await click('Πρώτος')
   expect(container.querySelector('[aria-current="step"]')?.textContent).toContain('Κουρέας')
@@ -86,7 +86,7 @@ it('keeps customer details when revisiting and changing choices', async () => {
   await fill('input[type="text"]', 'Δοκιμή Πελάτη')
   await fill('input[type="tel"]', '6912345678')
   await fill('input[type="email"]', 'test@example.com')
-  const details = container.querySelector('main > details')!
+  const details = container.querySelector<HTMLDetailsElement>('main > details')!
   await act(async () => { details.open = true })
   await click('Υπηρεσία')
   await click('Δοκιμαστικό μούσι')
@@ -96,7 +96,7 @@ it('keeps customer details when revisiting and changing choices', async () => {
   await chooseTime()
   expect(container.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('Δοκιμή Πελάτη')
   expect(container.querySelector<HTMLInputElement>('input[type="email"]')!.value).toBe('test@example.com')
-  expect(container.querySelector('main > details')?.open).toBe(false)
+  expect(container.querySelector<HTMLDetailsElement>('main > details')?.open).toBe(false)
   expect(fetchMock.mock.calls.every(([, init]) => init?.method !== 'POST')).toBe(true)
   expect(container.querySelector<HTMLAnchorElement>('a[href^="tel:"]')?.href).toBe('tel:+302112180304')
 })
