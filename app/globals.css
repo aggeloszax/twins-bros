@@ -80,6 +80,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   padding-bottom: 1.25rem;
 }
 
+.booking-policy {
+  background-color: #f7f5f0;
+  background-image: repeating-linear-gradient(45deg, transparent 0, transparent 44px, rgba(227, 6, 19, 0.065) 44px, rgba(227, 6, 19, 0.065) 45px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .booking-page .animate-fade-in { animation: none; }
   .booking-page * { transition-duration: 0s; }

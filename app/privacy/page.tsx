@@ -145,7 +145,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-neutral-900">
+            <h2 id="cookies" className="scroll-mt-6 text-lg font-black text-neutral-900">
               7. Ασφάλεια και cookies
             </h2>
             <p className="mt-3">

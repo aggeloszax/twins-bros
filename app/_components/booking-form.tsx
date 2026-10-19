@@ -6,6 +6,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   ANY_BARBER,
   BOOKING_WINDOW_DAYS,
+  CANCELLATION_WINDOW_MINUTES,
   getBarberPeriodsForDate,
   isDayBookable,
   isScheduleExceptionType,
@@ -1263,31 +1264,63 @@ export default function BookingForm() {
           </details>
         )}
 
-        <footer className="mt-12 border-t border-[var(--page-border)] pt-6 text-center text-xs leading-5 text-neutral-500">
+        <footer className="booking-policy mt-12 -mx-4 border-y border-[var(--page-border)] px-5 py-9 text-center text-[#625b50] sm:-mx-8 sm:px-8">
+          <h2 className="flex items-center justify-center gap-2 text-xl font-medium text-[#e30613]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 shrink-0" aria-hidden>
+              <path d="m12 2 8 4v6c0 5-8 10-8 10S4 17 4 12V6l8-4Z" />
+              <path d="M12 7v5m0 4h.01" />
+            </svg>
+            Πολιτική κρατήσεων
+          </h2>
+          <div className="mx-auto mt-4 max-w-3xl text-sm font-semibold leading-6 sm:text-base sm:leading-[1.6]">
+            <p>
+              Μπορείτε να ακυρώσετε ή να επαναπρογραμματίσετε το ραντεβού σας έως και{' '}
+              <strong className="font-semibold text-[#8a5d13]">{(CANCELLATION_WINDOW_MINUTES / 60).toLocaleString('el-GR')} ώρες</strong>{' '}
+              πριν από την ώρα του ραντεβού.
+            </p>
+            <p>
+              Μπορούν να προγραμματιστούν ραντεβού έως{' '}
+              <strong className="font-semibold text-[#8a5d13]">{BOOKING_WINDOW_DAYS / 7} εβδομάδες</strong>{' '}
+              ({BOOKING_WINDOW_DAYS} ημέρες) μπροστά.
+            </p>
+            <p>
+              Αν έχει περάσει το όριο και δεν μπορείτε πλέον να αλλάξετε το ραντεβού σας, καλέστε απευθείας στο{' '}
+              <a href={SHOP.phone.href} className="inline-block font-semibold text-[#8a5d13] hover:underline">{SHOP.phone.label}</a>.
+            </p>
+          </div>
           <nav
             aria-label="Νομικές πληροφορίες"
-            className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2"
+            className="mt-6 flex flex-wrap justify-center gap-x-7 gap-y-2 text-sm font-semibold"
           >
-            <Link
-              href="/booking-terms"
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-[var(--brand)] underline underline-offset-4"
-            >
-              Όροι Κράτησης
-            </Link>
             <Link
               href="/privacy"
               target="_blank"
               rel="noreferrer"
-              className="font-semibold text-[var(--brand)] underline underline-offset-4"
+              className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#e30613]"
             >
-              Πολιτική Απορρήτου
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-[#e30613]" aria-hidden>
+                <path d="m12 3 8 4v5c0 5-8 9-8 9s-8-4-8-9V7l8-4Z" /><path d="m8.5 12 2.5 2.5 4.5-5" />
+              </svg>
+              Privacy
+            </Link>
+            <Link
+              href="/privacy#cookies"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#e30613]"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-[#e30613]" aria-hidden>
+                <path d="M20.5 13A5 5 0 0 1 15 7a4 4 0 0 1-4-4 9 9 0 1 0 9.5 10Z" /><path d="M7 10h.01M8 16h.01M12 12h.01M15 17h.01" />
+              </svg>
+              Cookies
+            </Link>
+            <Link href="/booking-terms" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#e30613]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-[#e30613]" aria-hidden>
+                <path d="M6 2h8l4 4v16H6V2Zm8 0v5h4M9 12h6M9 16h6M9 6h1" />
+              </svg>
+              Terms
             </Link>
           </nav>
-          <div className="mt-5 flex flex-col gap-2 border-t border-[var(--page-border)] pt-5 text-left sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} Twins Bros. All rights reserved.</p>
-          </div>
         </footer>
       </main>
     </div>
