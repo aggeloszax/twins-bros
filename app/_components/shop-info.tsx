@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { type WorkingPeriod, WORKING_PERIODS, timeToMinutes, minutesToTime } from '@/lib/schedule'
 import { SHOP } from '@/lib/shop'
+import { SocialLinks } from './social-links'
 
 type Photo = { id: string; url: string; caption: string | null }
 
@@ -110,7 +111,7 @@ export function ShopInfo({ schedules }: { schedules: (WorkingPeriod[] | null)[] 
                     </button>
                   ))}
                 </div>
-                <p className="mt-3 text-center text-xs text-neutral-500">Πάτησε μια φωτογραφία για να τη δεις μεγαλύτερη.</p>
+                <SocialLinks className="mt-3 justify-center" />
               </div>
             </div>
           )}
