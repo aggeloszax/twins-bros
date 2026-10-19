@@ -44,7 +44,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       className="flex min-h-screen flex-col items-center justify-center bg-[var(--page-bg)] px-5 py-10 font-sans text-neutral-900"
       style={SITE_THEME}
     >
-      <div className="animate-fade-in w-full max-w-md rounded-3xl border border-[var(--page-border)] bg-white p-7 shadow-sm sm:p-8">
+      <div className="animate-fade-in w-full max-w-3xl rounded-3xl border border-[var(--page-border)] bg-white p-4 shadow-sm sm:p-8">
         <div className="flex flex-col items-center text-center">
           <div
             className="relative h-14 w-14 overflow-hidden rounded-full border bg-white"

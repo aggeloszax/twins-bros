@@ -1190,8 +1190,6 @@ export default function BookingForm() {
                 Με την καταχώριση του ραντεβού αποδέχεσαι τους{' '}
                 <Link
                   href="/booking-terms"
-                  target="_blank"
-                  rel="noreferrer"
                   className="font-semibold text-[var(--brand)] underline underline-offset-4"
                 >
                   Όρους Κράτησης
@@ -1199,8 +1197,6 @@ export default function BookingForm() {
                 και επιβεβαιώνεις ότι ενημερώθηκες για την{' '}
                 <Link
                   href="/privacy"
-                  target="_blank"
-                  rel="noreferrer"
                   className="font-semibold text-[var(--brand)] underline underline-offset-4"
                 >
                   Πολιτική Απορρήτου
@@ -1296,8 +1292,6 @@ export default function BookingForm() {
           >
             <Link
               href="/privacy"
-              target="_blank"
-              rel="noreferrer"
               className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#e30613]"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-[#e30613]" aria-hidden>
@@ -1307,8 +1301,6 @@ export default function BookingForm() {
             </Link>
             <Link
               href="/privacy#cookies"
-              target="_blank"
-              rel="noreferrer"
               className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#e30613]"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-[#e30613]" aria-hidden>
@@ -1316,7 +1308,7 @@ export default function BookingForm() {
               </svg>
               Cookies
             </Link>
-            <Link href="/booking-terms" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#e30613]">
+            <Link href="/booking-terms" className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#e30613]">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-[#e30613]" aria-hidden>
                 <path d="M6 2h8l4 4v16H6V2Zm8 0v5h4M9 12h6M9 16h6M9 6h1" />
               </svg>

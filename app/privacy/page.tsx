@@ -10,6 +10,14 @@ export default function PrivacyPage() {
       className="min-h-screen bg-[var(--page-bg)] px-4 py-8 text-neutral-900 sm:px-6 sm:py-12"
       style={SITE_THEME}
     >
+        <nav aria-label="Επιστροφή" className="sticky top-0 z-10 mx-auto mb-4 max-w-3xl bg-[var(--page-bg)] py-3">
+          <Link
+            href="/"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-bold text-white transition hover:brightness-110"
+          >
+            Επιστροφή στην κράτηση
+          </Link>
+        </nav>
       <article className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-[var(--page-border)] bg-white shadow-sm">
         <header className="border-b border-[var(--page-border)] px-6 py-7 sm:px-10 sm:py-9">
           <div className="flex items-center gap-4">
@@ -145,7 +153,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 id="cookies" className="scroll-mt-6 text-lg font-black text-neutral-900">
+            <h2 id="cookies" className="scroll-mt-24 text-lg font-black text-neutral-900">
               7. Ασφάλεια και cookies
             </h2>
             <p className="mt-3">
@@ -167,14 +175,7 @@ export default function PrivacyPage() {
           </section>
         </div>
 
-        <footer className="border-t border-[var(--page-border)] bg-[#fbf8f3] px-6 py-6 text-center sm:px-10">
-          <Link
-            href="/"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-bold text-white transition hover:brightness-110"
-          >
-            Επιστροφή στην κράτηση
-          </Link>
-        </footer>
+
       </article>
     </main>
   )

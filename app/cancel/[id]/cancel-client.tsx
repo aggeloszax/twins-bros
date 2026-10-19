@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { BOOKING_LOCALE } from '@/lib/schedule'
+import { BOOKING_LOCALE, toDateKey } from '@/lib/schedule'
 import { cancelBooking, rescheduleBooking } from './actions'
 
 export type BookingDetails = {
@@ -90,6 +90,18 @@ export function CancelClient({
     bookableDays.includes(currentDateKey) ? currentDateKey : (bookableDays[0] ?? null),
   )
   const [slots, setSlots] = useState<Slot[]>([])
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const initial = new Date(`${day ?? currentDateKey}T12:00:00`)
+    return new Date(initial.getFullYear(), initial.getMonth(), 1)
+  })
+  const monthKey = toDateKey(calendarMonth).slice(0, 7)
+  const canGoPreviousMonth = bookableDays.some((key) => key.slice(0, 7) < monthKey)
+  const canGoNextMonth = bookableDays.some((key) => key.slice(0, 7) > monthKey)
+  const calendarDays = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(calendarMonth)
+    date.setDate(1 - (calendarMonth.getDay() + 6) % 7 + index)
+    return date
+  })
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [time, setTime] = useState<string | null>(null)
 
@@ -103,7 +115,7 @@ export function CancelClient({
     })
     fetch(`/api/available-slots?${params}`, { signal: controller.signal })
       .then((res) => (res.ok ? (res.json() as Promise<Slot[]>) : []))
-      .then((data) => setSlots(data))
+      .then((data) => { if (!controller.signal.aborted) setSlots(data) })
       .catch(() => {
         if (!controller.signal.aborted) setSlots([])
       })
@@ -207,34 +219,46 @@ export function CancelClient({
           <p className="text-xs text-neutral-500">
             Τρέχον ραντεβού: {details.date}, {details.time}
           </p>
+          <div className="mt-3 grid items-start gap-3 sm:grid-cols-2">
           {bookableDays.length === 0 ? (
             <p className="mt-4 text-sm text-neutral-600">Δεν υπάρχουν διαθέσιμες ημέρες αυτή τη στιγμή.</p>
           ) : (
-            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-2">
-              {bookableDays.map((key) => {
-                const label = dayLabel(key)
+            <section aria-label="Επιλογή ημερομηνίας" className="rounded-2xl border border-[var(--page-border)] bg-white p-3 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <button type="button" disabled={!canGoPreviousMonth || isPending} onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))} aria-label="Προηγούμενος μήνας" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--page-border)] bg-white text-neutral-700 hover:border-[var(--brand)] disabled:cursor-not-allowed disabled:opacity-35">‹</button>
+                <h3 className="flex-1 text-center text-base font-bold capitalize text-neutral-900">{calendarMonth.toLocaleDateString(BOOKING_LOCALE, { month: 'long', year: 'numeric' })}</h3>
+                <button type="button" disabled={!canGoNextMonth || isPending} onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))} aria-label="Επόμενος μήνας" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--page-border)] bg-white text-neutral-700 hover:border-[var(--brand)] disabled:cursor-not-allowed disabled:opacity-35">›</button>
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+              {['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'].map((label) => <div key={label} className="pb-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{label}</div>)}
+              {calendarDays.map((date) => {
+                const key = toDateKey(date)
+                const disabled = date.getMonth() !== calendarMonth.getMonth() || !bookableDays.includes(key)
                 const selected = key === day
                 return (
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setDay(key)}
+                    disabled={disabled || isPending}
+                    onClick={() => { setDay(key); setTime(null); setSlots([]); setLoadingSlots(true); setError(null) }}
+                    aria-label={date.toLocaleDateString(BOOKING_LOCALE, { dateStyle: 'full' })}
                     aria-pressed={selected}
-                    className={`flex w-14 shrink-0 flex-col items-center rounded-2xl border py-2 text-xs transition ${
-                      selected ? 'border-transparent text-white' : 'border-[var(--page-border)] text-neutral-600 hover:bg-neutral-50'
+                    className={`relative flex h-9 items-center justify-center rounded-lg border text-sm font-semibold transition-colors ${
+                      selected ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm' : disabled ? 'cursor-not-allowed border-transparent bg-neutral-50 text-neutral-300' : 'border-[var(--page-border)] bg-white text-neutral-800 hover:border-[var(--brand)] hover:bg-neutral-50'
                     }`}
                     style={selected ? { backgroundColor: brandColor } : undefined}
                   >
-                    <span className="capitalize opacity-80">{label.weekday}</span>
-                    <span className="text-lg font-bold">{label.day}</span>
-                    <span className="opacity-70">{label.month}</span>
+                    {date.getDate()}
                   </button>
                 )
               })}
-            </div>
+              </div>
+            </section>
           )}
 
-          <div className="mt-4 min-h-24">
+          <section className="min-h-24 rounded-2xl border border-[var(--page-border)] bg-white p-3 shadow-sm">
+            <h3 className="text-base font-bold text-neutral-900">Διαθέσιμες ώρες</h3>
+            <p className="mb-3 mt-1 text-sm text-neutral-500">{day ? dayLabel(day).long : 'Επίλεξε ημερομηνία'}</p>
             {loadingSlots ? (
               <p className="text-sm text-neutral-500">Φόρτωση ωρών…</p>
             ) : day && freeSlots.length === 0 ? (
@@ -247,9 +271,10 @@ export function CancelClient({
                     <button
                       key={slot.time}
                       type="button"
+                      disabled={isPending}
                       onClick={() => setTime(slot.time)}
                       aria-pressed={selected}
-                      className={`rounded-xl border py-2.5 text-sm font-semibold tabular-nums transition ${
+                      className={`h-11 rounded-lg border text-sm font-semibold tabular-nums transition ${
                         selected ? 'border-transparent text-white' : 'border-[var(--page-border)] text-neutral-900 hover:bg-neutral-50'
                       }`}
                       style={selected ? { backgroundColor: brandColor } : undefined}
@@ -260,6 +285,7 @@ export function CancelClient({
                 })}
               </div>
             )}
+          </section>
           </div>
         </div>
       )}
@@ -291,7 +317,7 @@ export function CancelClient({
           <button
             type="button"
             onClick={handleReschedule}
-            disabled={isPending || !day || !time}
+            disabled={isPending || loadingSlots || !day || !time}
             className={primaryButton}
             style={{ backgroundColor: brandColor }}
           >
